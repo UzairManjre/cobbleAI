@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+motor
+fastapi-users[beanie]
+python-jose[cryptography] # For RS256 JWT
+passlib[bcrypt]
+pydantic
+pydantic-settings
+celery
+redis
+qdrant-client
+sentence-transformers
+python-multipart
+pdfplumber
+python-docx
+python-pptx
+openai

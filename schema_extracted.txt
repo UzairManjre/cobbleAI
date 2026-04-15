@@ -1,0 +1,879 @@
+COBBLE AI
+Complete Database Schema Reference
+MongoDB  ·  Qdrant  ·  Redis
+Table of Contents
+0. How to Read This Document
+🟡  Gold field name
+Primary Key (PK) — unique document identifier
+🟢  Teal field name
+Foreign Key (FK) — references another collection
+🔵  Blue field name
+Regular indexed or important field
+🟣  Purple type
+MongoDB / Qdrant data type
+UNIQUE tag
+Uniqueness constraint enforced at DB level
+TTL tag
+MongoDB TTL index — auto-deletes expired documents
+Compound index
+Multi-field index listed in Indexes section per collection
+1. MongoDB Collections
+MongoDB stores all application state. Every document uses UUID strings as _id (not ObjectId) for portability. All timestamps are stored in UTC. Motor (async driver) is used exclusively — no synchronous PyMongo calls in request handlers.
+Collection: users
+Stores professor and student accounts. Single collection, role-differentiated.
+1.1 users — Fields
+Field
+Type
+Constraints
+Description
+_id
+UUID (str)
+PK
+Universally unique identifier — generated server-side on register
+email
+str
+UNIQUE, INDEX
+User email address — used as login credential
+hashed_password
+str
+NOT NULL
+bcrypt hash with cost factor 12 — plaintext never stored
+role
+str (enum)
+NOT NULL
+Allowed values: "professor" | "student"
+name
+str
+NOT NULL
+Display name shown in UI
+is_active
+bool
+DEFAULT true
+Soft-delete flag — false = account disabled, not deleted
+is_verified
+bool
+DEFAULT false
+Email verification flag — must be true to access protected routes
+preferences
+object
+DEFAULT {}
+See sub-document schema below
+created_at
+datetime
+NOT NULL
+UTC timestamp at account creation
+last_login
+datetime
+NULLABLE
+UTC timestamp of last successful login — null until first login
+refresh_token_hash
+str
+NULLABLE
+SHA-256 hash of current refresh token — null after logout
+preferences sub-document
+Field
+Type
+Constraints
+Description
+language
+str
+DEFAULT "en"
+UI language code e.g. "en", "fr", "ar"
+theme
+str
+DEFAULT "light"
+Allowed values: "light" | "dark" | "system"
+notifications_enabled
+bool
+DEFAULT true
+Email notification toggle
+default_study_mode
+str
+DEFAULT "teach"
+Allowed values: "teach" | "test" | "review"
+1.1 users — Indexes
+Index Name
+Fields
+Type
+Purpose
+users_email_unique
+email
+Unique
+Login lookup — enforces one account per email
+users_role_idx
+role
+Single
+Filter professors vs students in admin queries
+users_created_at_idx
+created_at
+Single
+Sort by registration date in admin dashboard
+Collection: courses
+One document per course. Owned by a professor.
+1.2 courses — Fields
+Field
+Type
+Constraints
+Description
+_id
+UUID (str)
+PK
+Course identifier
+professor_id
+UUID (str)
+FK → users
+Owner of this course — must have role = "professor"
+title
+str
+NOT NULL
+Course display name e.g. "Introduction to Algorithms"
+description
+str
+NULLABLE
+Optional course description shown on dashboard
+subject_area
+str
+NULLABLE
+e.g. "Computer Science", "Mathematics" — used for filtering
+syllabus_roadmap
+object
+DEFAULT {}
+Merged concept graph for the course — see §4 Qdrant for structure
+is_archived
+bool
+DEFAULT false
+Soft-delete — archived courses are read-only
+created_at
+datetime
+NOT NULL
+UTC creation timestamp
+updated_at
+datetime
+NOT NULL
+UTC — updated on any field change
+1.2 courses — Indexes
+Index Name
+Fields
+Type
+Purpose
+courses_professor_idx
+professor_id
+Single
+Fetch all courses owned by a professor
+courses_archived_idx
+is_archived
+Single
+Filter active vs archived courses
+courses_prof_arch_idx
+professor_id, is_archived
+Compound
+Primary query: active courses for a professor
+Collection: enrolments
+Join table between students and courses. Replaces bare invite_link.
+1.3 enrolments — Fields
+Field
+Type
+Constraints
+Description
+_id
+UUID (str)
+PK
+Enrolment identifier
+course_id
+UUID (str)
+FK → courses
+The course being joined
+student_id
+UUID (str)
+FK → users
+The student joining — must have role = "student"
+joined_at
+datetime
+NOT NULL
+UTC timestamp when student joined
+is_active
+bool
+DEFAULT true
+Revocation flag — false = student removed from course
+revoked_at
+datetime
+NULLABLE
+UTC timestamp of revocation — null if still active
+revoked_by
+UUID (str)
+NULLABLE FK→users
+Professor who revoked — null if still active
+1.3 enrolments — Indexes
+Index Name
+Fields
+Type
+Purpose
+enrolments_unique
+course_id, student_id
+Unique Compound
+Prevents a student joining the same course twice
+enrolments_course_idx
+course_id
+Single
+Fetch all students in a course
+enrolments_student_idx
+student_id
+Single
+Fetch all courses a student is enrolled in
+enrolments_active_idx
+course_id, student_id, is_active
+Compound
+Primary auth check: is this student active in this course?
+Collection: invite_codes
+Time-limited single-use codes. Replaces permanent invite_link.
+1.4 invite_codes — Fields
+Field
+Type
+Constraints
+Description
+_id
+UUID (str)
+PK
+The invite code itself — sent as a URL param
+course_id
+UUID (str)
+FK → courses
+Which course this code grants access to
+created_by
+UUID (str)
+FK → users
+Professor who generated the code
+created_at
+datetime
+NOT NULL
+UTC creation timestamp
+expires_at
+datetime
+TTL INDEX
+UTC expiry — MongoDB TTL index auto-deletes after this time
+max_uses
+int
+DEFAULT 1
+How many students can use this code — 1 for single-use, null = unlimited
+use_count
+int
+DEFAULT 0
+How many times this code has been used — atomic $inc on each use
+is_revoked
+bool
+DEFAULT false
+Manual revocation by professor before natural expiry
+1.4 invite_codes — Indexes
+Index Name
+Fields
+Type
+Purpose
+invite_ttl_idx
+expires_at
+TTL (expireAfterSeconds:0)
+Auto-purge expired codes — MongoDB deletes when expires_at < now
+invite_course_idx
+course_id
+Single
+List all active codes for a course
+Collection: documents
+Tracks uploaded course files and their ingestion pipeline status.
+1.5 documents — Fields
+Field
+Type
+Constraints
+Description
+_id
+UUID (str)
+PK
+Document identifier — also used as Qdrant namespace
+course_id
+UUID (str)
+FK → courses
+Course this document belongs to
+uploaded_by
+UUID (str)
+FK → users
+Must be the professor of this course
+original_filename
+str
+NOT NULL
+Original file name as uploaded e.g. "week3_slides.pdf"
+file_type
+str (enum)
+NOT NULL
+Allowed values: "pdf" | "pptx" | "docx"
+file_size_bytes
+int
+NOT NULL
+File size in bytes — used for quota enforcement
+s3_key
+str
+NOT NULL
+Full S3 object key e.g. "courses/{course_id}/{doc_id}/original.pdf"
+processing_status
+str (enum)
+NOT NULL
+"pending" | "processing" | "ready" | "failed"
+chunk_count
+int
+NULLABLE
+Number of chunks pushed to Qdrant — null until status = ready
+page_count
+int
+NULLABLE
+Total pages/slides — null until extraction completes
+has_images
+bool
+DEFAULT false
+True if any page/slide was flagged as image-heavy during extraction
+error_message
+str
+NULLABLE
+Full error message if status = failed — null otherwise
+celery_task_id
+str
+NULLABLE
+Celery task ID — used to query task status or revoke
+concept_graph
+object
+DEFAULT {}
+Partial concept graph extracted from this document — merged at course level
+created_at
+datetime
+NOT NULL
+UTC upload timestamp
+processed_at
+datetime
+NULLABLE
+UTC timestamp when status changed to ready or failed
+1.5 documents — Indexes
+Index Name
+Fields
+Type
+Purpose
+docs_course_idx
+course_id
+Single
+Fetch all documents for a course
+docs_status_idx
+processing_status
+Single
+Admin view of pending/failed ingestion jobs
+docs_course_status
+course_id, processing_status
+Compound
+Fetch ready documents for a course (RAG eligibility check)
+docs_uploaded_by_idx
+uploaded_by
+Single
+Audit: all uploads by a professor
+Collection: chat_sessions
+Bounded conversation history per student per course per mode.
+1.6 chat_sessions — Fields
+Field
+Type
+Constraints
+Description
+_id
+UUID (str)
+PK
+Session identifier — passed in every chat request
+student_id
+UUID (str)
+FK → users
+Owner of this session
+course_id
+UUID (str)
+FK → courses
+Course context for RAG retrieval scoping
+mode
+str (enum)
+NOT NULL
+"teach" | "test" | "review" — determines prompt template
+turns
+array
+DEFAULT []
+Array of ChatTurn sub-documents — max 40 entries
+turn_count
+int
+DEFAULT 0
+Denormalised count of turns — avoids counting the array
+token_count
+int
+DEFAULT 0
+Running total of tokens across all turns — used for window pruning
+topic_focus
+str
+NULLABLE
+Current topic e.g. "Dijkstra's Algorithm" — set by LLM, used in prompt
+summary
+str
+NULLABLE
+LLM-generated summary of pruned turns — injected into prompt after eviction
+created_at
+datetime
+NOT NULL
+UTC session start timestamp
+last_active
+datetime
+NOT NULL
+UTC — updated on every turn append — used for TTL index
+ChatTurn sub-document (embedded in turns array)
+Field
+Type
+Constraints
+Description
+turn_id
+UUID (str)
+—
+Unique ID within the session — for selective deletion
+role
+str (enum)
+NOT NULL
+"user" | "assistant"
+content
+str
+NOT NULL
+Raw message text
+token_count
+int
+NOT NULL
+Approximate token count for this turn — used in window pruning
+rag_chunk_ids
+str[]
+DEFAULT []
+Qdrant chunk IDs injected as context for this turn — auditability
+reranker_scores
+float[]
+DEFAULT []
+Cross-encoder scores for each retrieved chunk — for debugging retrieval quality
+latency_ms
+int
+NULLABLE
+Time from request received to first token streamed — null for user turns
+timestamp
+datetime
+NOT NULL
+UTC timestamp when this turn was appended
+Eviction strategy — detail
+Hard cap: 40 turns (20 exchanges). On turn 41, oldest 10 turns are pruned.
+Token cap: if token_count exceeds 6 000, oldest turns pruned until under limit regardless of turn count.
+Before pruning: the LLM generates a 2–3 sentence summary of the turns being evicted. This summary is stored in the summary field and prepended to the next prompt.
+Pruned turns are appended to cold_chat_archive (§1.7) before deletion from this collection.
+1.6 chat_sessions — Indexes
+Index Name
+Fields
+Type
+Purpose
+sessions_student_course
+student_id, course_id
+Compound
+Load all sessions for a student in a course
+sessions_student_mode
+student_id, course_id, mode
+Compound
+Resume session by mode
+sessions_last_active_ttl
+last_active
+TTL (expireAfterSeconds: 2592000)
+Auto-delete sessions inactive for 30 days
+Collection: cold_chat_archive
+Write-only archive of pruned turns. Never read during request handling.
+1.7 cold_chat_archive — Fields
+Field
+Type
+Constraints
+Description
+_id
+UUID (str)
+PK
+Archive entry identifier
+session_id
+UUID (str)
+FK → chat_sessions
+Source session
+student_id
+UUID (str)
+FK → users
+Denormalised for query without joining sessions
+course_id
+UUID (str)
+FK → courses
+Denormalised for course-level analytics
+pruned_turns
+array
+NOT NULL
+Array of ChatTurn sub-documents — identical schema to §1.6
+pruned_at
+datetime
+NOT NULL
+UTC timestamp of eviction
+reason
+str (enum)
+NOT NULL
+"turn_cap" | "token_cap" — which limit triggered pruning
+1.7 cold_chat_archive — Indexes
+Index Name
+Fields
+Type
+Purpose
+archive_session_idx
+session_id
+Single
+Reconstruct full conversation history for a session
+archive_student_idx
+student_id
+Single
+Export all chat history for a student (GDPR request)
+Collection: quiz_attempts
+Records every student quiz attempt for performance tracking.
+1.8 quiz_attempts — Fields
+Field
+Type
+Constraints
+Description
+_id
+UUID (str)
+PK
+Attempt identifier
+student_id
+UUID (str)
+FK → users
+Student who took the quiz
+course_id
+UUID (str)
+FK → courses
+Course context
+session_id
+UUID (str)
+NULLABLE FK
+Chat session that spawned this quiz — null if standalone
+questions
+array
+NOT NULL
+Array of QuizQuestion sub-documents (see below)
+score
+float
+NULLABLE
+Percentage score 0.0–100.0 — null until submitted
+started_at
+datetime
+NOT NULL
+UTC timestamp when quiz was generated and delivered
+submitted_at
+datetime
+NULLABLE
+UTC timestamp of submission — null if not yet submitted
+time_taken_sec
+int
+NULLABLE
+Seconds from started_at to submitted_at
+QuizQuestion sub-document
+Field
+Type
+Constraints
+Description
+question_id
+str
+NOT NULL
+Unique within this attempt e.g. "q1", "q2"
+type
+str (enum)
+NOT NULL
+"mcq" | "short_answer" | "true_false"
+question_text
+str
+NOT NULL
+The question as generated by the LLM
+options
+str[]
+NULLABLE
+Answer options — only present for mcq type
+correct_answer
+str
+NOT NULL
+Option key (mcq) or model answer text (short_answer)
+student_answer
+str
+NULLABLE
+Student's submitted answer — null until answered
+is_correct
+bool
+NULLABLE
+Graded result — null until submitted
+explanation
+str
+NOT NULL
+LLM-generated explanation of the correct answer
+source_chunk_id
+str
+NOT NULL
+Qdrant chunk ID the question was generated from — auditability
+1.8 quiz_attempts — Indexes
+Index Name
+Fields
+Type
+Purpose
+quiz_student_course
+student_id, course_id
+Compound
+Fetch all attempts by a student in a course
+quiz_started_at_idx
+started_at
+Single
+Sort by recency on student progress dashboard
+quiz_score_idx
+student_id, score
+Compound
+Progress analytics: average score over time
+2. Collection Relationships
+MongoDB does not enforce foreign keys at the database level. These relationships are enforced in the Repository layer. The application never writes an FK value without first verifying the referenced document exists.
+From
+Cardinality
+To
+Notes
+users
+1 : N
+courses
+One professor owns many courses (professor_id on courses)
+users
+N : N
+courses
+Many students enrolled in many courses — via enrolments join collection
+courses
+1 : N
+enrolments
+One course has many enrolment records
+courses
+1 : N
+documents
+One course has many uploaded documents
+courses
+1 : N
+invite_codes
+One course can have multiple active invite codes
+users
+1 : N
+chat_sessions
+One student has many sessions (across courses and modes)
+chat_sessions
+1 : N
+cold_chat_archive
+One session has many archive entries (one per pruning event)
+users
+1 : N
+quiz_attempts
+One student has many quiz attempts
+chat_sessions
+1 : N
+quiz_attempts
+One session can spawn multiple quiz attempts (nullable FK)
+3. Redis Key Schema
+Redis serves four separate roles. Each role uses a dedicated logical database (DB number) to prevent key collisions and allow independent flush operations.
+3.1 DB 0 — Celery Broker (managed by Celery)
+Celery manages all keys in DB 0 automatically. Do not read or write DB 0 manually. Keys follow Celery's internal format: celery, celery-task-meta-{task_id}, _kombu.binding.celery, etc.
+3.2 DB 1 — Celery Result Backend (managed by Celery)
+Celery stores task results in DB 1. Query via Celery's AsyncResult API, never directly. Results auto-expire after 24 hours (CELERY_RESULT_EXPIRES = 86400).
+3.3 DB 2 — Application Cache & Pub/Sub
+Key Pattern
+Structure
+TTL
+Purpose
+concept_map:{course_id}
+String (JSON)
+3600s
+Cached merged concept graph for a course — invalidated on new document ready
+doc_status:{doc_id}
+String (JSON)
+86400s
+Latest processing status object for a document — used by WebSocket broadcaster
+pubsub:docs:{course_id}
+Pub/Sub channel
+N/A
+Channel for document status updates — FastAPI WebSocket handler subscribes per course
+course_stats:{course_id}
+String (JSON)
+1800s
+Cached student count, document count, avg quiz score for professor dashboard
+user_profile:{user_id}
+String (JSON)
+900s
+Cached user profile — invalidated on preferences update
+3.4 DB 3 — Auth & Rate Limiting
+Key Pattern
+Structure
+TTL
+Purpose
+token_blacklist:{jti}
+String ("1")
+Matches token expiry
+Blacklisted JWT IDs — set on logout, checked on every authenticated request
+rate:chat:{user_id}
+Counter (INCR)
+60s sliding window
+Per-user chat request counter — 20 req/min limit
+rate:upload:{user_id}
+Counter (INCR)
+3600s sliding window
+Per-user upload counter — 10 uploads/hour limit
+rate:course:{course_id}
+Counter (INCR)
+60s sliding window
+Per-course aggregate chat counter — 100 req/min limit
+invite_use:{invite_code}
+Counter (INCR)
+Matches invite expiry
+Track use count for multi-use invite codes — atomic increment
+email_verify:{token}
+String (user_id)
+86400s
+Email verification token → user_id mapping
+password_reset:{token}
+String (user_id)
+1800s
+Password reset token → user_id mapping — 30 min window
+4. Qdrant Vector Collections
+Qdrant stores the embedded document chunks used for RAG retrieval. One Qdrant collection per course. This scopes retrieval to the correct course without needing a metadata filter on every query (faster, simpler).
+4.1 Collection Naming & Configuration
+Field
+Type
+Constraints
+Description
+Collection name
+course_{course_id}
+—
+One collection per course e.g. course_3f2a1b...
+Vector size
+384
+—
+Output dimension of all-MiniLM-L6-v2
+Distance metric
+Cosine
+—
+Standard for sentence embedding similarity
+On-disk storage
+true
+—
+Vectors stored on disk, not in RAM — suitable for single-node deployment
+Optimiser
+default
+—
+Qdrant default HNSW index — no tuning needed at this scale
+Replication factor
+1
+—
+Single node — increase to 2+ when scaling beyond 10k documents per course
+4.2 Point Payload Schema
+Each Qdrant point = one text chunk. The point ID is the chunk_id (UUID string). The vector is the MiniLM-L6-v2 embedding of the chunk text. The payload stores everything needed to reconstruct context without a MongoDB lookup on the hot path.
+Payload Field
+Type
+Description
+chunk_id
+str (UUID)
+Primary identifier — matches the Qdrant point ID
+doc_id
+str (UUID)
+FK → documents._id — which document this chunk came from
+course_id
+str (UUID)
+FK → courses._id — denormalised for potential cross-collection queries
+text
+str
+The raw chunk text — injected directly into the LLM prompt as context
+page_number
+int
+Page (PDF) or slide number (PPTX) this chunk was extracted from — shown in citations
+char_start
+int
+Character offset of chunk start in the extracted document text
+char_end
+int
+Character offset of chunk end — enables highlighting in UI
+has_image
+bool
+True if this chunk came from an image-heavy page/slide
+image_s3_key
+str | null
+S3 key of the slide/page image — null if has_image = false
+original_filename
+str
+Denormalised filename — shown in source citations without a MongoDB lookup
+chunk_index
+int
+Position of this chunk within the document (0-based) — for ordering results
+token_count
+int
+Approximate token count — used to calculate how many chunks fit in the prompt window
+overlap_prev
+str | null
+Last 80 tokens of the previous chunk — stored for context continuity debugging
+created_at
+str (ISO 8601)
+UTC timestamp of ingestion
+4.3 Qdrant Payload Indexes
+Qdrant supports payload indexes for filtered vector search. Set these up on collection creation:
+Index Name
+Fields
+Type
+Purpose
+doc_id_idx
+doc_id
+Keyword
+Delete all chunks for a document when it is re-ingested or deleted
+has_image_idx
+has_image
+Bool
+Filter out image-heavy chunks when doing text-only retrieval
+page_number_idx
+page_number
+Integer
+Filter retrieval to a specific page range
+4.4 Retrieval Strategy
+Two-stage retrieve-then-rerank on every /chat request:
+Stage 1 — ANN search: query the course collection with the embedded user message. Retrieve top 10 candidates by cosine similarity. Apply has_image = false filter unless the course has no text chunks.
+Stage 2 — Rerank: pass (query_text, chunk_text) pairs to the cross-encoder/ms-marco-MiniLM-L-6-v2. Score each pair jointly. Keep top 3 by cross-encoder score.
+Inject top 3 chunks into the LLM prompt. Each chunk is labeled with its original_filename and page_number for inline citations.
+Store all 10 candidate chunk_ids and the 3 final chunk_ids in the ChatTurn.rag_chunk_ids field for auditability.
+5. S3 Object Key Structure
+All files are stored in a single S3 bucket (cobble-documents). The key structure encodes the full hierarchy so any file can be located without a database lookup.
+Field
+Type
+Constraints
+Description
+courses/{course_id}/{doc_id}/original.{ext}
+str
+—
+Raw uploaded file — ext is pdf | pptx | docx
+courses/{course_id}/{doc_id}/pages/{n}.png
+str
+—
+Rasterised image of page/slide n — generated during ingestion for image-heavy pages
+courses/{course_id}/{doc_id}/extracted.txt
+str
+—
+Full extracted text from the document — stored for re-chunking without re-parsing
+courses/{course_id}/{doc_id}/chunks.jsonl
+str
+—
+JSONL file of all chunks — one JSON object per line — stored for audit / re-embedding
+avatars/{user_id}.{ext}
+str
+—
+User profile image — ext is jpg | png | webp — optional
+SECURITY   
+All S3 objects are private. The API never serves S3 URLs directly. Files are served via pre-signed URLs with a 15-minute expiry, generated server-side only for authenticated users with access to the relevant course.
+6. Schema Versioning & Migration Strategy
+6.1 MongoDB
+MongoDB is schemaless but all writes go through Pydantic models — schema is enforced at the application layer, not the DB layer.
+Use a db_version collection with one document { version: N, applied_at: datetime } to track schema migrations.
+Migration scripts live in /migrations/mongo/NNNN_description.py. Each script is idempotent — safe to run twice.
+Run migrations at API startup before accepting traffic. If migration fails, the API refuses to start.
+6.2 Qdrant
+Qdrant collections are created by the ingestion worker on first document upload for a course.
+If the embedding model changes (e.g. upgrade from MiniLM-L6-v2 to a multimodal model), all collections must be re-indexed. This is a bulk Celery task: re_embed_course.delay(course_id) for each course.
+Collection names include no version suffix — re-indexing drops and recreates the collection. Documents are marked processing_status = "pending" and re-queued.
+6.3 Redis
+Redis holds no persistent application state — all persistent data is in MongoDB or S3.
+Cache keys include a version prefix (e.g. v1:concept_map:{course_id}) so a cache invalidation strategy change does not serve stale data during rolling deployments.
+On deployment, flush DB 2 (cache) and DB 3 (rate limits) — this is safe because neither holds durable state.

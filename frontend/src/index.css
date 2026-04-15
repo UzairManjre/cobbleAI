@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Background */
+    --bg-primary: #0A0A0A;
+    --bg-secondary: #111111;
+    --bg-elevated: #1A1A1A;
+
+    /* Borders */
+    --border: rgba(255,255,255,0.06);
+    --border-hover: rgba(255,255,255,0.12);
+
+    /* Text */
+    --text-primary: rgba(255,255,255,0.90);
+    --text-secondary: rgba(255,255,255,0.50);
+    --text-tertiary: rgba(255,255,255,0.30);
+    --text-muted: rgba(255,255,255,0.15);
+
+    /* Accent — Cobble Red */
+    --accent: #DC2626;
+    --accent-hover: #B91C1C;
+    --accent-surface: rgba(220,38,38,0.10);
+    --accent-border: rgba(220,38,38,0.25);
+
+    /* Semantic */
+    --success: #10B981;
+    --success-surface: rgba(16,185,129,0.10);
+    --warning: #F59E0B;
+    --warning-surface: rgba(245,158,11,0.10);
+    --info: #3B82F6;
+    --info-surface: rgba(59,130,246,0.10);
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  /* Remove Playfair / serif globally */
+  .font-serif {
+    font-family: 'Inter', system-ui, sans-serif !important;
+  }
+
+  /* Style native select elements to match dark theme */
+  select {
+    background-image: none;
+  }
+
+  select option {
+    background-color: #1A1A1A;
+    color: rgba(255,255,255,0.9);
+    padding: 8px 12px;
+  }
+
+  select option:hover,
+  select option:checked {
+    background-color: #2A2A2A;
+  }
+
+  /* Remove default number input spinners */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Custom scrollbar — dark theme */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.08) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.08);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.15);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}

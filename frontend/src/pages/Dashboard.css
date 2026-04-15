@@ -1,0 +1,134 @@
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.classes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.class-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.class-card h3 {
+  font-size: 1.1rem;
+}
+
+.text-secondary {
+  color: var(--designer-text-secondary);
+}
+
+.class-desc {
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+  flex: 1; /* Pushes bottom items down */
+}
+
+.class-student-count {
+  font-size: 0.8rem;
+  color: var(--designer-text-secondary);
+  display: block;
+  margin-bottom: 1.5rem;
+}
+
+.class-card-actions {
+  border-top: 1px solid var(--designer-border);
+  margin: 0 -1.25rem -1.25rem -1.25rem;
+  padding: 0;
+}
+
+.action-row {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  color: var(--designer-text-primary);
+}
+
+.action-row:not(:last-child) {
+  border-bottom: 1px solid var(--designer-border);
+}
+
+.action-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.create-class-card {
+  background-color: #ff4f54;
+  border-color: #ff4f54;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.create-class-card:hover {
+  transform: translateY(-2px);
+}
+
+.create-class-card h3 {
+  color: #2e0304;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.create-class-card .desc {
+  color: #4a1213;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Base Modal overlay matching theme */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background: var(--designer-card-bg);
+  border: 1px solid var(--designer-border);
+  padding: 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--designer-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}

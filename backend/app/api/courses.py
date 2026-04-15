@@ -176,3 +176,46 @@ async def join_course(
     )
 
     return {"message": "Successfully enrolled", "course_id": invite.course_id}
+
+@router.get("/{course_id}/students")
+async def get_course_students(
+    course_id: str,
+    user: User = Depends(current_active_user)
+):
+    """Get all students enrolled in a course."""
+    try:
+        course_uuid = uuid.UUID(course_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid course ID")
+
+    course = await Course.get(course_uuid)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Check access - must be professor or enrolled student
+    if user.role == "student":
+        enrolment = await Enrolment.find_one(
+            Enrolment.course_id == course_uuid,
+            Enrolment.student_id == user.id
+        )
+        if not enrolment:
+            raise HTTPException(status_code=403, detail="Not enrolled in this course")
+    elif str(course.professor_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Get all enrolments
+    enrolments = await Enrolment.find(Enrolment.course_id == course_uuid).to_list()
+    
+    # Get user details for each student
+    students = []
+    for enrolment in enrolments:
+        student_user = await User.get(enrolment.student_id)
+        if student_user:
+            students.append({
+                "id": student_user.id,
+                "name": student_user.name,
+                "email": student_user.email,
+                "enrolled_at": enrolment.created_at
+            })
+
+    return students

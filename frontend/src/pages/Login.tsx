@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { authApi } from '../api';
 import AuthLayout from '../components/auth/AuthLayout';
-
-const API_URL = 'http://127.0.0.1:8000';
 
 interface LoginProps {
   role: 'student' | 'professor';
@@ -25,17 +23,9 @@ export default function Login({ role }: LoginProps) {
     setError('');
 
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', email);
-      formData.append('password', password);
-      
-      const res = await axios.post(`${API_URL}/auth/jwt/login`, formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      });
+      const res = await authApi.login(email, password);
 
-      const userRes = await axios.get(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${res.data.access_token}` }
-      });
+      const userRes = await authApi.getCurrentUser();
 
       // Role check: if trying to login as student but account is professor, or vice versa
       if (userRes.data.role !== role) {
@@ -43,11 +33,11 @@ export default function Login({ role }: LoginProps) {
       }
 
       setAuth(res.data.access_token, userRes.data.role, userRes.data.has_onboarded);
-      
+
       if (!userRes.data.has_onboarded) {
         navigate(`/onboarding/${role}`);
       } else {
-        navigate(role === 'professor' ? '/dashboard' : '/chat');
+        navigate(role === 'professor' ? '/professor/dashboard' : '/chat');
       }
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Invalid email or password.');

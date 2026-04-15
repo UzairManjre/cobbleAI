@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import axios from 'axios';
-
-const API_URL = 'http://127.0.0.1:8000';
+import { authApi } from '../api';
 
 export default function ProfessorOnboarding() {
   const navigate = useNavigate();
   const { token, setAuth, role } = useAuthStore();
-  
+
   const [basics, setBasics] = useState({ name: '', institution: '', department: '' });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -16,18 +14,16 @@ export default function ProfessorOnboarding() {
     setIsLoading(true);
     try {
       // 1. Update User Profile (Basics)
-      await axios.patch(`${API_URL}/users/me`, {
+      await authApi.updateUser({
         name: basics.name,
         institution: basics.institution,
         department: basics.department,
         has_onboarded: true
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
       // 2. Update local state
       setAuth(token!, role!, true);
-      navigate('/dashboard');
+      navigate('/professor/dashboard');
     } catch (err) {
       console.error('Onboarding failed', err);
     } finally {

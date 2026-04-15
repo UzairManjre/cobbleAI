@@ -318,6 +318,9 @@ class StudyPlanGenerator:
         json_str = cleaned[first_brace:last_brace + 1]
         print(f"📝 Extracted JSON: {len(json_str)} chars")
 
+        # Fix missing "node_id": keys produced by small LLMs
+        json_str = re.sub(r'\{\s*"node_([a-zA-Z0-9_]+)"\s*,', r'{"node_id":"node_\1",', json_str)
+
         # Try direct parse
         try:
             result = json.loads(json_str)

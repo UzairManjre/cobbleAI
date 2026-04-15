@@ -1,0 +1,109 @@
+.table-container {
+  background: var(--designer-card-bg);
+  border: 1px solid var(--designer-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.search-wrapper {
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--designer-border);
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-wrapper .search-icon {
+  position: absolute;
+  left: 2rem;
+  color: var(--designer-text-secondary);
+}
+
+.table-search {
+  background: transparent;
+  border: 1px solid var(--designer-border);
+  padding: 0.5rem 1rem 0.5rem 2.5rem;
+  border-radius: 8px;
+  color: var(--designer-text-primary);
+  width: 300px;
+  font-size: 0.875rem;
+}
+
+.table-search:focus {
+  outline: none;
+  border-color: var(--designer-accent-green);
+}
+
+.students-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.students-table th {
+  text-align: left;
+  padding: 1rem 1.25rem;
+  color: var(--designer-text-secondary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--designer-border);
+}
+
+.students-table td {
+  padding: 1rem 1.25rem;
+  font-size: 0.9rem;
+}
+
+.student-row {
+  border-bottom: 1px solid var(--designer-border);
+  transition: background 0.2s;
+}
+
+.student-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.progress-bar-bg {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  width: 150px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--designer-accent-green);
+  border-radius: 4px;
+}
+
+.alert-btn {
+  background: var(--designer-badge-orange-bg);
+  border: 1px solid var(--designer-badge-orange-border);
+  color: var(--designer-badge-orange-text);
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.alert-btn:hover {
+  background: rgba(196, 109, 47, 0.2);
+}
+
+.btn-flag {
+  background: transparent;
+  border: 1px solid var(--designer-badge-purple-border);
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-flag:hover {
+  background: rgba(109, 62, 176, 0.2);
+}

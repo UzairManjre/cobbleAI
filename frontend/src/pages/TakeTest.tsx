@@ -5,9 +5,7 @@ import {
   Clock, CheckCircle, AlertCircle, Send, Save, ArrowLeft,
   AlertTriangle, Sparkles
 } from 'lucide-react';
-import axios from 'axios';
-
-const API_URL = 'http://127.0.0.1:8000';
+import { testsApi } from '../api';
 
 export default function TakeTest() {
   const navigate = useNavigate();
@@ -56,12 +54,8 @@ export default function TakeTest() {
 
   const startTest = async () => {
     try {
-      const startRes = await axios.post(
-        `${API_URL}/api/tests/${testId}/start`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
+      const startRes = await testsApi.start(testId || '');
+
       setTest(startRes.data.test);
       setAttempt(startRes.data.attempt);
       setTimeLeft(startRes.data.test.duration_minutes * 60);
@@ -85,7 +79,7 @@ export default function TakeTest() {
 
   const handleSubmitTest = async () => {
     setIsSubmitting(true);
-    
+
     try {
       const formattedAnswers = Object.entries(answers).map(([questionId, ans]) => ({
         question_id: questionId,
@@ -95,14 +89,7 @@ export default function TakeTest() {
         time_spent_seconds: ans.time_spent || 0
       }));
 
-      const res = await axios.post(
-        `${API_URL}/api/tests/attempt/${attempt.id}/submit`,
-        {
-          attempt_id: attempt.id,
-          answers: formattedAnswers
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await testsApi.submit(attempt.id, formattedAnswers);
 
       // Show results
       navigate(`/tests/${testId}/result/${attempt.id}`);

@@ -14,40 +14,42 @@ import { useGraphStore } from '../../store/graphStore';
 import dagre from 'dagre';
 
 // --- Custom Node Implementation ---
-const ConceptNode = ({ data, selected, id }: NodeProps) => {
+const ConceptNode = ({ data, id }: NodeProps) => {
   const { visitedNodes, currentNodeId } = useGraphStore();
   const isCurrent = id === currentNodeId;
   const isVisited = visitedNodes.includes(id);
-  
-  // Difficulty-based glow
-  const glowColor = data.difficulty === 'advanced' ? 'rgba(245, 158, 11, 0.4)' : 
-                    data.difficulty === 'beginner' ? 'rgba(16, 185, 129, 0.4)' : 
-                    'rgba(59, 130, 246, 0.4)';
+
+  // Difficulty-based colors
+  const difficultyColor = data.difficulty === 'advanced' ? 'bg-amber-400' :
+                          data.difficulty === 'beginner' ? 'bg-emerald-400' : 'bg-blue-400';
+
+  const borderColor = isCurrent
+    ? 'border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.3)]'
+    : isVisited
+      ? 'border-emerald-500/20'
+      : 'border-white/10 hover:border-white/20';
+
+  const bgColor = isCurrent
+    ? 'bg-blue-500/10 scale-105'
+    : isVisited
+      ? 'bg-emerald-500/5'
+      : 'bg-white/[0.03]';
 
   return (
     <div className={`
       relative px-6 py-4 rounded-2xl transition-all duration-300
-      backdrop-blur-xl border-2 cursor-pointer group
-      ${isCurrent 
-        ? 'bg-blue-500/10 border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-105' 
-        : isVisited
-          ? 'bg-emerald-500/5 border-emerald-500/20 grayscale-0'
-          : 'bg-white/[0.03] border-white/10 hover:border-white/20'
-      }
+      backdrop-blur-xl border-2 cursor-pointer group ${borderColor} ${bgColor}
     `}>
       {/* Glow background */}
       {isCurrent && (
         <div className="absolute -inset-2 bg-blue-500/20 blur-2xl rounded-3xl -z-10" />
       )}
-      
+
       <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-white/20 !border-none" />
-      
+
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-           <div className={`w-1.5 h-1.5 rounded-full ${
-             data.difficulty === 'advanced' ? 'bg-amber-400' : 
-             data.difficulty === 'beginner' ? 'bg-emerald-400' : 'bg-blue-400'
-           }`} />
+           <div className={`w-1.5 h-1.5 rounded-full ${difficultyColor}`} />
            <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
              {data.difficulty || 'Concept'}
            </span>
@@ -61,7 +63,7 @@ const ConceptNode = ({ data, selected, id }: NodeProps) => {
       </div>
 
       <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-white/20 !border-none" />
-      
+
       {/* Pulse effect for current node */}
       {isCurrent && (
         <div className="absolute bottom-1 right-3">
@@ -72,6 +74,7 @@ const ConceptNode = ({ data, selected, id }: NodeProps) => {
   );
 };
 
+// Define nodeTypes outside component to prevent React Flow warning
 const nodeTypes = {
   concept: ConceptNode,
 };
@@ -115,7 +118,7 @@ interface KnowledgeGraphProps {
 }
 
 const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({ onNodeClick }) => {
-  const { nodes: graphNodes, edges: graphEdges, currentNodeId, visitedNodes } = useGraphStore();
+  const { nodes: graphNodes, edges: graphEdges, currentNodeId } = useGraphStore();
 
   const { nodes, edges } = useMemo(() => {
     if (graphNodes.length === 0) return { nodes: [], edges: [] };
@@ -126,7 +129,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({ onNodeClick }) => {
       data: {
         label: node.label,
         description: node.description,
-        difficulty: (node as any).difficulty // Assuming backend includes this
+        difficulty: node.difficulty
       },
       position: { x: 0, y: 0 }, // Positioned by dagre
     }));

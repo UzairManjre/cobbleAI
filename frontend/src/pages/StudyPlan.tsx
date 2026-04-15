@@ -6,10 +6,8 @@ import {
   Lightbulb, FileText, ChevronRight, ChevronDown, Play, Award,
   TrendingUp, RefreshCw, AlertCircle, Sparkles, X
 } from 'lucide-react';
-import axios from 'axios';
+import { studyPlansApi, coursesApi } from '../api';
 import ReactMarkdown from 'react-markdown';
-
-const API_URL = 'http://127.0.0.1:8000';
 
 interface Exercise {
   id: string;
@@ -110,22 +108,31 @@ export default function StudyPlanView() {
 
   const loadPlan = async () => {
     if (!token || !courseId) return;
-    
+
     try {
       setIsLoading(true);
-      const res = await axios.get(`${API_URL}/api/study-plans/active`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
+      setError(null);
+      const res = await studyPlansApi.getActive();
+
+      console.log('StudyPlan - API Response:', res.data);
+      console.log('StudyPlan - Plan data:', res.data.study_plan);
+      console.log('StudyPlan - Course ID match:', res.data.study_plan?.course_id === courseId);
+
       if (res.data.study_plan && res.data.study_plan.course_id === courseId) {
+        console.log('Setting plan with topics:', res.data.study_plan.topics?.length);
         setPlan(res.data.study_plan);
         setProgress(res.data.progress);
       } else {
+        console.log('No matching plan found. Available plan course_id:', res.data.study_plan?.course_id);
         setPlan(null);
         setProgress(null);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load plan:', err);
+      // Don't show error for 404 (no plan exists yet)
+      if (err.response?.status !== 404) {
+        setError(err.response?.data?.detail || 'Failed to load study plan');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -139,9 +146,7 @@ export default function StudyPlanView() {
       setError(null);
 
       // First get the course to find its graph
-      const courseRes = await axios.get(`${API_URL}/courses/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const courseRes = await coursesApi.get(courseId);
 
       const graphId = courseRes.data.graph_id;
       if (!graphId) {
@@ -150,18 +155,13 @@ export default function StudyPlanView() {
       }
 
       // Check if plan exists - if so, regenerate; otherwise generate
-      const existingRes = await axios.get(`${API_URL}/api/study-plans/active`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const existingRes = await studyPlansApi.getActive();
 
       const endpoint = existingRes.data.study_plan ? 'regenerate' : 'generate';
 
-      const res = await axios.post(`${API_URL}/api/study-plans/${endpoint}`, {
-        course_id: courseId,
-        graph_id: graphId
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await (endpoint === 'regenerate' 
+        ? studyPlansApi.regenerate(courseId, graphId)
+        : studyPlansApi.generate(courseId, graphId));
 
       setPlan(res.data.study_plan);
       setProgress(res.data.progress);
@@ -174,13 +174,9 @@ export default function StudyPlanView() {
 
   const handleCompleteTopic = async (nodeId: string) => {
     if (!token || !plan) return;
-    
+
     try {
-      const res = await axios.post(
-        `${API_URL}/api/study-plans/${plan.id}/topics/${nodeId}/complete`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await studyPlansApi.completeTopic(plan.id, nodeId);
       setProgress(res.data.progress);
     } catch (err) {
       console.error('Failed to complete topic:', err);
@@ -191,11 +187,7 @@ export default function StudyPlanView() {
     if (!token || !plan) return;
 
     try {
-      const res = await axios.post(
-        `${API_URL}/api/study-plans/${plan.id}/exercises/${exerciseId}/complete`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await studyPlansApi.completeExercise(plan.id, exerciseId);
       setProgress(res.data.progress);
     } catch (err) {
       console.error('Failed to complete exercise:', err);
@@ -207,11 +199,7 @@ export default function StudyPlanView() {
 
     try {
       setIsGeneratingTopicPlan(true);
-      const res = await axios.post(
-        `${API_URL}/api/study-plans/topics/generate?node_id=${nodeId}&course_id=${courseId}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await studyPlansApi.generateTopic(nodeId, courseId);
       setTopicPlan(res.data.topic_plan);
       setShowTopicPlanModal(true);
     } catch (err) {
@@ -225,10 +213,7 @@ export default function StudyPlanView() {
     if (!token || !courseId) return;
 
     try {
-      const res = await axios.get(
-        `${API_URL}/api/study-plans/topics?node_id=${nodeId}&course_id=${courseId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await studyPlansApi.getTopic(nodeId, courseId);
       if (res.data.topic_plan) {
         setTopicPlan(res.data.topic_plan);
         setShowTopicPlanModal(true);

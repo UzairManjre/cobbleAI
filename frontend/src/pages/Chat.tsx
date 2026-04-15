@@ -5,6 +5,7 @@ import { Send, GraduationCap, PenTool, LayoutDashboard, ChevronLeft, Brain, Chev
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { analytics } from '../utils/analytics';
+import { API_URL } from '../api';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -139,9 +140,8 @@ export default function Chat() {
         topic: initialTopic || '',
       });
 
-      // Use env variable or fallback — never hardcode
-      const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
-      const url = new URL(`${baseUrl}/api/chat/`);
+      // Use centralized API URL
+      const url = new URL(`${API_URL}/chat/`);
       url.searchParams.append('session_id', sessionIdRef.current);
       url.searchParams.append('message', input);
       if (courseId) url.searchParams.append('course_id', courseId);
@@ -160,66 +160,80 @@ export default function Chat() {
         throw new Error(errorText || `Server returned ${response.status}`);
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        // Fallback: backend returned JSON instead of a stream
+      // Check if response is streaming or JSON
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('text/event-stream')) {
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('Failed to get stream reader');
+        }
+
+        const decoder = new TextDecoder();
+        let assistantMessage = '';
+        let hasError = false;
+
+        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+
+          // Detect SSE-style error events: "event: error\ndata: ..."
+          if (chunk.includes('event: error')) {
+            hasError = true;
+            // Extract the error data after "data: "
+            const lines = chunk.split('\n');
+            const errorLine = lines.find(l => l.startsWith('data: '));
+            if (errorLine) {
+              try {
+                const errorData = JSON.parse(errorLine.slice(6));
+                assistantMessage = `⚠️ Error: ${errorData.detail || errorData.message || errorData.error || 'Unknown error'}`;
+              } catch {
+                assistantMessage = `⚠️ Error: ${errorLine.slice(6)}`;
+              }
+            } else {
+              assistantMessage = '⚠️ An error occurred while generating the response.';
+            }
+            break;
+          }
+
+          // Also catch plain "Error: " prefix at start of stream (legacy fallback)
+          if (!assistantMessage && chunk.startsWith('Error:')) {
+            hasError = true;
+            assistantMessage = `⚠️ ${chunk}`;
+            break;
+          }
+
+          assistantMessage += chunk;
+
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1].content = assistantMessage;
+            return newMessages;
+          });
+        }
+
+        if (!hasError) {
+          const latencyMs = Date.now() - startTime;
+          analytics.track('answer_received', {
+            answerLengthChars: assistantMessage.length,
+            responseLatencyMs: latencyMs,
+            isStandaloneChat: true,
+          });
+        }
+      } else {
+        // Handle JSON response (non-streaming fallback)
         const json = await response.json();
         const reply = json.reply || json.message || '(empty response)';
         setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
-        return;
-      }
-
-      const decoder = new TextDecoder();
-      let assistantMessage = '';
-      let hasError = false;
-
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-
-        // Detect SSE-style error events: "event: error\ndata: ..."
-        if (chunk.includes('event: error')) {
-          hasError = true;
-          // Extract the error data after "data: "
-          const lines = chunk.split('\n');
-          const errorLine = lines.find(l => l.startsWith('data: '));
-          if (errorLine) {
-            try {
-              const errorData = JSON.parse(errorLine.slice(6));
-              assistantMessage = `⚠️ Error: ${errorData.detail || errorData.message || errorData.error || 'Unknown error'}`;
-            } catch {
-              assistantMessage = `⚠️ Error: ${errorLine.slice(6)}`;
-            }
-          } else {
-            assistantMessage = '⚠️ An error occurred while generating the response.';
-          }
-          break;
-        }
-
-        // Also catch plain "Error: " prefix at start of stream (legacy fallback)
-        if (!assistantMessage && chunk.startsWith('Error:')) {
-          hasError = true;
-          assistantMessage = `⚠️ ${chunk}`;
-          break;
-        }
-
-        assistantMessage += chunk;
-
-        setMessages(prev => {
-          const newMessages = [...prev];
-          newMessages[newMessages.length - 1].content = assistantMessage;
-          return newMessages;
-        });
-      }
-
-      if (!hasError) {
+        
         const latencyMs = Date.now() - startTime;
         analytics.track('answer_received', {
-          answerLengthChars: assistantMessage.length,
+          answerLengthChars: reply.length,
           responseLatencyMs: latencyMs,
           isStandaloneChat: true,
         });

@@ -1,0 +1,81 @@
+.topbar {
+  height: 70px;
+  border-bottom: 1px solid var(--designer-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  background-color: var(--designer-bg);
+}
+
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 300px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--designer-text-secondary);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.notification-bell {
+  position: relative;
+  color: var(--designer-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--designer-border);
+  transition: all 0.2s;
+}
+
+.notification-bell:hover {
+  background: var(--designer-card-bg);
+  color: var(--designer-text-primary);
+}
+
+.notification-dot {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--designer-accent-green);
+  border-radius: 50%;
+  border: 2px solid var(--designer-bg);
+}
+
+.profile-menu {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 20px;
+  transition: background 0.2s;
+}
+
+.profile-menu:hover {
+  background: var(--designer-card-bg);
+}
+
+.profile-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.chevron {
+  color: var(--designer-text-secondary);
+}

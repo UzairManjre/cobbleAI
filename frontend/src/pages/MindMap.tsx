@@ -3,6 +3,7 @@ import ForceGraph3D from 'react-force-graph-3d';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGraphStore } from '../store/graphStore';
 import SpriteText from 'three-spritetext';
+// @ts-ignore - three module types are not fully defined
 import * as THREE from 'three';
 
 export default function MindMap() {
@@ -110,13 +111,14 @@ export default function MindMap() {
         // Custom node rendering for labels + spheres
         nodeThreeObject={(node: any) => {
           const group = new THREE.Group();
-          
+
           // The label
           const sprite = new SpriteText(node.label);
           sprite.color = node.color || '#3b82f6';
           sprite.textHeight = 4;
           sprite.fontWeight = '600';
           sprite.fontFace = 'Inter, system-ui, sans-serif';
+          // @ts-ignore - SpriteText has position property
           sprite.position.set(0, 8, 0); // Position above node
           group.add(sprite);
 

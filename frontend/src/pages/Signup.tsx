@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { authApi } from '../api';
 import AuthLayout from '../components/auth/AuthLayout';
-
-const API_URL = 'http://127.0.0.1:8000';
 
 interface SignupProps {
   role: 'student' | 'professor';
@@ -16,7 +14,7 @@ export default function Signup({ role }: SignupProps) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const setAuth = useAuthStore(state => state.setAuth);
   const navigate = useNavigate();
 
@@ -27,24 +25,10 @@ export default function Signup({ role }: SignupProps) {
 
     try {
       // 1. Register
-      await axios.post(`${API_URL}/auth/register`, {
-        email,
-        password,
-        name,
-        role,
-        is_active: true,
-        is_superuser: false,
-        is_verified: false
-      });
+      await authApi.register({ email, password, name, role });
 
       // 2. Login immediately after
-      const formData = new URLSearchParams();
-      formData.append('username', email);
-      formData.append('password', password);
-      
-      const res = await axios.post(`${API_URL}/auth/jwt/login`, formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      });
+      const res = await authApi.login(email, password);
 
       setAuth(res.data.access_token, role, false);
       navigate(`/onboarding/${role}`);

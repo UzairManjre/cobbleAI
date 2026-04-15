@@ -6,9 +6,7 @@ import {
   Eye, Trash2, Play, BarChart3, ChevronRight, ChevronLeft,
   BookOpen, Brain, Target, X
 } from 'lucide-react';
-import axios from 'axios';
-
-const API_URL = 'http://127.0.0.1:8000';
+import { testsApi, documentsApi, graphsApi } from '../api';
 
 export default function ProfessorTests() {
   const navigate = useNavigate();
@@ -51,11 +49,9 @@ export default function ProfessorTests() {
 
   const loadTests = async () => {
     if (!token) return;
-    
+
     try {
-      const res = await axios.get(`${API_URL}/api/tests/course/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await testsApi.getByCourse(courseId || '');
       setTests(res.data.tests || []);
     } catch (err: any) {
       console.error('Failed to load tests:', err);
@@ -72,19 +68,14 @@ export default function ProfessorTests() {
 
   const loadCourseData = async () => {
     if (!token) return;
-    
+
     try {
-      // Load documents (removed trailing slash to avoid redirect issues)
-      const docsRes = await axios.get(`${API_URL}/documents`, {
-        params: { course_id: courseId },
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Load documents
+      const docsRes = await documentsApi.list(courseId || '');
       setDocuments(docsRes.data || []);
 
       // Load graph nodes (topics)
-      const graphRes = await axios.get(`${API_URL}/graph/course/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const graphRes = await graphsApi.getByCourse(courseId || '');
       // Graph endpoint returns array of graphs, get nodes from first one
       if (graphRes.data && graphRes.data.length > 0 && graphRes.data[0].nodes) {
         setGraphNodes(graphRes.data[0].nodes);
@@ -146,21 +137,19 @@ export default function ProfessorTests() {
 
   const handleCreateTest = async () => {
     if (!token) return;
-    
+
     try {
-      const res = await axios.post(`${API_URL}/api/tests/create`, {
+      const res = await testsApi.create({
         course_id: courseId,
         title: newTest.title,
         description: newTest.description,
         duration_minutes: newTest.duration_minutes,
         passing_percentage: newTest.passing_percentage,
         test_type: newTest.test_type
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
       console.log('Test creation response:', res.data);
-      
+
       // Extract test ID from response
       const testId = res.data.test?.id || res.data.test_id;
       if (!testId) {
@@ -168,14 +157,14 @@ export default function ProfessorTests() {
         alert('Failed to create test: No test ID returned');
         return;
       }
-      
+
       setGeneratedTestId(testId);
       setCreateStep(2);
     } catch (err: any) {
       console.error('Failed to create test:', err);
       const errorMessage = err.response?.data?.detail || err.message || 'Failed to create test';
       alert(errorMessage);
-      
+
       if (err.response?.status === 401) {
         useAuthStore.getState().logout();
         navigate('/login/professor');
@@ -189,7 +178,7 @@ export default function ProfessorTests() {
       alert('Test ID is missing. Please create the test again.');
       return;
     }
-    
+
     try {
       setIsGenerating(true);
 
@@ -206,15 +195,13 @@ export default function ProfessorTests() {
         : graphNodes.map(n => n.label);
 
       console.log('Generating questions for test:', generatedTestId);
-      
-      await axios.post(`${API_URL}/api/tests/${generatedTestId}/generate-questions`, {
+
+      await testsApi.generateQuestions(generatedTestId, {
         course_id: courseId,
         question_count: newTest.question_count,
         question_types: newTest.question_types,
         document_context: docContext,
         topics_filter: topicsList
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
       setCreateStep(3);
@@ -223,7 +210,7 @@ export default function ProfessorTests() {
       console.error('Failed to generate questions:', err);
       const errorMessage = err.response?.data?.detail || err.message || 'Failed to generate questions';
       alert(errorMessage);
-      
+
       if (err.response?.status === 401) {
         useAuthStore.getState().logout();
         navigate('/login/professor');
@@ -236,11 +223,9 @@ export default function ProfessorTests() {
   const handlePreviewTest = async (testId) => {
     try {
       console.log('🔍 Previewing test:', testId);
-      
+
       // Fetch specific test with full details
-      const res = await axios.get(`${API_URL}/api/tests/${testId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await testsApi.get(testId);
 
       console.log('✅ Test data received:', {
         id: res.data.test?.id,
@@ -248,7 +233,7 @@ export default function ProfessorTests() {
         questionCount: res.data.test?.questions?.length,
         questions: res.data.test?.questions
       });
-      
+
       setPreviewTest(res.data.test);
       setShowPreviewModal(true);
     } catch (err) {
@@ -259,9 +244,7 @@ export default function ProfessorTests() {
 
   const handlePublishTest = async (testId) => {
     try {
-      await axios.post(`${API_URL}/api/tests/${testId}/publish`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await testsApi.publish(testId);
       loadTests();
     } catch (err) {
       console.error('Failed to publish test:', err);

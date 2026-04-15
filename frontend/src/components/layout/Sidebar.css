@@ -1,0 +1,88 @@
+.sidebar {
+  width: 250px;
+  background-color: var(--designer-sidebar-bg);
+  border-right: 1px solid var(--designer-border);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 0;
+  height: 100vh;
+}
+
+.sidebar-brand {
+  padding: 0 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  background: var(--designer-accent-green-bg);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-name {
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: -0.5px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 1rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: var(--designer-text-secondary);
+  transition: all 0.2s;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--designer-text-primary);
+}
+
+.nav-item.active {
+  background: var(--designer-card-bg-hover);
+  color: var(--designer-accent-green);
+}
+
+.nav-icon {
+  opacity: 0.8;
+}
+
+.nav-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-title {
+  font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.nav-subtitle {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.ai-insights-nav {
+  margin-top: 1rem;
+  border: 1px solid var(--designer-border);
+  background: rgba(0, 0, 0, 0.2);
+}

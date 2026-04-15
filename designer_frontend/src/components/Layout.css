@@ -1,0 +1,83 @@
+/* AI Insights Modal */
+.insights-modal {
+  position: absolute;
+  bottom: 2rem;
+  left: 280px;
+  width: 400px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  padding: 1.5rem;
+}
+
+.insights-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  color: var(--text-primary);
+}
+
+.topic-heatmap h4 {
+  margin-bottom: 1rem;
+}
+
+.heatmap-grid-container {
+  display: flex;
+  gap: 1rem;
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  flex: 1;
+}
+
+.heatmap-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: #3d1516;
+}
+
+.heatmap-cell.intensity-0 { background: #1e0a0b; }
+.heatmap-cell.intensity-1 { background: #3d1516; }
+.heatmap-cell.intensity-2 { background: #7a2226; }
+.heatmap-cell.intensity-3 { background: #b53035; }
+.heatmap-cell.intensity-4 { background: #ff4f54; }
+
+.heatmap-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.confusion-alert-card {
+  margin-top: 1.5rem;
+  background: #3b1c11; /* Amber dark glow bg */
+  border-color: #7b3815;
+}
+
+.confusion-alert-card .btn-primary {
+  background: #ea701b; /* Orange button */
+  border-color: #ea701b;
+  color: white;
+}
+
+.confusion-alert-card .btn-primary:hover {
+  background: #db6110;
+}

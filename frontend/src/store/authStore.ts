@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import axios from 'axios';
+import { authApi } from '../api';
 
 interface AuthState {
   token: string | null;
@@ -28,16 +28,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    
+
     try {
-      const res = await axios.get('http://localhost:8000/users/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await authApi.getCurrentUser();
       localStorage.setItem('hasOnboarded', String(res.data.has_onboarded));
-      set({ 
-        role: res.data.role, 
-        token, 
-        hasOnboarded: res.data.has_onboarded 
+      set({
+        role: res.data.role,
+        token,
+        hasOnboarded: res.data.has_onboarded
       });
     } catch (err) {
       localStorage.removeItem('token');

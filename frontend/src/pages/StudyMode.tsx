@@ -5,9 +5,6 @@ import KnowledgeGraph from '../components/graph/KnowledgeGraph';
 import TutorChat from '../components/graph/TutorChat';
 import NodeInfo from '../components/graph/NodeInfo';
 import { ArrowLeft, BookOpen } from 'lucide-react';
-import axios from 'axios';
-
-const API_URL = 'http://127.0.0.1:8000';
 
 export default function StudyMode() {
   const { courseId } = useParams();
@@ -62,12 +59,26 @@ export default function StudyMode() {
     setIsCheckingGraph(true);
     try {
       await fetchCourseGraph(courseId!);
-      const graph = useGraphStore.getState().nodes;
-      if (graph && graph.length > 0) {
+      const state = useGraphStore.getState();
+      console.log('StudyMode - Graph state after fetch:', {
+        nodesCount: state.nodes?.length || 0,
+        edgesCount: state.edges?.length || 0,
+        currentNodeId: state.currentNodeId,
+        graphId: state.graphId,
+        error: state.error
+      });
+      
+      if (state.nodes && state.nodes.length > 0) {
         setShowGenerator(false);
+        // Ensure currentNodeId is set
+        if (!state.currentNodeId && state.nodes.length > 0) {
+          setCurrentNode(state.nodes[0].id);
+        }
+      } else if (state.error) {
+        console.error('Graph fetch error:', state.error);
       }
     } catch (err) {
-      console.log('No existing graph found, showing generator');
+      console.log('No existing graph found, showing generator:', err);
     } finally {
       setIsCheckingGraph(false);
     }
@@ -93,7 +104,30 @@ export default function StudyMode() {
   if (isCheckingGraph) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center p-8">
-        <div className="text-white/20 text-[14px]">Checking for existing graphs...</div>
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
+          <div className="text-white/40 text-sm">Loading study session...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center p-8">
+        <div className="max-w-md text-center">
+          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Error Loading Graph</h2>
+          <p className="text-white/40 text-sm mb-4">{error}</p>
+          <button
+            onClick={() => initStudySession()}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }

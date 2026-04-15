@@ -9,6 +9,8 @@
  *   analytics.track('node_visited', { nodeId: 'abc', visitOrder: 3 });
  */
 
+import { API_URL } from '../api';
+
 // ── Types ───────────────────────────────────────────────────────────────
 
 type EventPayload = Record<string, unknown>;
@@ -60,7 +62,7 @@ class AnalyticsTracker {
       // We use the beacon API for reliability on page unload
       for (const item of batch) {
         // Use fetch with keepalive for reliable delivery
-        fetch('http://127.0.0.1:8000/api/analytics/track', {
+        fetch(`${API_URL}/api/analytics/track`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

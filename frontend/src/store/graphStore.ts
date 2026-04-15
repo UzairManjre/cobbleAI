@@ -1,8 +1,6 @@
 import { create } from 'zustand';
-import axios from 'axios';
+import { graphsApi, sessionsApi, api } from '../api';
 import { analytics } from '../utils/analytics';
-
-const API_URL = 'http://127.0.0.1:8000';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -19,6 +17,8 @@ interface GraphNode {
   id: string;
   label: string;
   description: string;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  position?: { x: number; y: number; z: number };
 }
 
 interface GraphEdge {
@@ -42,6 +42,7 @@ interface GraphState {
 
   // Actions
   generateGraph: (topic: string, courseId?: string) => Promise<void>;
+  generateFromDocs: (courseId: string) => Promise<void>;
   fetchCourseGraph: (courseId: string) => Promise<void>;
   startTopicIntro: (nodeId: string) => Promise<void>;
   navigateToNode: (nodeId: string) => Promise<void>;
@@ -67,15 +68,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     set({ isLoading: true, error: null });
     const startTime = Date.now();
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Not authenticated');
-      const res = await axios.post(
-        `${API_URL}/graph/generate`,
-        { topic, course_id: courseId },
-        {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-        }
-      );
+      const res = await graphsApi.generate(topic, courseId);
 
       analytics.track('graph_generated', {
         graphId: res.data.graph_id,
@@ -107,15 +100,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   generateFromDocs: async (courseId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Not authenticated');
-      const res = await axios.post(
-        `${API_URL}/graph/generate-from-docs`,
-        { course_id: courseId },
-        {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-        }
-      );
+      const res = await graphsApi.generateFromDocs(courseId);
 
       set({
         graphId: res.data.graph_id,
@@ -135,13 +120,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   fetchCourseGraph: async (courseId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Not authenticated');
-
       // Fetch all graphs for this course
-      const res = await axios.get(`${API_URL}/graph/course/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await graphsApi.getByCourse(courseId);
 
       if (res.data && res.data.length > 0) {
         const graph = res.data[0];
@@ -154,11 +134,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         };
 
         // Establish an active session for this graph
-        const sessionRes = await axios.post(
-          `${API_URL}/sessions/get-or-create`,
-          { graph_id: graph.id },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const sessionRes = await sessionsApi.getOrCreate(graph.id);
 
         // Only update currentNodeId if it's not already set by user navigation
         // This prevents race conditions where user navigates while fetching
@@ -166,7 +142,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         set({
           ...graphData,
           sessionId: sessionRes.data.id,
-          // If user already navigated to a specific node, keep it. 
+          // If user already navigated to a specific node, keep it.
           // Otherwise use session's default node.
           currentNodeId: currentState.currentNodeId || sessionRes.data.current_node_id,
           visitedNodes: sessionRes.data.visited_nodes,
@@ -184,11 +160,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   loadSession: async (sessionId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Not authenticated');
-      const res = await axios.get(`${API_URL}/sessions/${sessionId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await sessionsApi.get(sessionId);
 
       set({
         sessionId: res.data.id,
@@ -204,9 +176,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       });
 
       // Load graph data
-      const graphRes = await axios.get(`${API_URL}/graph/${res.data.graph_id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const graphRes = await graphsApi.get(res.data.graph_id);
       set({ nodes: graphRes.data.nodes, edges: graphRes.data.edges });
     } catch (err: any) {
       set({ error: err.response?.data?.detail || 'Failed to load session', isLoading: false });
@@ -228,15 +198,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     });
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Not authenticated');
-      const res = await axios.post(
-        `${API_URL}/sessions/${sessionId}/navigate`,
-        { node_id: nodeId },
-        {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-        }
-      );
+      const res = await sessionsApi.navigate(sessionId, nodeId);
 
       // Track analytics
       analytics.track(isRevisit ? 'node_revisited' : 'node_visited', {
@@ -279,15 +241,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     });
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Not authenticated');
-      const res = await axios.post(
-        `${API_URL}/sessions/${sessionId}/ask`,
-        { node_id: nodeId, question },
-        {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-        }
-      );
+      const res = await sessionsApi.ask(sessionId, nodeId, question);
 
       const latencyMs = Date.now() - startTime;
 

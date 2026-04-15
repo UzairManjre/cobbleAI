@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import axios from 'axios';
-
-const API_URL = 'http://127.0.0.1:8000';
+import { authApi, coursesApi } from '../api';
 
 export default function StudentOnboarding() {
   const navigate = useNavigate();
   const { token, setAuth, role } = useAuthStore();
-  
+
   const [name, setName] = useState('');
   const [classCode, setClassCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -17,15 +15,22 @@ export default function StudentOnboarding() {
     setIsLoading(true);
     try {
       // 1. Update User Profile
-      await axios.patch(`${API_URL}/users/me`, {
+      await authApi.updateUser({
         name: name,
         has_onboarded: true
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
-      // 2. Here we would normally 'Join Class' via classCode
-      // For now, just mark onboarded
+      // 2. Join class if code provided
+      if (classCode) {
+        try {
+          await coursesApi.join(classCode);
+        } catch (err) {
+          console.warn('Failed to join class:', err);
+          // Continue anyway, not critical
+        }
+      }
+
+      // 3. Update local state
       setAuth(token!, role!, true);
       navigate('/chat');
     } catch (err) {

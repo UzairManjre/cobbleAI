@@ -11,7 +11,7 @@ export default function LandingPage() {
   const handleStart = () => {
     if (token) {
       if (!hasOnboarded) navigate(`/onboarding/${role}`);
-      else navigate(role === 'professor' ? '/dashboard' : '/chat');
+      else navigate(role === 'professor' ? '/professor/dashboard' : '/chat');
     } else {
       // Scroll to role selection
       document.getElementById('role-select')?.scrollIntoView({ behavior: 'smooth' });

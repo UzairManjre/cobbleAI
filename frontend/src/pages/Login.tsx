@@ -25,14 +25,23 @@ export default function Login({ role }: LoginProps) {
     try {
       const res = await authApi.login(email, password);
 
+      // Store token immediately so the axios interceptor can attach it
+      // to the upcoming /users/me request
+      const token = res.data.access_token;
+      localStorage.setItem('token', token);
+      useAuthStore.setState({ token });
+
       const userRes = await authApi.getCurrentUser();
 
       // Role check: if trying to login as student but account is professor, or vice versa
       if (userRes.data.role !== role) {
+        // Clean up the token we just stored since the role doesn't match
+        localStorage.removeItem('token');
+        useAuthStore.setState({ token: null });
         throw new Error(`This email is registered as a ${userRes.data.role}. Please use the correct login page.`);
       }
 
-      setAuth(res.data.access_token, userRes.data.role, userRes.data.has_onboarded);
+      setAuth(token, userRes.data.role, userRes.data.has_onboarded);
 
       if (!userRes.data.has_onboarded) {
         navigate(`/onboarding/${role}`);

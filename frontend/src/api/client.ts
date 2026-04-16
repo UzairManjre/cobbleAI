@@ -32,13 +32,25 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.warn('401 Unauthorized - token expired or invalid, redirecting to login');
-      useAuthStore.getState().logout();
+      // Skip redirect for /users/me — the authStore.initialize() handles
+      // stale-token cleanup itself; letting the interceptor also redirect
+      // causes duplicate cleanup and redirect loops.
+      const requestUrl = error.config?.url || '';
+      const isInitCheck = requestUrl.includes('/users/me');
 
-      // Only redirect if we're not already on a login page
-      const currentPath = window.location.pathname;
-      if (!currentPath.startsWith('/login/') && !currentPath.startsWith('/signup/')) {
-        window.location.href = '/login/professor';
+      if (!isInitCheck) {
+        console.warn('401 Unauthorized - token expired or invalid, redirecting to login');
+        useAuthStore.getState().logout();
+
+        // Only redirect if we're not already on a public page
+        const currentPath = window.location.pathname;
+        const isPublicPage =
+          currentPath === '/' ||
+          currentPath.startsWith('/login/') ||
+          currentPath.startsWith('/signup/');
+        if (!isPublicPage) {
+          window.location.href = '/login/professor';
+        }
       }
     }
     return Promise.reject(error);

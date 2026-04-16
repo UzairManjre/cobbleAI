@@ -15,7 +15,7 @@ import StudyMode from './pages/StudyMode';
 import StudyPlan from './pages/StudyPlan';
 import ProfessorTests from './pages/ProfessorTests';
 import TakeTest from './pages/TakeTest';
-import { ProfessorLayout } from './components/layout/ProfessorLayout';
+import ProfessorLayout from './components/layout/ProfessorLayout';
 import { useAuthStore } from './store/authStore';
 
 const ProtectedRoute = ({ children, allowedRole, requireOnboarding = true }: { children: React.ReactNode, allowedRole?: 'professor' | 'student' | Array<'professor' | 'student'>, requireOnboarding?: boolean }) => {

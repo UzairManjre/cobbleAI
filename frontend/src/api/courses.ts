@@ -25,6 +25,10 @@ export const coursesApi = {
   getStudents: (courseId: string) => {
     return api.get(`/courses/${courseId}/students`);
   },
+  
+  getProfessorStudents: () => {
+    return api.get('/courses/professor/students');
+  },
 };
 
 export default coursesApi;

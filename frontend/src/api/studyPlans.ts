@@ -6,8 +6,8 @@ export const studyPlansApi = {
     return api.post('/api/study-plans/generate', { course_id, graph_id });
   },
   
-  getActive: () => {
-    return api.get('/api/study-plans/active');
+  getActive: (course_id?: string) => {
+    return api.get('/api/study-plans/active', { params: { course_id } });
   },
   
   deleteActive: () => {

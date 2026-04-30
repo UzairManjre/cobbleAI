@@ -118,7 +118,7 @@ Create a comprehensive, step-by-step study plan for mastering this specific topi
 2. Reference actual course documents
 3. Include at least 3 exercises
 4. Include at least 3 self-check questions
-5. Order steps logically (basics → practice → connections)
+5. Order steps logically (basics   practice   connections)
 6. Return ONLY valid JSON
 """
 
@@ -164,7 +164,7 @@ class StudyPlanGenerator:
             document_list=doc_list
         )
         
-        print(f"📋 Generating study plan for {course_title}...")
+        print(f"  Generating study plan for {course_title}...")
 
         try:
             response = await self.adapter.generate_full_response(
@@ -174,7 +174,7 @@ class StudyPlanGenerator:
             )
 
             latency_ms = int((time.time() - start_time) * 1000)
-            print(f"✅ Study plan generated in {latency_ms}ms")
+            print(f"  Study plan generated in {latency_ms}ms")
 
             # Save raw LLM response for analysis
             import os
@@ -190,7 +190,7 @@ class StudyPlanGenerator:
                 f.write(f"Prompt length: {len(prompt)} chars\n")
                 f.write(f"\n{'='*80}\n\n")
                 f.write(response)
-            print(f"💾 Saved raw LLM response to: {filepath}")
+            print(f"  Saved raw LLM response to: {filepath}")
 
             plan_data = self._extract_json(response)
             if not plan_data:
@@ -200,7 +200,7 @@ class StudyPlanGenerator:
             return self._build_full_plan(plan_data, graph_nodes, graph_edges, course_title, document_filenames)
 
         except Exception as e:
-            print(f"⚠️  LLM generation failed, using fallback: {e}")
+            print(f"   LLM generation failed, using fallback: {e}")
             return self._generate_fallback_plan(graph_nodes, graph_edges, course_title)
 
     def _build_full_plan(self, llm_data: Dict, graph_nodes: List[Dict], graph_edges: List[Dict], course_title: str, document_filenames: List[str] = None) -> Dict:
@@ -294,7 +294,7 @@ class StudyPlanGenerator:
     
     def _extract_json(self, text: str) -> Dict:
         """Extract JSON from LLM response, handling thought tags and code blocks."""
-        print(f"🔍 Raw LLM response length: {len(text)} chars")
+        print(f"  Raw LLM response length: {len(text)} chars")
 
         # Remove thought tags first
         import re
@@ -312,11 +312,11 @@ class StudyPlanGenerator:
         last_brace = cleaned.rfind('}')
 
         if first_brace == -1 or last_brace == -1:
-            print(f"⚠️  No JSON braces found")
+            print(f"   No JSON braces found")
             return None
 
         json_str = cleaned[first_brace:last_brace + 1]
-        print(f"📝 Extracted JSON: {len(json_str)} chars")
+        print(f"  Extracted JSON: {len(json_str)} chars")
 
         # Fix missing "node_id": keys produced by small LLMs
         json_str = re.sub(r'\{\s*"node_([a-zA-Z0-9_]+)"\s*,', r'{"node_id":"node_\1",', json_str)
@@ -325,10 +325,10 @@ class StudyPlanGenerator:
         try:
             result = json.loads(json_str)
             if isinstance(result, dict):
-                print(f"✅ Parsed JSON successfully")
+                print(f"  Parsed JSON successfully")
                 return result
         except json.JSONDecodeError as e:
-            print(f"⚠️  Direct parse failed: {e}")
+            print(f"   Direct parse failed: {e}")
 
         # Try fixing duplicate keys by keeping only the first occurrence
         try:
@@ -336,10 +336,10 @@ class StudyPlanGenerator:
             if fixed_json:
                 result = json.loads(fixed_json)
                 if isinstance(result, dict):
-                    print(f"✅ Parsed JSON after fixing duplicate keys")
+                    print(f"  Parsed JSON after fixing duplicate keys")
                     return result
         except Exception as e:
-            print(f"⚠️  Duplicate key fix failed: {e}")
+            print(f"   Duplicate key fix failed: {e}")
 
         # Try trimming trailing content after last }
         last_b = json_str.rfind('}')
@@ -347,7 +347,7 @@ class StudyPlanGenerator:
             try:
                 result = json.loads(json_str[:last_b + 1])
                 if isinstance(result, dict):
-                    print(f"✅ Parsed after trimming")
+                    print(f"  Parsed after trimming")
                     return result
             except:
                 pass
@@ -358,12 +358,12 @@ class StudyPlanGenerator:
             try:
                 result = json.loads('\n'.join(lines[:i]))
                 if isinstance(result, dict):
-                    print(f"✅ Parsed after removing {len(lines) - i} lines")
+                    print(f"  Parsed after removing {len(lines) - i} lines")
                     return result
             except:
                 continue
 
-        print(f"⚠️  All JSON extraction strategies failed")
+        print(f"   All JSON extraction strategies failed")
         return None
 
     def _fix_duplicate_keys(self, json_str: str) -> str:
@@ -466,7 +466,7 @@ class StudyPlanGenerator:
 
     def _generate_fallback_plan(self, graph_nodes: List[Dict], graph_edges: List[Dict], course_title: str) -> Dict:
         """Generate a basic study plan from graph structure when LLM fails."""
-        print(f"📋 Generating fallback plan for {course_title} with {len(graph_nodes)} topics")
+        print(f"  Generating fallback plan for {course_title} with {len(graph_nodes)} topics")
         
         topics = []
         for idx, node in enumerate(graph_nodes):
@@ -538,7 +538,7 @@ class StudyPlanGenerator:
             document_list=doc_list
         )
 
-        print(f"📋 Generating topic study plan for: {topic_label}")
+        print(f"  Generating topic study plan for: {topic_label}")
 
         try:
             response = await self.adapter.generate_full_response(
@@ -548,7 +548,7 @@ class StudyPlanGenerator:
             )
 
             latency_ms = int((time.time() - start_time) * 1000)
-            print(f"✅ Topic plan generated in {latency_ms}ms")
+            print(f"  Topic plan generated in {latency_ms}ms")
 
             plan_data = self._extract_json(response)
 
@@ -566,7 +566,7 @@ class StudyPlanGenerator:
             return plan_data
 
         except Exception as e:
-            print(f"❌ Topic plan generation failed: {e}")
+            print(f"  Topic plan generation failed: {e}")
             import traceback
             print(traceback.format_exc())
             raise

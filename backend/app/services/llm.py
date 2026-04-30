@@ -12,8 +12,8 @@ class LLMAdapter:
         # Clean URL: strip trailing slash and /v1 suffix if present
         self.base_url = raw_url.rstrip("/").removesuffix("/v1")
         self.model = model or os.getenv("LLM_MODEL", "gemma4:e2b")
-        self.timeout = timeout
-        print(f"LLM Adapter Config: URL={self.base_url}, Model={self.model}")
+        self.timeout = 600 # 10 minute timeout for large model loading
+        print(f"LLM Adapter Config: URL={self.base_url}, Model={self.model}, Timeout={self.timeout}s")
 
     async def generate_response(
         self, system: str, messages: list[dict], max_tokens: int = 4096, stream: bool = True
@@ -26,9 +26,9 @@ class LLMAdapter:
             "messages": formatted_messages,
             "stream": stream,
             "options": {
-                "num_ctx": 32768,  # 32k Context
+                "num_ctx": 32768,  # Full 32k context for gemma4:e2b
                 "num_predict": max_tokens,
-                "temperature": 0.7
+                "temperature": 0.3 # Lower temperature for better JSON extraction
             }
         }
 
@@ -37,7 +37,8 @@ class LLMAdapter:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 async with client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response:
                     if response.status_code != 200:
-                        yield f"Error: Ollama returned {response.status_code}"
+                        error_body = await response.aread()
+                        yield f"Error: Ollama returned {response.status_code} - {error_body.decode()}"
                         return
 
                     async for line in response.aiter_lines():
@@ -78,18 +79,25 @@ class LLMAdapter:
         self, system: str, messages: list[dict], max_tokens: int = 8192
     ) -> str:
         """Collect all chunks and return the full response string with retries."""
+        import sys
         for attempt in range(2):  # Retry once on failure
             response_text = ""
             error_occurred = False
             
+            print(f" [LLM STREAM START] - {self.model}")
             async for chunk in self.generate_response(system, messages, max_tokens, stream=True):
                 if chunk.startswith("Error:"):
                     error_occurred = True
-                    print(f"⚠️  LLM error (attempt {attempt + 1}): {chunk[:100]}")
+                    print(f"\n   LLM error (attempt {attempt + 1}): {chunk[:100]}")
                     if attempt < 1:
                         await asyncio.sleep(2)  # Wait before retry
                     break
+                
                 response_text += chunk
+                sys.stdout.write(chunk)
+                sys.stdout.flush()
+            
+            print(f"\n [LLM STREAM END]")
             
             if not error_occurred and response_text:
                 return response_text

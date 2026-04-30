@@ -1,0 +1,3 @@
+C:\CLG\cobbleAI\frontend\build_log.txt
+C:\CLG\cobbleAI\frontend\index.html
+C:\CLG\cobbleAI\frontend\README.md

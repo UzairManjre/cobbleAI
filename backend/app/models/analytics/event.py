@@ -1,5 +1,5 @@
 """
-AnalyticsEvent — Immutable append-only event log.
+AnalyticsEvent   Immutable append-only event log.
 
 The core warehouse table. Every user action across the platform is recorded
 here as an immutable event. Think Snowplow/Segment-style event tracking.
@@ -21,28 +21,28 @@ def _utcnow():
 
 
 class AnalyticsEvent(Document):
-    # ── Who ──────────────────────────────────────────
+    #   Who  
     user_id: uuid.UUID
     user_role: str  # "student" | "professor"
 
-    # ── What ─────────────────────────────────────────
+    #   What  
     event_type: str       # e.g. "node_visited", "question_asked"
     event_category: str   # e.g. "navigation", "chat", "llm"
 
-    # ── Context (foreign keys, optional per event) ──
+    #   Context (foreign keys, optional per event)  
     course_id: Optional[uuid.UUID] = None
     graph_id: Optional[uuid.UUID] = None
     session_id: Optional[uuid.UUID] = None
     node_id: Optional[str] = None          # Which concept node
     document_id: Optional[uuid.UUID] = None
 
-    # ── Flexible payload ─────────────────────────────
+    #   Flexible payload  
     payload: Dict = {}   # Event-specific metrics (varies by event_type)
 
-    # ── When ─────────────────────────────────────────
+    #   When  
     timestamp: datetime = Field(default_factory=_utcnow)
 
-    # ── Technical metadata ───────────────────────────
+    #   Technical metadata  
     platform: str = "web"
     user_agent: Optional[str] = None
     ip_address: Optional[str] = None

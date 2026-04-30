@@ -1,5 +1,5 @@
 """
-AnalyticsService — Central service for all analytics event tracking.
+AnalyticsService   Central service for all analytics event tracking.
 
 High cohesion: all analytics logic lives here.
 Loose coupling: routes call this service; they don't touch models directly.
@@ -39,14 +39,14 @@ class AnalyticsService:
     Single entry point for all analytics tracking.
 
     Each method maps to a specific analytics concern:
-    - track_event()        → raw event logging
-    - track_llm_usage()    → LLM call tracking
-    - track_rag_query()    → RAG pipeline tracking
-    - update_user_profile() → aggregate user stats
-    - update_node_metrics() → aggregate node stats
+    - track_event()          raw event logging
+    - track_llm_usage()      LLM call tracking
+    - track_rag_query()      RAG pipeline tracking
+    - update_user_profile()   aggregate user stats
+    - update_node_metrics()   aggregate node stats
     """
 
-    # ── Raw Event Tracking ────────────────────────────────────────
+    #   Raw Event Tracking  
 
     async def track_event(
         self,
@@ -122,7 +122,7 @@ class AnalyticsService:
             await AnalyticsEvent.insert_many(events)
         return events
 
-    # ── LLM Usage Tracking ────────────────────────────────────────
+    #   LLM Usage Tracking  
 
     async def track_llm_usage(
         self,
@@ -163,7 +163,7 @@ class AnalyticsService:
         await usage.insert()
         return usage
 
-    # ── RAG Performance Tracking ──────────────────────────────────
+    #   RAG Performance Tracking  
 
     async def track_rag_query(
         self,
@@ -200,7 +200,7 @@ class AnalyticsService:
         await perf.insert()
         return perf
 
-    # ── User Profile Updates ──────────────────────────────────────
+    #   User Profile Updates  
 
     async def update_user_profile(
         self, user_id: uuid.UUID, updates: Dict
@@ -240,7 +240,7 @@ class AnalyticsService:
         await profile.save()
         return profile
 
-    # ── Node Metrics Updates ──────────────────────────────────────
+    #   Node Metrics Updates  
 
     async def update_node_metrics(
         self,

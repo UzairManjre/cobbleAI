@@ -16,6 +16,7 @@ import StudyPlan from './pages/StudyPlan';
 import ProfessorTests from './pages/ProfessorTests';
 import TakeTest from './pages/TakeTest';
 import ProfessorLayout from './components/layout/ProfessorLayout';
+import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import { useAuthStore } from './store/authStore';
 
 const ProtectedRoute = ({ children, allowedRole, requireOnboarding = true }: { children: React.ReactNode, allowedRole?: 'professor' | 'student' | Array<'professor' | 'student'>, requireOnboarding?: boolean }) => {
@@ -144,6 +145,7 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="students" element={<Students />} />
           <Route path="assignments" element={<Assignments />} />
+          <Route path="analytics" element={<AnalyticsDashboard />} />
           
           {/* Course routes */}
           <Route path="courses/:courseId" element={<CourseDetail />} />

@@ -227,9 +227,14 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     const nodeLabel = nodes.find(n => n.id === nodeId)?.label || '';
     const startTime = Date.now();
 
-    // Optimistically add user message
+    // Optimistically add user message and empty assistant message
     const userMsg: ChatMessage = { role: 'user', content: question };
-    set((state) => ({ chatHistory: [...state.chatHistory, userMsg] }));
+    const assistantMsg: ChatMessage = { role: 'assistant', content: '', sources: [] };
+    
+    set((state) => ({ 
+      chatHistory: [...state.chatHistory, userMsg, assistantMsg],
+      isLoading: true // Show thinking state initially
+    }));
 
     // Track question asked
     analytics.track('question_asked', {
@@ -241,28 +246,115 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     });
 
     try {
-      const res = await sessionsApi.ask(sessionId, nodeId, question);
+      const { useAuthStore } = await import('./authStore');
+      const { API_URL } = await import('../api/client');
+      const token = useAuthStore.getState().token;
 
-      const latencyMs = Date.now() - startTime;
-
-      const assistantMsg: ChatMessage = {
-        role: 'assistant',
-        content: res.data.answer,
-        sources: res.data.sources || []
-      };
-      set((state) => ({ chatHistory: [...state.chatHistory, assistantMsg] }));
-
-      // Track answer received
-      analytics.track('answer_received', {
-        nodeId,
-        nodeLabel,
-        answerLengthChars: res.data.answer?.length || 0,
-        hasSources: (res.data.sources?.length || 0) > 0,
-        sourceCount: res.data.sources?.length || 0,
-        responseLatencyMs: latencyMs,
+      const response = await fetch(`${API_URL}/sessions/${sessionId}/ask`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ node_id: nodeId, question })
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to get answer');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedAnswer = '';
+      let receivedSources: any[] = [];
+      let pendingBuffer = ''; // Buffer for incomplete chunks
+
+      if (reader) {
+        set({ isLoading: false }); // Stop global loading once stream starts
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          pendingBuffer += chunk;
+          
+          // Process complete events
+          const events = pendingBuffer.split('\n\n');
+          // Keep the last part if it doesn't end with \n\n
+          pendingBuffer = pendingBuffer.endsWith('\n\n') ? '' : events.pop() || '';
+
+          for (const event of events) {
+            if (!event.trim()) continue;
+            
+            // Allow multiple data: lines in a single event or handle them individually
+            const lines = event.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  
+                  if (data.type === 'sources') {
+                    receivedSources = data.sources;
+                    set((state) => {
+                      const newHistory = [...state.chatHistory];
+                      newHistory[newHistory.length - 1] = {
+                        ...newHistory[newHistory.length - 1],
+                        sources: receivedSources
+                      };
+                      return { chatHistory: newHistory };
+                    });
+                  } else if (data.type === 'chunk') {
+                    accumulatedAnswer += data.content;
+                    set((state) => {
+                      const newHistory = [...state.chatHistory];
+                      newHistory[newHistory.length - 1] = {
+                        ...newHistory[newHistory.length - 1],
+                        content: accumulatedAnswer
+                      };
+                      return { chatHistory: newHistory };
+                    });
+                  } else if (data.type === 'error') {
+                    console.error('LLM Error:', data.content);
+                    accumulatedAnswer += `\n\n[Error: ${data.content}]`;
+                    set((state) => {
+                      const newHistory = [...state.chatHistory];
+                      newHistory[newHistory.length - 1] = {
+                        ...newHistory[newHistory.length - 1],
+                        content: accumulatedAnswer
+                      };
+                      return { chatHistory: newHistory };
+                    });
+                  } else if (data.type === 'done') {
+                    const latencyMs = Date.now() - startTime;
+                    analytics.track('answer_received', {
+                      nodeId,
+                      nodeLabel,
+                      answerLengthChars: accumulatedAnswer.length,
+                      hasSources: receivedSources.length > 0,
+                      sourceCount: receivedSources.length,
+                      responseLatencyMs: latencyMs,
+                    });
+                    break;
+                  }
+                } catch (e) {
+                  console.error('Error parsing SSE data:', e, line);
+                }
+              }
+            }
+          }
+        }
+      }
     } catch (err: any) {
-      set({ error: err.response?.data?.detail || 'Failed to get answer' });
+      set({ error: err.message || 'Failed to get answer', isLoading: false });
+      // Remove the empty assistant message on error if it hasn't streamed anything
+      set((state) => {
+        const history = state.chatHistory;
+        const lastMsg = history[history.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant' && !lastMsg.content) {
+           return { chatHistory: history.slice(0, -1) };
+        }
+        return state;
+      });
     }
   },
 

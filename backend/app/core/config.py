@@ -33,5 +33,5 @@ class Settings(BaseSettings):
                 )
 
 settings = Settings()
-# Validate on import — server refuses to start with bad keys
+# Validate on import   server refuses to start with bad keys
 settings.validate_jwt_keys()

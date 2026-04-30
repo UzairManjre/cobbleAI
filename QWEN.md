@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**CobbleAI** is an AI-powered educational technology platform that enables professors to upload course materials and students to study through Socratic dialogue, auto-generated quizzes, and interactive concept maps. The platform uses AI (Qwen/Gemma models via Ollama) to generate knowledge graphs from topics or documents and provides context-aware tutoring.
+**CobbleAI** is an AI-powered educational technology platform that enables professors to upload course materials and students to study through Socratic dialogue, auto-generated quizzes, and interactive concept maps. The platform uses AI (gemma4:e2b model via Ollama) to generate knowledge graphs from topics or documents and provides context-aware tutoring.
 
 ### Core Features
 - **Knowledge Graph Generation** from topics or uploaded documents (PDF, DOCX, PPTX)
@@ -19,7 +19,7 @@
 - **Vector DB**: Qdrant (document embeddings)
 - **Cache/Queue**: Redis 7 (Celery broker)
 - **Object Storage**: MinIO (dev) / S3 (prod)
-- **LLM**: Ollama serving `gemma4:e2b` model (configured in `.env`; was previously `qwen3.5:2b`)
+- **LLM**: Ollama serving `gemma4:e2b` model (configured in `.env`)
 - **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2` (384-dim)
 - **Reranker**: `cross-encoder/ms-marco-MiniLM-L-6-v2`
 - **Task Queue**: Celery 5.x
@@ -48,7 +48,7 @@
 - Docker Desktop (running)
 - Python 3.11+
 - Node.js 18+
-- Ollama with model (`gemma4:e2b` or `qwen3.5:2b`)
+- Ollama with model `gemma4:e2b`
 
 ### 1. Start Infrastructure (Docker)
 ```bash
@@ -57,7 +57,7 @@ docker-compose up -d
 
 ### 2. Start Ollama (LLM)
 ```bash
-ollama pull gemma4:e2b   # or qwen3.5:2b
+ollama pull gemma4:e2b
 ollama run gemma4:e2b "Hello"  # verify
 ```
 
@@ -95,7 +95,7 @@ Frontend (React + React Flow + Zustand) [Port 5173]
 Backend (FastAPI) [Port 8000]
     ↓
     ├── MongoDB (users, courses, graphs, sessions, chat) [27017]
-    ├── Ollama/LLM (graph generation + tutoring) [11434]
+    ├── Ollama/gemma4:e2b (graph generation + tutoring) [11434]
     ├── MinIO/S3 (document file storage) [9002]
     ├── Qdrant (vector embeddings for RAG) [6333]
     └── Redis + Celery (async document processing) [6379]

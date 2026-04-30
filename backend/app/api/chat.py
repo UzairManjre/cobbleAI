@@ -66,9 +66,9 @@ async def chat_interaction(
 
     if course_id:
         course_id_str = str(course_id)
-        print(f"🔍 Retrieving context for query: '{message}' in course {course_id_str}")
-        context_str, sources = retrieve_context(message, course_id_str, top_k=5, use_rerank=True)
-        print(f"✅ Retrieved {len(sources)} sources")
+        print(f"  Retrieving context for query: '{message}' in course {course_id_str}")
+        context_str, sources = await retrieve_context(message, course_id_str, top_k=5, use_rerank=True)
+        print(f"  Retrieved {len(sources)} sources")
 
         # Resolve document filenames
         for source in sources:
@@ -80,11 +80,11 @@ async def chat_interaction(
                     doc = await DocumentModel.get(uuid.UUID(did))
                     if doc:
                         filename = doc.filename
-                        print(f"✅ Resolved doc {did} -> {filename}")
+                        print(f"  Resolved doc {did} -> {filename}")
                     else:
-                        print(f"⚠️ Document {did} not found in MongoDB")
+                        print(f"  Document {did} not found in MongoDB")
                 except Exception as e:
-                    print(f"❌ Failed to resolve doc {did}: {e}")
+                    print(f"  Failed to resolve doc {did}: {e}")
             
             source["filename"] = filename or "Unknown Document"
 
@@ -148,7 +148,7 @@ async def chat_interaction(
                 },
             )
         except Exception as e:
-            print(f"❌ Chat error: {e}")
+            print(f"  Chat error: {e}")
             import traceback
             print(traceback.format_exc())
             # Track error

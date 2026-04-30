@@ -4,7 +4,7 @@
 - **Docker Desktop** (running)
 - **Python 3.11+**
 - **Node.js 18+**
-- **Ollama** with `qwen3.5:2b` model
+- **Ollama** with `gemma4:e2b` model (fine-tuned)
 
 ## 1. Start Infrastructure (Docker)
 ```bash
@@ -51,10 +51,10 @@ db.courses.find()           # View courses
 ## 3. Start Ollama (LLM)
 ```bash
 # Make sure Ollama is running, then pull the model
-ollama pull qwen3.5:2b
+ollama pull gemma4:e2b
 
 # Verify it works
-ollama run qwen3.5:2b "Hello"
+ollama run gemma4:e2b "Hello"
 ```
 The API is available at `http://localhost:11434/v1` (OpenAI-compatible).
 
@@ -81,7 +81,7 @@ App: http://localhost:5173
 3. Create a course from the dashboard
 4. Click "Enter Study Mode" on the course
 5. Enter a topic (e.g., "Machine Learning")
-6. Wait for graph generation (Qwen 3.5 2B processes it)
+6. Wait for graph generation (Gemma 4 e2b processes it)
 7. Click nodes to navigate, ask questions in the chat panel
 
 ## Architecture Overview
@@ -91,7 +91,7 @@ Frontend (React + React Flow + Zustand)
 Backend (FastAPI)
     ↓
     ├── MongoDB (users, courses, graphs, sessions, chat)
-    ├── Ollama/Qwen3.5:2b (graph generation + tutoring)
+    ├── Ollama/gemma4:e2b (graph generation + tutoring)
     ├── MinIO/S3 (document file storage)
     ├── Qdrant (vector embeddings for RAG)
     └── Redis + Celery (async document processing)
@@ -99,6 +99,6 @@ Backend (FastAPI)
 
 ## Troubleshooting
 - **"Connection refused" on MongoDB**: Run `docker-compose up -d`
-- **Graph generation fails**: Check `ollama run qwen3.5:2b` works
+- **Graph generation fails**: Check `ollama run gemma4:e2b` works
 - **Upload fails**: Check MinIO is running at http://localhost:9000
 - **CORS errors**: Backend CORS allows `localhost:5173` by default

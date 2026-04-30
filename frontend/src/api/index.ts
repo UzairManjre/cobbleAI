@@ -8,3 +8,4 @@ export { graphsApi } from './graphs';
 export { sessionsApi } from './sessions';
 export { testsApi } from './tests';
 export { studyPlansApi } from './studyPlans';
+export { analyticsApi } from './analytics';

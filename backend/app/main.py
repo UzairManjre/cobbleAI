@@ -18,9 +18,9 @@ async def lifespan(app: FastAPI):
     # Ensure MinIO bucket exists
     try:
         ensure_bucket_exists()
-        print("✅ MinIO bucket ready")
+        print("  MinIO bucket ready")
     except Exception as e:
-        print(f"⚠️ MinIO bucket error: {e}")
+        print(f"  MinIO bucket error: {e}")
     
     yield
     # Shutdown: Close connections here
@@ -47,7 +47,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Analytics middleware — auto-tracks all API requests
+# Analytics middleware   auto-tracks all API requests
 setup_analytics_middleware(app)
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -70,7 +70,7 @@ app.include_router(study_plans.router)
 app.include_router(tests.router)
 
 
-# ── Backwards-compat redirect for old double-prefix URLs ──────────
+#   Backwards-compat redirect for old double-prefix URLs  
 # Any client hitting /api/api/study-plans/... gets a 307 redirect to /api/study-plans/...
 @app.middleware("http")
 async def redirect_legacy_api_prefix(request: Request, call_next):

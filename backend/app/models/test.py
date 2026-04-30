@@ -7,7 +7,7 @@ import uuid
 def _utcnow():
     return datetime.now(timezone.utc)
 
-# ── Question Models ──────────────────────────────────────────────────────────
+#   Question Models  
 
 class MCQOption(BaseModel):
     id: str
@@ -37,7 +37,7 @@ class Question(BaseModel):
     hints: List[str] = []
     document_references: List[str] = []  # Related filenames
 
-# ── Test Model ───────────────────────────────────────────────────────────────
+#   Test Model  
 
 class Test(Document):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
@@ -83,7 +83,7 @@ class Test(Document):
             "test_type",
         ]
 
-# ── Student Attempt Models ──────────────────────────────────────────────────
+#   Student Attempt Models  
 
 class Answer(BaseModel):
     question_id: uuid.UUID
@@ -128,7 +128,7 @@ class TestAttempt(Document):
             "status",
         ]
 
-# ── Mock Test Model (for practice) ──────────────────────────────────────────
+#   Mock Test Model (for practice)  
 
 class MockTest(Document):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
@@ -160,7 +160,7 @@ class MockTest(Document):
             "student_id",
         ]
 
-# ── Analytics Models ────────────────────────────────────────────────────────
+#   Analytics Models  
 
 class TestAnalytics(Document):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)

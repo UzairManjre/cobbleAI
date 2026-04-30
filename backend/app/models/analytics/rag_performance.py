@@ -1,5 +1,5 @@
 """
-AnalyticsRAGPerformance — Monitor retrieval quality and pipeline health.
+AnalyticsRAGPerformance   Monitor retrieval quality and pipeline health.
 
 Tracks every RAG query to answer:
 - Are we retrieving useful context?
@@ -21,28 +21,28 @@ def _utcnow():
 
 
 class AnalyticsRAGPerformance(Document):
-    # ── Context ──────────────────────────────────────
+    #   Context  
     course_id: uuid.UUID
     query_text: str  # First 200 chars
     query_embedding_preview: Optional[List[float]] = None  # First 10 dims for debugging
 
-    # ── Retrieval ────────────────────────────────────
+    #   Retrieval  
     retrieved_count: int = 0  # How many docs Qdrant returned
     rerank_applied: bool = False
     final_context_count: int = 0  # After reranking
 
-    # ── Latency breakdown ────────────────────────────
+    #   Latency breakdown  
     embedding_latency_ms: int = 0
     qdrant_search_latency_ms: int = 0
     reranker_latency_ms: int = 0
     total_retrieval_latency_ms: int = 0
 
-    # ── Source quality ───────────────────────────────
+    #   Source quality  
     source_doc_ids: List[str] = []
     source_relevance_scores: List[float] = []
     avg_relevance_score: float = 0.0
 
-    # ── Downstream impact ────────────────────────────
+    #   Downstream impact  
     led_to_successful_answer: bool = True  # Did LLM produce a good answer?
     follow_up_question_asked: bool = False  # Student asked again (signal of poor answer)
 

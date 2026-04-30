@@ -19,7 +19,7 @@ celery_app.conf.update(
     task_max_retries=3,
     # Auto-discover tasks from the worker and tasks modules
     imports=['app.worker', 'app.tasks.analytics_aggregation'],
-    # ── Celery Beat schedule for analytics aggregation ────────
+    #   Celery Beat schedule for analytics aggregation  
     beat_schedule={
         "compute-daily-aggregates": {
             "task": "analytics.compute_daily_aggregates",
@@ -70,7 +70,7 @@ def init_worker_process(**kwargs):
         AnalyticsRAGPerformance,
     )
 
-    print("🔧 Initializing Beanie for Celery worker process...")
+    print("  Initializing Beanie for Celery worker process...")
     client = AsyncIOMotorClient(settings.MONGO_URI, uuidRepresentation="standard")
     database = client[settings.DATABASE_NAME]
 
@@ -94,4 +94,4 @@ def init_worker_process(**kwargs):
         ],
     ))
 
-    print("✅ Beanie initialized for Celery worker process.")
+    print("  Beanie initialized for Celery worker process.")

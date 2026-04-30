@@ -1,5 +1,5 @@
 """
-AnalyticsMiddleware — Automatically logs API calls, latency, and errors.
+AnalyticsMiddleware   Automatically logs API calls, latency, and errors.
 
 This middleware wraps every request to track:
 - Endpoint access (page_view events for SPA routing)
@@ -7,7 +7,7 @@ This middleware wraps every request to track:
 - Error rates (status_code >= 400)
 - User activity patterns
 
-It operates independently of business logic — routes don't need to call it.
+It operates independently of business logic   routes don't need to call it.
 """
 
 import time
@@ -79,7 +79,7 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
             "latency_ms": latency_ms,
         }
 
-        # Include query params summary (sanitized — no tokens/passwords)
+        # Include query params summary (sanitized   no tokens/passwords)
         if request.query_params:
             safe_params = {
                 k: "***" if "token" in k.lower() or "password" in k.lower() else v
@@ -98,7 +98,7 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
                     event_category=event_category,
                     payload=payload,
                 )
-                # Fire and forget — don't block the response
+                # Fire and forget   don't block the response
                 import asyncio
                 asyncio.create_task(event.insert())
             except Exception:

@@ -62,26 +62,26 @@ def embed_and_store(chunks: list[str], course_id: str, doc_id: str, filename: st
     # Ensure collection exists
     try:
         qdrant_sync.get_collection(collection_name)
-        print(f"   ✅ Collection exists")
+        print(f"     Collection exists")
     except Exception as e:
         error_str = str(e).lower()
         if "doesn't exist" in error_str or "not found" in error_str:
-            print(f"   📦 Creating new collection...")
+            print(f"    [EMOJI]  Creating new collection...")
             try:
                 qdrant_sync.create_collection(
                     collection_name=collection_name,
                     vectors_config={"size": 384, "distance": "Cosine"}
                 )
-                print(f"   ✅ Collection created")
+                print(f"     Collection created")
             except Exception as create_err:
                 if "already exists" in str(create_err).lower() or "409" in str(create_err):
-                    print(f"   ✅ Collection already exists (race condition handled)")
+                    print(f"     Collection already exists (race condition handled)")
                 else:
                     raise
         else:
             raise
 
-    print(f"   🧠 Encoding {len(chunks)} chunks...")
+    print(f"    [EMOJI]  Encoding {len(chunks)} chunks...")
     embeddings = embedder.encode(chunks)
 
     points = []
@@ -103,7 +103,7 @@ def embed_and_store(chunks: list[str], course_id: str, doc_id: str, filename: st
             )
         )
     
-    print(f"   📤 Upserting {len(points)} points to Qdrant...")
+    print(f"    [EMOJI]  Upserting {len(points)} points to Qdrant...")
     qdrant_sync.upsert(collection_name=collection_name, points=points)
-    print(f"   ✅ Upserted {len(points)} points")
+    print(f"     Upserted {len(points)} points")
     return len(points)

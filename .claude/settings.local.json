@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(python chunk_files.py)",
+      "PowerShell(for \\($i=1; $i -le 20; $i++\\) { $file = \".graphify_chunk_{0:D2}.txt\" -f $i; echo \"=== CHUNK $i ===\"; Get-Content $file })",
+      "Bash(identify \"C:\\\\CLG\\\\cobbleAI\\\\frontend\\\\src\\\\assets\\\\hero.png\")",
+      "PowerShell(python merge_results.py)",
+      "PowerShell(python step4_build.py)",
+      "PowerShell(head -100)",
+      "PowerShell(python step5_label.py)"
+    ]
+  }
+}

@@ -12,7 +12,7 @@ class Course(Document):
     professor_id: uuid.UUID
     title: str
     code: str
-    docs_count: int = 0  # Maintained counter — updated on document lifecycle events
+    docs_count: int = 0  # Maintained counter   updated on document lifecycle events
     created_at: datetime = Field(default_factory=_utcnow)
 
 class Enrolment(Document):

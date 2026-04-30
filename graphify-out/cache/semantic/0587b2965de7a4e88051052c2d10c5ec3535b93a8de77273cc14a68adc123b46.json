@@ -1,0 +1,1 @@
+{"nodes": [{"id": "auth_api", "label": "Auth API Client", "file_type": "code", "source_file": "frontend/src/api/auth.ts", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

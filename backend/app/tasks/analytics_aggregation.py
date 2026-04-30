@@ -19,7 +19,7 @@ from pymongo import MongoClient
 from app.core.config import settings
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────
+#   Helpers  
 
 def _get_motor_db():
     """Get Motor database client for async operations."""
@@ -42,7 +42,7 @@ def _uuid_to_bytes(uuid_obj):
     return uuid_obj
 
 
-# ── Task 1: Compute Daily Aggregates ─────────────────────────────────────
+#   Task 1: Compute Daily Aggregates  
 
 @shared_task(
     name="analytics.compute_daily_aggregates",
@@ -70,10 +70,10 @@ def compute_daily_aggregates(self, target_date_str: Optional[str] = None):
     events = db["analytics_events"]
     aggregates = db["analytics_aggregates"]
 
-    print(f"📊 Computing daily aggregates for {target_date}...")
+    print(f"  Computing daily aggregates for {target_date}...")
 
     try:
-        # ── User Daily Aggregates ──────────────────────────────────────
+        #   User Daily Aggregates  
         user_pipeline = [
             {"$match": {
                 "timestamp": {"$gte": day_start, "$lt": day_end},
@@ -131,9 +131,9 @@ def compute_daily_aggregates(self, target_date_str: Optional[str] = None):
                 upsert=True,
             )
 
-        print(f"   ✅ {len(user_stats)} user daily aggregates")
+        print(f"     {len(user_stats)} user daily aggregates")
 
-        # ── Course Daily Aggregates ────────────────────────────────────
+        #   Course Daily Aggregates  
         course_pipeline = [
             {"$match": {
                 "timestamp": {"$gte": day_start, "$lt": day_end},
@@ -175,9 +175,9 @@ def compute_daily_aggregates(self, target_date_str: Optional[str] = None):
                 upsert=True,
             )
 
-        print(f"   ✅ {len(course_stats)} course daily aggregates")
+        print(f"     {len(course_stats)} course daily aggregates")
 
-        # ── Node Daily Aggregates ──────────────────────────────────────
+        #   Node Daily Aggregates  
         node_pipeline = [
             {"$match": {
                 "timestamp": {"$gte": day_start, "$lt": day_end},
@@ -226,9 +226,9 @@ def compute_daily_aggregates(self, target_date_str: Optional[str] = None):
                 upsert=True,
             )
 
-        print(f"   ✅ {len(node_stats)} node daily aggregates")
+        print(f"     {len(node_stats)} node daily aggregates")
 
-        # ── Global Daily Aggregate ─────────────────────────────────────
+        #   Global Daily Aggregate  
         global_pipeline = [
             {"$match": {"timestamp": {"$gte": day_start, "$lt": day_end}}},
             {"$group": {
@@ -271,9 +271,9 @@ def compute_daily_aggregates(self, target_date_str: Optional[str] = None):
                 },
                 upsert=True,
             )
-            print(f"   ✅ 1 global daily aggregate")
+            print(f"     1 global daily aggregate")
 
-        print(f"✅ Daily aggregation complete for {target_date}")
+        print(f"  Daily aggregation complete for {target_date}")
         return {
             "date": str(target_date),
             "user_count": len(user_stats),
@@ -282,11 +282,11 @@ def compute_daily_aggregates(self, target_date_str: Optional[str] = None):
         }
 
     except Exception as exc:
-        print(f"❌ Daily aggregation failed: {exc}")
+        print(f"  Daily aggregation failed: {exc}")
         raise self.retry(exc=exc)
 
 
-# ── Task 2: Update User Profiles ─────────────────────────────────────────
+#   Task 2: Update User Profiles  
 
 @shared_task(
     name="analytics.update_user_profiles",
@@ -307,7 +307,7 @@ def update_user_profiles(self):
     events = db["analytics_events"]
     profiles = db["analytics_user_profiles"]
 
-    print("👤 Updating user profiles...")
+    print("  Updating user profiles...")
 
     try:
         # Get all unique users with events
@@ -431,7 +431,7 @@ def update_user_profiles(self):
 
             # Knowledge coverage (% of unique nodes visited vs total available)
             unique_nodes = len([n for n in stats.get("unique_nodes", []) if n])
-            # Rough estimate — assume 20 nodes per graph on average
+            # Rough estimate   assume 20 nodes per graph on average
             total_estimated_nodes = len(stats.get("unique_graphs", []) or []) * 20
             knowledge_coverage = unique_nodes / max(total_estimated_nodes, 1)
 
@@ -466,15 +466,15 @@ def update_user_profiles(self):
             )
             updated_count += 1
 
-        print(f"✅ Updated {updated_count} user profiles")
+        print(f"  Updated {updated_count} user profiles")
         return {"updated_count": updated_count}
 
     except Exception as exc:
-        print(f"❌ User profile update failed: {exc}")
+        print(f"  User profile update failed: {exc}")
         raise self.retry(exc=exc)
 
 
-# ── Task 3: Update Node Metrics ──────────────────────────────────────────
+#   Task 3: Update Node Metrics  
 
 @shared_task(
     name="analytics.update_node_metrics",
@@ -493,7 +493,7 @@ def update_node_metrics(self):
     events = db["analytics_events"]
     node_metrics = db["analytics_node_metrics"]
 
-    print("📐 Updating node metrics...")
+    print("  Updating node metrics...")
 
     try:
         # Aggregate per (graph, node) pair
@@ -582,15 +582,15 @@ def update_node_metrics(self):
             )
             updated_count += 1
 
-        print(f"✅ Updated {updated_count} node metrics")
+        print(f"  Updated {updated_count} node metrics")
         return {"updated_count": updated_count}
 
     except Exception as exc:
-        print(f"❌ Node metrics update failed: {exc}")
+        print(f"  Node metrics update failed: {exc}")
         raise self.retry(exc=exc)
 
 
-# ── Task 4: Detect Dropout Risk ──────────────────────────────────────────
+#   Task 4: Detect Dropout Risk  
 
 @shared_task(
     name="analytics.detect_dropout_risk",
@@ -612,7 +612,7 @@ def detect_dropout_risk(self):
     db = _get_sync_db()
     profiles = db["analytics_user_profiles"]
 
-    print("🚨 Detecting dropout risk...")
+    print("  Detecting dropout risk...")
 
     try:
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=7)
@@ -669,11 +669,11 @@ def detect_dropout_risk(self):
                 )
                 if new_risk == "high":
                     flagged_count += 1
-                    print(f"   ⚠️ Flagged user {user_id} for dropout risk (inactive {days_inactive} days)")
+                    print(f"     Flagged user {user_id} for dropout risk (inactive {days_inactive} days)")
 
-        print(f"✅ Dropout detection complete. {flagged_count} students flagged.")
+        print(f"  Dropout detection complete. {flagged_count} students flagged.")
         return {"flagged_count": flagged_count}
 
     except Exception as exc:
-        print(f"❌ Dropout detection failed: {exc}")
+        print(f"  Dropout detection failed: {exc}")
         raise self.retry(exc=exc)

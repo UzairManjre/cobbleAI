@@ -6,6 +6,26 @@ import { useGraphStore } from '../store/graphStore';
 import { ArrowLeft, Upload, Sparkles, Users, FileText, Brain } from 'lucide-react';
 import './CourseDetail.css';
 
+interface GenerationProgress {
+  step: number;
+  totalSteps: number;
+  message: string;
+  detail: string;
+  elapsed: number;
+}
+
+const STEP_LABELS = [
+  'Processing documents',
+  'Fetching documents',
+  'Extracting text',
+  'Analyzing content',
+  'Merging graphs',
+  'Enriching connections',
+  'Finalizing graph',
+];
+
+const STEP_ICONS = ['📄', '📂', '📝', '🧠', '🔗', '✨', '✅'];
+
 export default function CourseDetail() {
   const { courseId } = useParams();
   const { token, role } = useAuthStore();
@@ -18,9 +38,14 @@ export default function CourseDetail() {
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Graph generation progress state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState<GenerationProgress | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [genResult, setGenResult] = useState<{ nodes_count: number; edges_count: number; elapsed: number } | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
   const {
-    generateGraph: generateFromDocs,
-    isLoading: isGeneratingGraph,
     nodes: graphNodes,
     edges: graphEdges,
     fetchCourseGraph
@@ -33,6 +58,15 @@ export default function CourseDetail() {
       fetchCourseGraph(courseId);
     }
   }, [courseId, token]);
+
+  // Cleanup EventSource on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
 
   const fetchCourseDetails = async () => {
     try {
@@ -85,16 +119,83 @@ export default function CourseDetail() {
     }
   };
 
-  const generateGraph = async () => {
+  const generateGraph = () => {
     if (!courseId || !token) return;
 
+    // Extract user_id from JWT payload (base64 decode the middle segment)
+    let userId = '';
     try {
-      await generateFromDocs(courseId);
-      alert(`Graph generated successfully! ${useGraphStore.getState().nodes.length} concepts found.`);
-    } catch (err: any) {
-      console.error('Graph generation error:', err);
-      alert('Graph generation failed');
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      userId = payload.sub || '';
+    } catch {
+      console.error('Failed to decode JWT for user_id');
+      return;
     }
+
+    // Reset state
+    setIsGenerating(true);
+    setProgress(null);
+    setGenError(null);
+    setGenResult(null);
+
+    // Close any existing EventSource
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    const es = graphsApi.generateFromDocsStream(courseId, userId);
+    eventSourceRef.current = es;
+
+    es.addEventListener('progress', (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data);
+        setProgress(data);
+      } catch (err) {
+        console.error('Failed to parse progress event:', err);
+      }
+    });
+
+    es.addEventListener('complete', async (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data);
+        setGenResult({
+          nodes_count: data.nodes_count,
+          edges_count: data.edges_count,
+          elapsed: data.elapsed,
+        });
+        // Refresh graph data
+        await fetchCourseGraph(courseId);
+      } catch (err) {
+        console.error('Failed to parse complete event:', err);
+      }
+      es.close();
+      eventSourceRef.current = null;
+    });
+
+    es.addEventListener('error', (e: any) => {
+      // Check if this is a custom error event from the server
+      if (e.data) {
+        try {
+          const data = JSON.parse(e.data);
+          setGenError(data.message || 'Graph generation failed');
+        } catch {
+          setGenError('Graph generation failed');
+        }
+      } else {
+        // EventSource connection error
+        setGenError('Connection lost during graph generation. The graph may still be generating — please refresh in a minute.');
+      }
+      es.close();
+      eventSourceRef.current = null;
+      setIsGenerating(false);
+    });
+  };
+
+  const dismissOverlay = () => {
+    setIsGenerating(false);
+    setProgress(null);
+    setGenError(null);
+    setGenResult(null);
   };
 
   const cleanupDuplicates = async () => {
@@ -110,6 +211,14 @@ export default function CourseDetail() {
       console.error('Cleanup error:', err);
       alert('Cleanup failed');
     }
+  };
+
+  // Helper: format elapsed time
+  const formatElapsed = (seconds: number) => {
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    const min = Math.floor(seconds / 60);
+    const sec = Math.round(seconds % 60);
+    return `${min}m ${sec}s`;
   };
 
   if (isLoading) {
@@ -132,8 +241,125 @@ export default function CourseDetail() {
     );
   }
 
+  // Compute progress percentage
+  const progressPct = progress
+    ? Math.round(((progress.step) / progress.totalSteps) * 100)
+    : 0;
+
   return (
     <div className="prof-course-detail">
+      {/* Graph Generation Progress Overlay */}
+      {(isGenerating || genResult || genError) && (
+        <div className="gen-overlay">
+          <div className="gen-overlay-backdrop" />
+          <div className="gen-modal">
+            {/* Header */}
+            <div className="gen-modal-header">
+              <div className="gen-modal-icon">
+                {genResult ? '🎉' : genError ? '❌' : '🧠'}
+              </div>
+              <h2>
+                {genResult
+                  ? 'Knowledge Graph Ready!'
+                  : genError
+                  ? 'Generation Failed'
+                  : 'Building Knowledge Graph'}
+              </h2>
+              {!genResult && !genError && (
+                <p className="gen-modal-subtitle">
+                  This may take a few minutes depending on document size
+                </p>
+              )}
+            </div>
+
+            {/* Progress Content */}
+            {!genResult && !genError && (
+              <div className="gen-progress-content">
+                {/* Progress Bar */}
+                <div className="gen-progress-bar-container">
+                  <div className="gen-progress-bar" style={{ width: `${progressPct}%` }}>
+                    <div className="gen-progress-bar-glow" />
+                  </div>
+                </div>
+                <div className="gen-progress-meta">
+                  <span className="gen-progress-pct">{progressPct}%</span>
+                  {progress && (
+                    <span className="gen-progress-time">
+                      ⏱ {formatElapsed(progress.elapsed)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Step List */}
+                <div className="gen-steps">
+                  {STEP_LABELS.map((label, i) => {
+                    const stepNum = i; // step 0-6
+                    const currentStep = progress?.step ?? -1;
+                    const isActive = currentStep === stepNum;
+                    const isDone = currentStep > stepNum;
+                    const isPending = currentStep < stepNum;
+
+                    return (
+                      <div
+                        key={i}
+                        className={`gen-step ${isActive ? 'gen-step-active' : ''} ${isDone ? 'gen-step-done' : ''} ${isPending ? 'gen-step-pending' : ''}`}
+                      >
+                        <span className="gen-step-icon">
+                          {isDone ? '✓' : STEP_ICONS[i]}
+                        </span>
+                        <div className="gen-step-text">
+                          <span className="gen-step-label">{label}</span>
+                          {isActive && progress?.detail && (
+                            <span className="gen-step-detail">{progress.detail}</span>
+                          )}
+                        </div>
+                        {isActive && (
+                          <div className="gen-step-spinner" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Success Result */}
+            {genResult && (
+              <div className="gen-result">
+                <div className="gen-result-stats">
+                  <div className="gen-result-stat">
+                    <span className="gen-result-stat-value">{genResult.nodes_count}</span>
+                    <span className="gen-result-stat-label">Concepts</span>
+                  </div>
+                  <div className="gen-result-stat">
+                    <span className="gen-result-stat-value">{genResult.edges_count}</span>
+                    <span className="gen-result-stat-label">Connections</span>
+                  </div>
+                  <div className="gen-result-stat">
+                    <span className="gen-result-stat-value">{formatElapsed(genResult.elapsed)}</span>
+                    <span className="gen-result-stat-label">Time</span>
+                  </div>
+                </div>
+                <button onClick={dismissOverlay} className="gen-result-btn">
+                  <Sparkles size={16} />
+                  View Knowledge Graph
+                </button>
+              </div>
+            )}
+
+            {/* Error */}
+            {genError && (
+              <div className="gen-error">
+                <p>{genError}</p>
+                <button onClick={dismissOverlay} className="gen-error-btn">
+                  Dismiss
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="prof-course-header">
         <button onClick={() => navigate('/professor/dashboard')} className="prof-back-btn">
@@ -152,10 +378,10 @@ export default function CourseDetail() {
           </button>
           <button
             onClick={generateGraph}
-            disabled={isGeneratingGraph}
+            disabled={isGenerating}
             className="prof-action-btn prof-action-btn-secondary"
           >
-            {isGeneratingGraph ? 'Generating...' : 'Generate Graph'}
+            {isGenerating ? 'Generating...' : 'Generate Graph'}
           </button>
           <button
             onClick={() => navigate(`/course/${courseId}/map`)}

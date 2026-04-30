@@ -58,7 +58,7 @@ async def _generate_graph_for_course(course_id: str):
         acquired = redis_client.set(lock_key, "1", nx=True, ex=600)
 
         if not acquired:
-            print(f"🔒 Another worker is already generating graph for course {course_id}, skipping")
+            print(f" [EMOJI]  Another worker is already generating graph for course {course_id}, skipping")
             return
 
         try:
@@ -68,18 +68,18 @@ async def _generate_graph_for_course(course_id: str):
             ).to_list()
 
             if existing_graph:
-                print(f"⏭️ Graph already exists for course {course_id}, skipping generation")
+                print(f"  Graph already exists for course {course_id}, skipping generation")
                 return
 
             # Wait a bit for database to settle
             await asyncio.sleep(2)
 
-            print(f"🧠 Generating graph for course {course_id}...")
+            print(f" [EMOJI]  Generating graph for course {course_id}...")
             generator = AdvancedGraphGenerator()
             graph_data = await generator.generate_from_course(course_id)
 
             if not graph_data["nodes"]:
-                print(f"⚠️ No graph nodes generated for course {course_id}")
+                print(f"  No graph nodes generated for course {course_id}")
                 return
 
             # Convert course_id to UUID
@@ -95,7 +95,7 @@ async def _generate_graph_for_course(course_id: str):
             )
             await graph.insert()
 
-            print(f"✅ Graph generated and saved: {len(graph_data['nodes'])} nodes, {len(graph_data['edges'])} edges")
+            print(f"  Graph generated and saved: {len(graph_data['nodes'])} nodes, {len(graph_data['edges'])} edges")
 
         finally:
             # Always release the lock
@@ -103,7 +103,7 @@ async def _generate_graph_for_course(course_id: str):
 
     except Exception as e:
         import traceback
-        print(f"❌ Auto graph generation failed: {e}")
+        print(f"  Auto graph generation failed: {e}")
         print(traceback.format_exc())
 
 def _process_document_sync(doc_id: str):
@@ -131,7 +131,7 @@ def _process_document_sync(doc_id: str):
                 doc = await db["documents"].find_one({"_id": doc_uuid})
 
                 if not doc:
-                    print(f"❌ Document {doc_id} not found in database")
+                    print(f"  Document {doc_id} not found in database")
                     return
 
                 # Update status to processing
@@ -139,28 +139,28 @@ def _process_document_sync(doc_id: str):
                     {"_id": doc_uuid},
                     {"$set": {"status": "processing"}}
                 )
-                print(f"🔄 Processing document: {doc.get('filename', 'unknown')}")
+                print(f" [EMOJI]  Processing document: {doc.get('filename', 'unknown')}")
 
                 try:
                     proc_start = time.time()
                     # Download from S3
                     s3 = get_s3_client()
                     s3_key = doc.get("s3_path") or doc.get("s3_key")
-                    print(f"📥 Downloading from MinIO: {s3_key}")
+                    print(f" [EMOJI]  Downloading from MinIO: {s3_key}")
                     response = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
                     file_bytes = response['Body'].read()
-                    print(f"✅ Downloaded {len(file_bytes)} bytes")
+                    print(f"  Downloaded {len(file_bytes)} bytes")
 
                     # Extract text
                     file_type = doc.get("file_type", "pdf")
-                    print(f"📝 Extracting text from {file_type}...")
+                    print(f"  Extracting text from {file_type}...")
                     raw_text = extract_text(file_type, file_bytes)
-                    print(f"✅ Extracted {len(raw_text)} characters")
+                    print(f"  Extracted {len(raw_text)} characters")
 
                     # Chunk
-                    print(f"✂️ Chunking text...")
+                    print(f"  Chunking text...")
                     chunks = split_into_chunks(raw_text)
-                    print(f"✅ Created {len(chunks)} chunks")
+                    print(f"  Created {len(chunks)} chunks")
 
                     # Embed & store
                     course_id_raw = doc.get("course_id", "")
@@ -172,7 +172,7 @@ def _process_document_sync(doc_id: str):
                     doc_id_str = str(uuid.UUID(bytes=doc_id)) if isinstance(doc_id, bytes) else str(doc_id)
                     filename = doc.get("filename")
 
-                    print(f"💾 Embedding and storing in Qdrant...")
+                    print(f"  Embedding and storing in Qdrant...")
                     pushed_count = embed_and_store(chunks, course_id, doc_id_str, filename)
 
                     # Mark success
@@ -185,12 +185,12 @@ def _process_document_sync(doc_id: str):
                             "processed_at": datetime.now(timezone.utc)
                         }}
                     )
-                    print(f"✅ Document {doc_id} processed: {pushed_count} chunks stored")
+                    print(f"  Document {doc_id} processed: {pushed_count} chunks stored")
 
                     # Track document_processed event (fire and forget)
                     try:
                         from app.services.analytics import analytics_service
-                        asyncio.run(analytics_service.track_event(
+                        await analytics_service.track_event(
                             event_type="document_processed",
                             event_category="document",
                             user_id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
@@ -204,7 +204,7 @@ def _process_document_sync(doc_id: str):
                                 "chunk_count": pushed_count,
                                 "processing_time_ms": processing_time_ms,
                             },
-                        ))
+                        )
                     except Exception:
                         pass
 
@@ -215,13 +215,14 @@ def _process_document_sync(doc_id: str):
                     })
                     
                     if pending_count == 0:
-                        print(f"🚀 All documents processed, triggering graph generation...")
+                        print(f"  All documents processed, triggering graph generation...")
+                        print(f"[INFO] All documents processed, triggering graph generation...")
                         # Fire and forget - don't await this
                         asyncio.create_task(_generate_graph_for_course(course_id))
 
                 except Exception as e:
                     import traceback
-                    print(f"❌ Processing failed: {e}")
+                    print(f"[ERROR] Processing failed: {e}")
                     print(traceback.format_exc())
                     processing_time_ms = int((time.time() - proc_start) * 1000)
                     await db["documents"].update_one(
@@ -236,7 +237,7 @@ def _process_document_sync(doc_id: str):
                     # Track document_failed event
                     try:
                         from app.services.analytics import analytics_service
-                        asyncio.run(analytics_service.track_event(
+                        await analytics_service.track_event(
                             event_type="document_failed",
                             event_category="document",
                             user_id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
@@ -249,7 +250,7 @@ def _process_document_sync(doc_id: str):
                                 "error": str(e),
                                 "processing_time_ms": processing_time_ms,
                             },
-                        ))
+                        )
                     except Exception:
                         pass
             finally:
@@ -260,7 +261,7 @@ def _process_document_sync(doc_id: str):
         
     except Exception as e:
         import traceback
-        print(f"❌ Document processing failed: {e}")
+        print(f"  Document processing failed: {e}")
         print(traceback.format_exc())
 
 @router.post("/upload", status_code=status.HTTP_202_ACCEPTED)
@@ -297,14 +298,19 @@ async def upload_document(
         )
 
         if existing_doc:
-            print(f"⚠️ Document '{file.filename}' already exists for course {course_id}, skipping duplicate upload")
-            uploaded_docs.append({
-                "id": str(existing_doc.id),
-                "filename": existing_doc.filename,
-                "status": "duplicate",
-                "message": "Document already exists"
-            })
-            continue
+            if existing_doc.status == "ready":
+                print(f"[INFO] Document '{file.filename}' already exists and is READY, skipping duplicate upload")
+                uploaded_docs.append({
+                    "id": str(existing_doc.id),
+                    "filename": existing_doc.filename,
+                    "status": "duplicate",
+                    "message": "Document already exists and is ready"
+                })
+                continue
+            else:
+                print(f"[INFO] Document '{file.filename}' exists with status '{existing_doc.status}', re-triggering processing")
+                uploaded_docs.append({"id": str(existing_doc.id), "filename": existing_doc.filename, "status": "processing"})
+                continue
 
         doc_id = uuid.uuid4()
         s3_key = f"courses/{course_uuid}/{doc_id}/{file.filename}"
@@ -331,7 +337,7 @@ async def upload_document(
 
         # Increment docs_count on Course
         from app.models.course import Course
-        await Course.find_one(Course.id == course_uuid).inc(Course.docs_count, 1)
+        await Course.find_one(Course.id == course_uuid).inc({Course.docs_count: 1})
 
         # Track upload event
         _safe_track_event(
@@ -345,7 +351,7 @@ async def upload_document(
             },
         )
 
-        print(f"📄 Queued document {doc_id} for processing")
+        print(f"[INFO] Queued document {doc_id} for processing")
         uploaded_docs.append({"id": str(doc_id), "filename": file.filename, "status": "processing"})
 
     # Start processing all uploaded documents in background
@@ -358,13 +364,13 @@ async def upload_document(
 async def _process_document_async(doc_id: str):
     """Process a document asynchronously"""
     try:
-        print(f"🔄 Starting processing for document {doc_id}")
+        print(f" [EMOJI]  Starting processing for document {doc_id}")
         # Run sync processing in thread pool
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(_executor, _process_document_sync, doc_id)
-        print(f"✅ Completed processing for document {doc_id}")
+        print(f"  Completed processing for document {doc_id}")
     except Exception as e:
-        print(f"❌ Error processing document {doc_id}: {e}")
+        print(f"  Error processing document {doc_id}: {e}")
         import traceback
         print(traceback.format_exc())
 
@@ -447,6 +453,6 @@ async def cleanup_duplicate_documents(user: User = Depends(current_active_user))
         for dup in duplicates_to_remove:
             await dup.delete()
             removed_count += 1
-            print(f"🗑️ Removed duplicate document: {dup.filename} (ID: {dup.id})")
+            print(f" [EMOJI]   Removed duplicate document: {dup.filename} (ID: {dup.id})")
 
     return {"message": f"Removed {removed_count} duplicate documents", "removed_count": removed_count}

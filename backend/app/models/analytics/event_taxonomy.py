@@ -1,5 +1,5 @@
 """
-Event taxonomy — canonical definitions for all analytics events.
+Event taxonomy   canonical definitions for all analytics events.
 
 Centralizes event type constants so every tracker uses the same strings.
 Organized by category for discoverability.
@@ -21,7 +21,7 @@ class EventCategory(str, Enum):
     UI = "ui"
 
 
-# ── Auth events ──────────────────────────────────────────────
+#   Auth events  
 class AuthEvent(str, Enum):
     LOGIN_SUCCESS = "login_success"
     LOGIN_FAILED = "login_failed"
@@ -29,21 +29,21 @@ class AuthEvent(str, Enum):
     LOGOUT = "logout"
 
 
-# ── Course events ────────────────────────────────────────────
+#   Course events  
 class CourseEvent(str, Enum):
     COURSE_CREATED = "course_created"
     COURSE_VIEWED = "course_viewed"
     COURSE_JOINED = "course_joined"
 
 
-# ── Document events ──────────────────────────────────────────
+#   Document events  
 class DocumentEvent(str, Enum):
     DOCUMENT_UPLOADED = "document_uploaded"
     DOCUMENT_PROCESSED = "document_processed"
     DOCUMENT_FAILED = "document_failed"
 
 
-# ── Graph events ─────────────────────────────────────────────
+#   Graph events  
 class GraphEvent(str, Enum):
     GRAPH_GENERATION_STARTED = "graph_generation_started"
     GRAPH_GENERATED = "graph_generated"
@@ -52,13 +52,13 @@ class GraphEvent(str, Enum):
     GRAPH_VIEWED_3D = "graph_viewed_3d"
 
 
-# ── Session events ───────────────────────────────────────────
+#   Session events  
 class SessionEvent(str, Enum):
     SESSION_STARTED = "session_started"
     SESSION_ENDED = "session_ended"
 
 
-# ── Navigation events ────────────────────────────────────────
+#   Navigation events  
 class NavigationEvent(str, Enum):
     NODE_VISITED = "node_visited"
     NODE_DWELL = "node_dwell"
@@ -67,7 +67,7 @@ class NavigationEvent(str, Enum):
     NODE_CLICKED_3D = "node_clicked_3d"
 
 
-# ── Chat events ──────────────────────────────────────────────
+#   Chat events  
 class ChatEvent(str, Enum):
     QUESTION_ASKED = "question_asked"
     ANSWER_RECEIVED = "answer_received"
@@ -76,19 +76,19 @@ class ChatEvent(str, Enum):
     SOURCE_VIEWED = "source_viewed"
 
 
-# ── RAG events ───────────────────────────────────────────────
+#   RAG events  
 class RAGEvent(str, Enum):
     RAG_QUERY = "rag_query"
     RAG_NO_RESULTS = "rag_no_results"
 
 
-# ── LLM events ───────────────────────────────────────────────
+#   LLM events  
 class LLMEvent(str, Enum):
     LLM_CALL = "llm_call"
     LLM_ERROR = "llm_error"
 
 
-# ── UI events ────────────────────────────────────────────────
+#   UI events  
 class UIEvent(str, Enum):
     PAGE_VIEW = "page_view"
     MODE_SELECTED = "mode_selected"
@@ -96,7 +96,7 @@ class UIEvent(str, Enum):
     API_ERROR = "api_error"
 
 
-# ── Aggregate types ──────────────────────────────────────────
+#   Aggregate types  
 class AggregateType(str, Enum):
     USER_DAILY = "user_daily"
     USER_WEEKLY = "user_weekly"

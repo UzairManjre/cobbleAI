@@ -941,7 +941,7 @@ Check API status.
 - Docker Desktop (running)
 - Python 3.11+
 - Node.js 18+
-- Ollama with `qwen3.5:2b` model
+- Ollama with `gemma4:e2b` model (fine-tuned)
 
 ### Initial Setup
 
@@ -960,10 +960,10 @@ Verify services:
 #### 2. Start Ollama
 ```bash
 # Pull model (first time)
-ollama pull qwen3.5:2b
+ollama pull gemma4:e2b
 
 # Verify it works
-ollama run qwen3.5:2b "Hello"
+ollama run gemma4:e2b "Hello"
 
 # API available at:
 # http://localhost:11434/v1
@@ -1004,7 +1004,7 @@ App: `http://localhost:5173`
 3. Create a course from the dashboard
 4. Click "Enter Study Mode" on the course
 5. Enter a topic (e.g., "Machine Learning")
-6. Wait for graph generation (Qwen 3.5 2B processes it)
+6. Wait for graph generation (Gemma 4 e2b processes it)
 7. Click nodes to navigate, ask questions in the chat panel
 
 ### Database Management
@@ -1212,12 +1212,9 @@ export default apiClient
 **Fix:** Use environment variable `VITE_API_URL` and centralized API client.
 
 #### 6. Model Name Mismatch
-**Symptom:** `.env` and config default to `llama3`, but SETUP.md says `qwen3.5:2b`.
+**Symptom:** .env and config default to `llama3`, but actual model is `gemma4:e2b`.
 
-**Fix:** Update `.env`:
-```
-LLM_MODEL=qwen3.5:2b
-```
+**Fix:** Update config/settings to consistently use `gemma4:e2b`.
 
 #### 7. No Error Handling in Chat Streaming
 **Symptom:** If streaming fails, error message is vague: "Sorry, I encountered an error connecting to the brain."
@@ -1275,7 +1272,7 @@ docker ps  # verify mongo container is running
 ollama list
 
 # Test model
-ollama run qwen3.5:2b "Hello"
+ollama run gemma4:e2b "Hello"
 
 # Check backend logs for errors
 # Look for LLM_BASE_URL in .env (should be http://localhost:11434/v1)
@@ -1438,7 +1435,7 @@ JWT_ALGORITHM=HS256
 
 # LLM
 LLM_BASE_URL=http://localhost:11434/v1
-LLM_MODEL=qwen3.5:2b
+LLM_MODEL=gemma4:e2b
 
 # Embeddings
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
@@ -1481,7 +1478,7 @@ VITE_API_URL=http://127.0.0.1:8000
 ```bash
 # Start everything
 docker-compose up -d
-ollama pull qwen3.5:2b
+ollama pull gemma4:e2b
 cd backend && venv\Scripts\activate && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 cd frontend && npm run dev
 
@@ -1499,7 +1496,7 @@ docker exec -it cobble-mongo mongosh --eval "db.dropDatabase()" cobble_ai
 
 # Check Ollama
 ollama list
-ollama run qwen3.5:2b "Test"
+ollama run gemma4:e2b "Test"
 
 # API health check
 curl http://127.0.0.1:8000/health

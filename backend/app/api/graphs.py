@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from app.api.auth import current_active_user
 from app.models.user import User
 from app.models.graph import KnowledgeGraph, StudySession
@@ -9,6 +10,7 @@ from app.services.graph_builder import GraphBuilder
 from app.services.advanced_graph_generator import AdvancedGraphGenerator
 from pydantic import BaseModel
 import uuid
+import json
 import asyncio
 import time
 from datetime import datetime
@@ -62,7 +64,25 @@ async def generate_graph(
     )
 
     try:
-        graph_data = await generator.generate_graph(req.topic)
+        # Smart context detection: if the topic is a course UUID, use the advanced generator
+        is_course_uuid = False
+        try:
+            topic_uuid = uuid.UUID(req.topic)
+            from app.models.course import CourseModel
+            course = await CourseModel.get(topic_uuid)
+            if course:
+                is_course_uuid = True
+                req.course_id = topic_uuid
+        except Exception:
+            pass
+
+        if is_course_uuid or req.course_id:
+            print(f"  Topic is course ID: {req.topic}. Using Advanced Document Generator.")
+            from app.services.advanced_graph_generator import AdvancedGraphGenerator
+            adv_generator = AdvancedGraphGenerator()
+            graph_data = await adv_generator.generate_from_course(str(req.course_id or req.topic))
+        else:
+            graph_data = await generator.generate_graph(req.topic)
     except Exception as e:
         # Track failure
         _safe_track_event(
@@ -121,7 +141,7 @@ async def generate_graph_from_docs(
     If documents are still pending, this will trigger processing and wait for them.
     """
     start_time = time.time()
-    print(f"🚀 Generating interconnected graph for course {req.course_id}...")
+    print(f"  Generating interconnected graph for course {req.course_id}...")
 
     # Track generation started
     _safe_track_event(
@@ -141,12 +161,12 @@ async def generate_graph_from_docs(
         ).to_list()
 
         if pending_docs:
-            print(f"⏳ Found {len(pending_docs)} pending documents, processing them first...")
+            print(f"  Found {len(pending_docs)} pending documents, processing them first...")
 
             # Process each pending document
             for doc in pending_docs:
                 doc_id = str(doc.id)
-                print(f"🔄 Processing: {doc.filename}")
+                print(f"  Processing: {doc.filename}")
                 # Run processing in thread pool
                 loop = asyncio.get_event_loop()
                 from concurrent.futures import ThreadPoolExecutor
@@ -154,7 +174,7 @@ async def generate_graph_from_docs(
                 await loop.run_in_executor(executor, _process_document_sync, doc_id)
                 executor.shutdown(wait=False)
 
-            print(f"✅ All documents processed")
+            print(f"  All documents processed")
 
         # Now generate the graph
         generator = AdvancedGraphGenerator()
@@ -163,7 +183,7 @@ async def generate_graph_from_docs(
         if not graph_data["nodes"]:
             raise HTTPException(status_code=500, detail="Failed to generate graph from documents. No concepts could be extracted.")
 
-        print(f"✅ Generated graph with {len(graph_data['nodes'])} nodes and {len(graph_data['edges'])} edges")
+        print(f"  Generated graph with {len(graph_data['nodes'])} nodes and {len(graph_data['edges'])} edges")
 
         # Save to database
         graph = KnowledgeGraph(
@@ -203,8 +223,8 @@ async def generate_graph_from_docs(
             },
         )
 
-        print(f"✅ Graph saved with ID: {graph.id}")
-        print(f"✅ Session created with ID: {session.id}")
+        print(f"  Graph saved with ID: {graph.id}")
+        print(f"  Session created with ID: {session.id}")
 
         return {
             "graph_id": str(graph.id),
@@ -224,13 +244,179 @@ async def generate_graph_from_docs(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         import traceback
-        print(f"❌ Graph generation failed:")
+        print(f"  Graph generation failed:")
         print(traceback.format_exc())
         _safe_track_event(
             "graph_generation_failed", "graph", user.id, user.role,
             payload={"topic": "course_documents", "source": "docs", "error": str(e)},
         )
         raise HTTPException(status_code=500, detail=f"Graph generation failed: {str(e)}")
+
+@router.get("/generate-from-docs-stream/{course_id}")
+async def generate_graph_from_docs_stream(
+    course_id: uuid.UUID,
+    request: Request,
+    user_id: str = "",
+):
+    """Stream graph generation progress via Server-Sent Events.
+    
+    Auth is skipped for this endpoint because EventSource (SSE) cannot send
+    custom Authorization headers. The user_id is passed as a query parameter.
+    
+    Sends events:
+      - event: progress  -> { step, totalSteps, message, detail }
+      - event: complete   -> { graph_id, session_id, nodes_count, edges_count }
+      - event: error      -> { message }
+    """
+    # Look up user directly — no JWT needed for SSE
+    user = None
+    if user_id:
+        try:
+            user = await User.get(uuid.UUID(user_id))
+        except Exception:
+            pass
+    if not user:
+        raise HTTPException(status_code=400, detail="Valid user_id query parameter required")
+
+    async def event_stream():
+        start_time = time.time()
+        progress_queue: asyncio.Queue = asyncio.Queue()
+
+        async def progress_callback(step, total_steps, message, detail=""):
+            await progress_queue.put({
+                "type": "progress",
+                "step": step,
+                "totalSteps": total_steps,
+                "message": message,
+                "detail": detail,
+                "elapsed": round(time.time() - start_time, 1)
+            })
+
+        _safe_track_event(
+            "graph_generation_started", "graph", user.id, user.role,
+            payload={"topic": "course_documents", "source": "docs_stream", "course_id": str(course_id)},
+        )
+
+        # Run the pipeline in a background task that feeds the queue
+        async def run_pipeline():
+            try:
+                # Check for pending documents first
+                from app.models.document import DocumentModel
+                from app.api.documents import _process_document_sync
+
+                pending_docs = await DocumentModel.find(
+                    DocumentModel.course_id == course_id,
+                    DocumentModel.status == "pending"
+                ).to_list()
+
+                if pending_docs:
+                    await progress_queue.put({
+                        "type": "progress",
+                        "step": 0, "totalSteps": 6,
+                        "message": "Processing documents",
+                        "detail": f"Processing {len(pending_docs)} pending documents...",
+                        "elapsed": round(time.time() - start_time, 1)
+                    })
+                    for doc in pending_docs:
+                        loop = asyncio.get_event_loop()
+                        from concurrent.futures import ThreadPoolExecutor
+                        executor = ThreadPoolExecutor(max_workers=1)
+                        await loop.run_in_executor(executor, _process_document_sync, str(doc.id))
+                        executor.shutdown(wait=False)
+
+                generator = AdvancedGraphGenerator()
+                graph_data = await generator.generate_from_course(
+                    str(course_id),
+                    progress_callback=progress_callback
+                )
+
+                if not graph_data["nodes"]:
+                    await progress_queue.put({"type": "error", "message": "No concepts could be extracted."})
+                    return
+
+                # Save to database
+                graph = KnowledgeGraph(
+                    topic=f"Course Knowledge Graph (from {len(graph_data.get('_source_docs', []))} documents)",
+                    course_id=course_id,
+                    nodes=graph_data["nodes"],
+                    edges=graph_data["edges"],
+                    created_by=user.id
+                )
+                await graph.insert()
+
+                session = StudySession(
+                    graph_id=graph.id,
+                    student_id=user.id,
+                    current_node_id=graph_data["nodes"][0]["id"] if graph_data["nodes"] else None,
+                    visited_nodes=[graph_data["nodes"][0]["id"]] if graph_data["nodes"] else []
+                )
+                await session.insert()
+
+                generation_time_ms = int((time.time() - start_time) * 1000)
+                _safe_track_event(
+                    "graph_generated", "graph", user.id, user.role,
+                    graph_id=graph.id, session_id=session.id, course_id=course_id,
+                    payload={
+                        "node_count": len(graph_data["nodes"]),
+                        "edge_count": len(graph_data["edges"]),
+                        "generation_time_ms": generation_time_ms,
+                        "source": "docs_stream",
+                    },
+                )
+
+                await progress_queue.put({
+                    "type": "complete",
+                    "graph_id": str(graph.id),
+                    "session_id": str(session.id),
+                    "nodes_count": len(graph_data["nodes"]),
+                    "edges_count": len(graph_data["edges"]),
+                    "elapsed": round(time.time() - start_time, 1)
+                })
+
+            except Exception as e:
+                import traceback
+                print(f"  SSE pipeline error:\n{traceback.format_exc()}")
+                _safe_track_event(
+                    "graph_generation_failed", "graph", user.id, user.role,
+                    payload={"topic": "course_documents", "error": str(e)},
+                )
+                await progress_queue.put({"type": "error", "message": str(e)})
+
+        # Start the pipeline as a background task
+        pipeline_task = asyncio.create_task(run_pipeline())
+
+        try:
+            while True:
+                # Check if client disconnected
+                if await request.is_disconnected():
+                    pipeline_task.cancel()
+                    break
+
+                try:
+                    event = await asyncio.wait_for(progress_queue.get(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    # Send a keepalive comment to prevent proxy/browser timeouts
+                    yield ": keepalive\n\n"
+                    continue
+
+                event_type = event.pop("type", "progress")
+                yield f"event: {event_type}\ndata: {json.dumps(event)}\n\n"
+
+                if event_type in ("complete", "error"):
+                    break
+        except asyncio.CancelledError:
+            pipeline_task.cancel()
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )
+
 
 @router.get("/{graph_id}")
 async def get_graph(
@@ -323,7 +509,7 @@ async def get_course_graph_status(
             "processing_documents": processing_count,
         }
 
-    # No graph, no pending docs — user hasn't uploaded anything yet
+    # No graph, no pending docs   user hasn't uploaded anything yet
     return {
         "status": "no_documents",
         "total_documents": total_docs,

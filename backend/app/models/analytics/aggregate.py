@@ -1,5 +1,5 @@
 """
-AnalyticsAggregate — Pre-computed roll-up tables for fast dashboard queries.
+AnalyticsAggregate   Pre-computed roll-up tables for fast dashboard queries.
 
 Updated by scheduled Celery jobs (hourly/daily/weekly).
 These aggregates power the analytics dashboards without scanning
@@ -19,16 +19,16 @@ def _utcnow():
 
 
 class AnalyticsAggregate(Document):
-    # ── What kind of aggregate ───────────────────────
+    #   What kind of aggregate  
     aggregate_type: str  # "user_daily" | "user_weekly" | "course_daily" | "node_daily" | "global_daily"
 
-    # ── Dimension keys (which slice this covers) ─────
+    #   Dimension keys (which slice this covers)  
     user_id: Optional[uuid.UUID] = None
     course_id: Optional[uuid.UUID] = None
     node_id: Optional[str] = None
     date: date  # The day this aggregate covers
 
-    # ── Pre-computed metrics ─────────────────────────
+    #   Pre-computed metrics  
     metrics: Dict = {}
     # Examples:
     # {

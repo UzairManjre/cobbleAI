@@ -1,5 +1,5 @@
 """
-AnalyticsUserProfile — Persistent per-student learning profile.
+AnalyticsUserProfile   Persistent per-student learning profile.
 
 Grows over time as the student interacts with the platform.
 Updated by scheduled Celery jobs and by event tracking in real-time.
@@ -22,7 +22,7 @@ def _utcnow():
 class AnalyticsUserProfile(Document):
     user_id: uuid.UUID
 
-    # ── Lifetime stats ───────────────────────────────
+    #   Lifetime stats  
     lifetime_stats: Dict = {}
     # {
     #   "total_sessions": 45,
@@ -41,11 +41,11 @@ class AnalyticsUserProfile(Document):
     #   "strong_concepts": ["Python Basics", "Data Structures"]
     # }
 
-    # ── Topic interests (derived from questions + nodes visited) ──
+    #   Topic interests (derived from questions + nodes visited)  
     topic_interests: List[Dict] = []
     # [{ "topic": "Machine Learning", "engagement_score": 0.85, "questions_asked": 45 }]
 
-    # ── Performance indicators (for teachers) ─────────
+    #   Performance indicators (for teachers)  
     performance_indicators: Dict = {}
     # {
     #   "engagement_level": "high",

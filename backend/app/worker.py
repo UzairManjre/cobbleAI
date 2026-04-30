@@ -96,7 +96,7 @@ def process_document(self, doc_id_str: str):
 
         # 6. Mark Success
         asyncio.run(update_doc_status(doc_id, "ready", chunks=pushed_count))
-        print(f"✅ Document {doc_id} processed successfully.")
+        print(f"  Document {doc_id} processed successfully.")
         return True
 
     except Exception as e:

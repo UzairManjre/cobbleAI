@@ -98,10 +98,10 @@ class TutorService:
         if course_id:
             try:
                 rag_start = time.time()
-                print(f"🔍 Tutor retrieving context for: '{question}' in course {course_id}")
-                course_context, sources = retrieve_context(question, course_id, top_k=5, use_rerank=True)
+                print(f"  Tutor retrieving context for: '{question}' in course {course_id}")
+                course_context, sources = await retrieve_context(question, course_id, top_k=5, use_rerank=True)
                 retrieval_time_ms = int((time.time() - rag_start) * 1000)
-                print(f"✅ Retrieved {len(sources)} sources")
+                print(f"  Retrieved {len(sources)} sources")
 
                 # Track RAG performance
                 import asyncio
@@ -113,7 +113,7 @@ class TutorService:
                         for s in sources
                     ])
             except Exception as e:
-                print(f"❌ RAG retrieval failed: {e}")
+                print(f"  RAG retrieval failed: {e}")
                 print(traceback.format_exc())
                 course_context = f"Error retrieving course materials: {str(e)}"
 
@@ -130,7 +130,7 @@ class TutorService:
         )
 
         try:
-            print(f"📤 Sending request to LLM (Model: {self.model})...")
+            print(f"  Sending request to LLM (Model: {self.model})...")
             llm_start = time.time()
             answer = await self.adapter.generate_full_response(
                 system=system_prompt,
@@ -149,9 +149,63 @@ class TutorService:
             }
 
         except Exception as e:
-            print(f"❌ LLM call failed: {e}")
+            print(f"  LLM call failed: {e}")
             print(traceback.format_exc())
             return {
                 "answer": f"I'm sorry, I encountered an error processing your question. Error: {str(e)}",
                 "sources": sources
             }
+
+    async def get_context_and_stream(
+        self,
+        node: Dict,
+        neighbors: List[Dict],
+        question: str,
+        chat_history: List[Dict],
+        course_id: str = None,
+    ):
+        """Get RAG context and return (sources, async_generator) for streaming."""
+        course_context = "No specific course material context available."
+        sources = []
+        source_list_text = "None available"
+
+        if course_id:
+            try:
+                rag_start = time.time()
+                print(f"  Tutor retrieving context for: '{question}' in course {course_id}")
+                course_context, sources = await retrieve_context(question, course_id, top_k=5, use_rerank=True)
+                retrieval_time_ms = int((time.time() - rag_start) * 1000)
+                print(f"  Retrieved {len(sources)} sources")
+
+                import asyncio
+                asyncio.create_task(self._track_rag(course_id, question, sources, retrieval_time_ms))
+
+                if sources:
+                    source_list_text = "\n".join([
+                        f"- {s.get('filename', 'Document')} (Relevance: {s['relevance_score']:.2f})"
+                        for s in sources
+                    ])
+            except Exception as e:
+                print(f"  RAG retrieval failed: {e}")
+                print(traceback.format_exc())
+                course_context = f"Error retrieving course materials: {str(e)}"
+
+        neighbor_text = ", ".join([
+            f"{n['label']} ({n['relation']})" for n in neighbors
+        ]) if neighbors else "None"
+
+        system_prompt = TUTOR_SYSTEM_PROMPT.format(
+            node_label=node.get("label", "Unknown"),
+            node_description=node.get("description", ""),
+            neighbors=neighbor_text,
+            course_context=course_context,
+            source_list=source_list_text
+        )
+
+        stream_gen = self.adapter.generate_response(
+            system=system_prompt,
+            messages=[*chat_history, {"role": "user", "content": question}],
+            max_tokens=2048,
+            stream=True
+        )
+        return sources, stream_gen

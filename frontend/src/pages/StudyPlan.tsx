@@ -112,13 +112,12 @@ export default function StudyPlanView() {
     try {
       setIsLoading(true);
       setError(null);
-      const res = await studyPlansApi.getActive();
+      const res = await studyPlansApi.getActive(courseId);
 
       console.log('StudyPlan - API Response:', res.data);
       console.log('StudyPlan - Plan data:', res.data.study_plan);
-      console.log('StudyPlan - Course ID match:', res.data.study_plan?.course_id === courseId);
 
-      if (res.data.study_plan && res.data.study_plan.course_id === courseId) {
+      if (res.data.study_plan) {
         console.log('Setting plan with topics:', res.data.study_plan.topics?.length);
         setPlan(res.data.study_plan);
         setProgress(res.data.progress);
@@ -155,7 +154,7 @@ export default function StudyPlanView() {
       }
 
       // Check if plan exists - if so, regenerate; otherwise generate
-      const existingRes = await studyPlansApi.getActive();
+      const existingRes = await studyPlansApi.getActive(courseId);
 
       const endpoint = existingRes.data.study_plan ? 'regenerate' : 'generate';
 

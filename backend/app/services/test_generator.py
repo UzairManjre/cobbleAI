@@ -170,7 +170,7 @@ class TestGenerator:
             question_count=question_count
         )
         
-        print(f"📝 Generating {question_count} test questions for {course_title}...")
+        print(f"  Generating {question_count} test questions for {course_title}...")
         
         try:
             response = await self.adapter.generate_full_response(
@@ -193,17 +193,17 @@ class TestGenerator:
 
             # Validate question count
             if len(questions) < question_count:
-                print(f"⚠️  LLM generated only {len(questions)}/{question_count} questions")
+                print(f"   LLM generated only {len(questions)}/{question_count} questions")
             elif len(questions) > question_count:
-                print(f"⚠️  LLM generated {len(questions)} questions, truncating to {question_count}")
+                print(f"   LLM generated {len(questions)} questions, truncating to {question_count}")
                 questions = questions[:question_count]
             
-            print(f"✅ Generated {len(questions)} questions in {latency_ms}ms")
+            print(f"  Generated {len(questions)} questions in {latency_ms}ms")
 
             return questions
             
         except Exception as e:
-            print(f"❌ Test generation failed: {e}")
+            print(f"  Test generation failed: {e}")
             import traceback
             print(traceback.format_exc())
             raise
@@ -230,7 +230,7 @@ class TestGenerator:
             focus_topics=focus_text or "All topics equally"
         )
         
-        print(f"🎯 Generating mock test questions...")
+        print(f"  Generating mock test questions...")
         
         try:
             response = await self.adapter.generate_full_response(
@@ -240,7 +240,7 @@ class TestGenerator:
             )
             
             latency_ms = int((time.time() - start_time) * 1000)
-            print(f"✅ Generated mock test in {latency_ms}ms")
+            print(f"  Generated mock test in {latency_ms}ms")
             
             # Parse JSON
             questions_data = self._extract_json(response)
@@ -255,7 +255,7 @@ class TestGenerator:
             return questions
             
         except Exception as e:
-            print(f"❌ Mock test generation failed: {e}")
+            print(f"  Mock test generation failed: {e}")
             import traceback
             print(traceback.format_exc())
             raise
@@ -319,7 +319,7 @@ class TestGenerator:
             return question
             
         except Exception as e:
-            print(f"⚠️  Failed to create question: {e}")
+            print(f"   Failed to create question: {e}")
             return None
 
 
@@ -383,7 +383,7 @@ Return JSON:
             return is_correct, marks, feedback
             
         except Exception as e:
-            print(f"❌ Short answer evaluation failed: {e}")
+            print(f"  Short answer evaluation failed: {e}")
             return False, 0.0, f"Evaluation error: {str(e)}"
     
     def _extract_json(self, text: str) -> Dict:

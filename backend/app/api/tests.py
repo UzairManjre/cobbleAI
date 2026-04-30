@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 router = APIRouter(prefix="/api/tests", tags=["tests"])
 
-# ── Schemas ──────────────────────────────────────────────────────────────────
+#   Schemas  
 
 class CreateTestRequest(BaseModel):
     course_id: str
@@ -52,7 +52,7 @@ class GenerateMockTestRequest(BaseModel):
     question_count: int = 10
     focus_topics: List[str] = []
 
-# ── Professor Test Management ───────────────────────────────────────────────
+#   Professor Test Management  
 
 @router.post("/create")
 async def create_test(
@@ -158,7 +158,7 @@ async def generate_test_questions(
     test.updated_at = datetime.now(timezone.utc)
     await test.save()
 
-    print(f"✅ Saved {len(questions)} questions to test {test.id} ({test.title})")
+    print(f"  Saved {len(questions)} questions to test {test.id} ({test.title})")
 
     return {
         "test_id": str(test.id),
@@ -258,7 +258,7 @@ async def get_test(test_id: str, user: User = Depends(current_active_user)):
         raise HTTPException(status_code=403, detail="Test has ended")
 
     # Return full test with questions for professors
-    print(f"📤 Returning test {test.id} with {len(test.questions) if test.questions else 0} questions")
+    print(f"  Returning test {test.id} with {len(test.questions) if test.questions else 0} questions")
     
     return {
         "test": {
@@ -284,7 +284,7 @@ async def get_test(test_id: str, user: User = Depends(current_active_user)):
         }
     }
 
-# ── Student Test Taking ─────────────────────────────────────────────────────
+#   Student Test Taking  
 
 @router.post("/{test_id}/start")
 async def start_test(test_id: str, user: User = Depends(current_active_user)):
@@ -471,7 +471,7 @@ async def get_my_attempts(user: User = Depends(current_active_user)):
     
     return {"attempts": attempts}
 
-# ── Mock Tests ──────────────────────────────────────────────────────────────
+#   Mock Tests  
 
 @router.post("/mock/generate")
 async def generate_mock_test(
@@ -588,7 +588,7 @@ async def submit_mock_test(
         "message": "Mock test completed!"
     }
 
-# ── Professor Grading & Analytics ───────────────────────────────────────────
+#   Professor Grading & Analytics  
 
 @router.get("/analytics/{test_id}")
 async def get_test_analytics(test_id: str, user: User = Depends(current_active_user)):
@@ -665,7 +665,7 @@ async def grade_manual(
     
     return {"attempt": attempt, "message": "Answer graded"}
 
-# ── Helper Functions ────────────────────────────────────────────────────────
+#   Helper Functions  
 
 async def update_test_analytics(test_id: uuid.UUID, course_id: uuid.UUID):
     """Update test analytics after submission."""
@@ -697,4 +697,4 @@ async def update_test_analytics(test_id: uuid.UUID, course_id: uuid.UUID):
         await a.save()
         
     except Exception as e:
-        print(f"⚠️  Failed to update analytics: {e}")
+        print(f"   Failed to update analytics: {e}")

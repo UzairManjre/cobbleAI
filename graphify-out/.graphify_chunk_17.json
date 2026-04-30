@@ -1,0 +1,360 @@
+{
+  "nodes": [
+    {
+      "id": "students_page",
+      "label": "Students Page",
+      "file_type": "code",
+      "source_file": "designer_frontend/src/pages/Students.jsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "eslint_config",
+      "label": "ESLint Config",
+      "file_type": "code",
+      "source_file": "frontend/eslint.config.js",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tailwind_config",
+      "label": "Tailwind Config",
+      "file_type": "code",
+      "source_file": "frontend/tailwind.config.js",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "vite_config",
+      "label": "Vite Config",
+      "file_type": "code",
+      "source_file": "frontend/vite.config.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "app_component",
+      "label": "App Component",
+      "file_type": "code",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "main_entry",
+      "label": "Main Entry",
+      "file_type": "code",
+      "source_file": "frontend/src/main.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "auth_api",
+      "label": "Auth API Client",
+      "file_type": "code",
+      "source_file": "frontend/src/api/auth.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "api_client",
+      "label": "API Client",
+      "file_type": "code",
+      "source_file": "frontend/src/api/client.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "courses_api",
+      "label": "Courses API Client",
+      "file_type": "code",
+      "source_file": "frontend/src/api/courses.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "documents_api",
+      "label": "Documents API Client",
+      "file_type": "code",
+      "source_file": "frontend/src/api/documents.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "graphs_api",
+      "label": "Graphs API Client",
+      "file_type": "code",
+      "source_file": "frontend/src/api/graphs.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "api_index",
+      "label": "API Index",
+      "file_type": "code",
+      "source_file": "frontend/src/api/index.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sessions_api",
+      "label": "Sessions API Client",
+      "file_type": "code",
+      "source_file": "frontend/src/api/sessions.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "studyplans_api",
+      "label": "Study Plans API Client",
+      "file_type": "code",
+      "source_file": "frontend/src/api/studyPlans.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tests_api",
+      "label": "Tests API Client",
+      "file_type": "code",
+      "source_file": "frontend/src/api/tests.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "auth_layout",
+      "label": "Auth Layout Component",
+      "file_type": "code",
+      "source_file": "frontend/src/components/auth/AuthLayout.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "knowledge_graph",
+      "label": "Knowledge Graph Component",
+      "file_type": "code",
+      "source_file": "frontend/src/components/graph/KnowledgeGraph.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "node_info",
+      "label": "Node Info Component",
+      "file_type": "code",
+      "source_file": "frontend/src/components/graph/NodeInfo.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "tutor_chat",
+      "label": "Tutor Chat Component",
+      "file_type": "code",
+      "source_file": "frontend/src/components/graph/TutorChat.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "professor_layout",
+      "label": "Professor Layout Component",
+      "file_type": "code",
+      "source_file": "frontend/src/components/layout/ProfessorLayout.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sidebar",
+      "label": "Sidebar Component",
+      "file_type": "code",
+      "source_file": "frontend/src/components/layout/Sidebar.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "topbar",
+      "label": "Topbar Component",
+      "file_type": "code",
+      "source_file": "frontend/src/components/layout/Topbar.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "knowledge_graph",
+      "target": "node_info",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/components/graph/KnowledgeGraph.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "knowledge_graph",
+      "target": "tutor_chat",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/components/graph/KnowledgeGraph.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "node_info",
+      "target": "tutor_chat",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/components/graph/NodeInfo.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "professor_layout",
+      "target": "sidebar",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/components/layout/ProfessorLayout.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "professor_layout",
+      "target": "topbar",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/components/layout/ProfessorLayout.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sidebar",
+      "target": "topbar",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/components/layout/Sidebar.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "api_client",
+      "target": "auth_api",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "frontend/src/api/client.ts",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "api_client",
+      "target": "courses_api",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "frontend/src/api/client.ts",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "api_client",
+      "target": "documents_api",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "frontend/src/api/client.ts",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "knowledge_graph_feature",
+      "label": "Knowledge Graph Feature",
+      "nodes": ["knowledge_graph", "node_info", "tutor_chat"],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/components/graph/KnowledgeGraph.tsx"
+    },
+    {
+      "id": "professor_layout_feature",
+      "label": "Professor Layout Feature",
+      "nodes": ["professor_layout", "sidebar", "topbar"],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/components/layout/ProfessorLayout.tsx"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

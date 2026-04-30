@@ -1,0 +1,22 @@
+C:\CLG\cobbleAI\frontend\src\pages\Assignments.tsx
+C:\CLG\cobbleAI\frontend\src\pages\Chat.tsx
+C:\CLG\cobbleAI\frontend\src\pages\CourseDetail.tsx
+C:\CLG\cobbleAI\frontend\src\pages\Dashboard.tsx
+C:\CLG\cobbleAI\frontend\src\pages\LandingPage.tsx
+C:\CLG\cobbleAI\frontend\src\pages\Login.tsx
+C:\CLG\cobbleAI\frontend\src\pages\MindMap.tsx
+C:\CLG\cobbleAI\frontend\src\pages\ProfessorOnboarding.tsx
+C:\CLG\cobbleAI\frontend\src\pages\ProfessorTests.tsx
+C:\CLG\cobbleAI\frontend\src\pages\Signup.tsx
+C:\CLG\cobbleAI\frontend\src\pages\StudentOnboarding.tsx
+C:\CLG\cobbleAI\frontend\src\pages\Students.tsx
+C:\CLG\cobbleAI\frontend\src\pages\StudyMode.tsx
+C:\CLG\cobbleAI\frontend\src\pages\StudyPlan.tsx
+C:\CLG\cobbleAI\frontend\src\pages\TakeTest.tsx
+C:\CLG\cobbleAI\frontend\src\store\authStore.ts
+C:\CLG\cobbleAI\frontend\src\store\graphStore.ts
+C:\CLG\cobbleAI\frontend\src\utils\analytics.ts
+C:\CLG\cobbleAI\AUDIT_REPORT.md
+C:\CLG\cobbleAI\COBBLEAI_PROJECT_REPORT.md
+C:\CLG\cobbleAI\cobbleai_research_paper_appendix.md
+C:\CLG\cobbleAI\graphify-out\converted\cobble_ai_plan_v2 (1)_643a0042.md

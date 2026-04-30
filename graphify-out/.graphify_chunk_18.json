@@ -1,0 +1,491 @@
+{
+  "nodes": [
+    {
+      "id": "Assignments_Assignments",
+      "label": "Assignments Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/Assignments.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "Chat_Chat",
+      "label": "Chat Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/Chat.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "CourseDetail_CourseDetail",
+      "label": "Course Detail Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/CourseDetail.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "Dashboard_Dashboard",
+      "label": "Dashboard Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/Dashboard.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "LandingPage_LandingPage",
+      "label": "Landing Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/LandingPage.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "Login_Login",
+      "label": "Login Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/Login.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "MindMap_MindMap",
+      "label": "MindMap Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/MindMap.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ProfessorOnboarding_ProfessorOnboarding",
+      "label": "Professor Onboarding Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/ProfessorOnboarding.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ProfessorTests_ProfessorTests",
+      "label": "Professor Tests Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/ProfessorTests.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "Signup_Signup",
+      "label": "Signup Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/Signup.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "StudentOnboarding_StudentOnboarding",
+      "label": "Student Onboarding Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/StudentOnboarding.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "Students_Students",
+      "label": "Students Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/Students.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "StudyMode_StudyMode",
+      "label": "Study Mode Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/StudyMode.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "StudyPlan_StudyPlan",
+      "label": "Study Plan Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/StudyPlan.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "TakeTest_TakeTest",
+      "label": "Take Test Page",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/TakeTest.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "authStore_authStore",
+      "label": "Auth Store (Zustand)",
+      "file_type": "code",
+      "source_file": "frontend/src/store/authStore.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "graphStore_graphStore",
+      "label": "Graph Store (Zustand)",
+      "file_type": "code",
+      "source_file": "frontend/src/store/graphStore.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "analytics_analytics",
+      "label": "Analytics Utility",
+      "file_type": "code",
+      "source_file": "frontend/src/utils/analytics.ts",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "AUDIT_REPORT_AUDIT_REPORT",
+      "label": "CobbleAI Audit Report",
+      "file_type": "document",
+      "source_file": "AUDIT_REPORT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": "Qwen Code",
+      "contributor": null
+    },
+    {
+      "id": "COBBLEAI_PROJECT_REPORT_COBBLEAI_PROJECT_REPORT",
+      "label": "CobbleAI Project Report",
+      "file_type": "document",
+      "source_file": "COBBLEAI_PROJECT_REPORT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cobbleai_research_paper_appendix_cobbleai_research_paper_appendix",
+      "label": "CobbleAI Research Paper Appendix",
+      "file_type": "document",
+      "source_file": "cobbleai_research_paper_appendix.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cobble_ai_plan_v2 (1)_643a0042_cobble_ai_plan_v2",
+      "label": "CobbleAI Plan v2",
+      "file_type": "document",
+      "source_file": "graphify-out/converted/cobble_ai_plan_v2 (1)_643a0042.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "StudyMode_StudyMode",
+      "target": "graphStore_graphStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "frontend/src/pages/StudyMode.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "MindMap_MindMap",
+      "target": "graphStore_graphStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "frontend/src/pages/MindMap.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "CourseDetail_CourseDetail",
+      "target": "graphStore_graphStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "frontend/src/pages/CourseDetail.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "StudyPlan_StudyPlan",
+      "target": "authStore_authStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "frontend/src/pages/StudyPlan.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "TakeTest_TakeTest",
+      "target": "authStore_authStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "frontend/src/pages/TakeTest.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "ProfessorTests_ProfessorTests",
+      "target": "authStore_authStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "frontend/src/pages/ProfessorTests.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "Dashboard_Dashboard",
+      "target": "authStore_authStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "frontend/src/pages/Dashboard.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "Login_Login",
+      "target": "authStore_authStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "frontend/src/pages/Login.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "Signup_Signup",
+      "target": "authStore_authStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "frontend/src/pages/Signup.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "ProfessorOnboarding_ProfessorOnboarding",
+      "target": "authStore_authStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "frontend/src/pages/ProfessorOnboarding.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "StudentOnboarding_StudentOnboarding",
+      "target": "authStore_authStore",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "frontend/src/pages/StudentOnboarding.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "Chat_Chat",
+      "target": "analytics_analytics",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "frontend/src/pages/Chat.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "graphStore_graphStore",
+      "target": "analytics_analytics",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "frontend/src/store/graphStore.ts",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "COBBLEAI_PROJECT_REPORT_COBBLEAI_PROJECT_REPORT",
+      "target": "AUDIT_REPORT_AUDIT_REPORT",
+      "relation": "cites",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "COBBLEAI_PROJECT_REPORT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cobbleai_research_paper_appendix_cobbleai_research_paper_appendix",
+      "target": "COBBLEAI_PROJECT_REPORT_COBBLEAI_PROJECT_REPORT",
+      "relation": "cites",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cobbleai_research_paper_appendix.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "AUDIT_REPORT_AUDIT_REPORT",
+      "target": "cobble_ai_plan_v2 (1)_643a0042_cobble_ai_plan_v2",
+      "relation": "cites",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "AUDIT_REPORT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "COBBLEAI_PROJECT_REPORT_COBBLEAI_PROJECT_REPORT",
+      "target": "cobble_ai_plan_v2 (1)_643a0042_cobble_ai_plan_v2",
+      "relation": "cites",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "COBBLEAI_PROJECT_REPORT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "StudyMode_StudyMode",
+      "target": "MindMap_MindMap",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "frontend/src/pages/StudyMode.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "Login_Login",
+      "target": "Signup_Signup",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/pages/Login.tsx",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "ProfessorOnboarding_ProfessorOnboarding",
+      "target": "StudentOnboarding_StudentOnboarding",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/pages/ProfessorOnboarding.tsx",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "study_mode_flow",
+      "label": "Study Mode Flow",
+      "nodes": [
+        "CourseDetail_CourseDetail",
+        "StudyMode_StudyMode",
+        "graphStore_graphStore"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "frontend/src/pages/StudyMode.tsx"
+    },
+    {
+      "id": "test_management_flow",
+      "label": "Test Management Flow",
+      "nodes": [
+        "ProfessorTests_ProfessorTests",
+        "TakeTest_TakeTest",
+        "authStore_authStore"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "frontend/src/pages/ProfessorTests.tsx"
+    },
+    {
+      "id": "document_pipeline_docs",
+      "label": "Document Processing Pipeline Documentation",
+      "nodes": [
+        "AUDIT_REPORT_AUDIT_REPORT",
+        "COBBLEAI_PROJECT_REPORT_COBBLEAI_PROJECT_REPORT",
+        "cobble_ai_plan_v2 (1)_643a0042_cobble_ai_plan_v2"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "AUDIT_REPORT.md"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

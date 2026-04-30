@@ -1,5 +1,5 @@
 """
-AnalyticsNodeMetrics — Per-node analytics for concept difficulty scoring.
+AnalyticsNodeMetrics   Per-node analytics for concept difficulty scoring.
 
 Allows teachers to see which concepts students struggle with most.
 Aggregated from raw navigation and chat events by scheduled Celery jobs.
@@ -18,13 +18,13 @@ def _utcnow():
 
 
 class AnalyticsNodeMetrics(Document):
-    # ── Identity ─────────────────────────────────────
+    #   Identity  
     graph_id: uuid.UUID
     node_id: str
     node_label: str  # Denormalized for easy querying
     course_id: Optional[uuid.UUID] = None
 
-    # ── Visit metrics ────────────────────────────────
+    #   Visit metrics  
     total_visits: int = 0
     unique_students: int = 0
     total_time_spent_sec: int = 0
@@ -32,19 +32,19 @@ class AnalyticsNodeMetrics(Document):
     avg_dwell_time_sec: float = 0.0
     revisit_rate: float = 0.0  # % of students who came back to this node
 
-    # ── Engagement metrics ───────────────────────────
+    #   Engagement metrics  
     total_questions_asked: int = 0
     avg_questions_per_student: float = 0.0
 
-    # ── Difficulty indicators ────────────────────────
+    #   Difficulty indicators  
     confusion_score: float = 0.0  # Derived: high revisits + high time + many questions
     position_in_graph: int = 0  # Average BFS depth from root
 
-    # ── RAG metrics ──────────────────────────────────
+    #   RAG metrics  
     retrieval_count: int = 0  # How many times RAG pulled context for this node's topic
 
-    # ── Time distribution ────────────────────────────
-    hour_distribution: Dict = {}       # {0: 2, 1: 0, ... 23: 15} — visits per hour
+    #   Time distribution  
+    hour_distribution: Dict = {}       # {0: 2, 1: 0, ... 23: 15}   visits per hour
     day_of_week_distribution: Dict = {}  # {0: 10, 1: 15, ... 6: 8}
 
     updated_at: datetime = Field(default_factory=_utcnow)

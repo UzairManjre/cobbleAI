@@ -40,13 +40,13 @@ const Sidebar = () => {
           </div>
         </NavLink>
 
-        <div className="nav-item ai-insights-nav">
+        <NavLink to="/professor/analytics" className={({isActive}) => `nav-item ${isActive ? 'active' : ''} ai-insights-nav`}>
           <Lightbulb size={20} className="nav-icon" />
           <div className="nav-text">
-            <span className="nav-title">AI insights</span>
-            <span className="nav-subtitle">Common doubts</span>
+            <span className="nav-title">Analytics</span>
+            <span className="nav-subtitle">System & Insights</span>
           </div>
-        </div>
+        </NavLink>
       </nav>
     </div>
   );

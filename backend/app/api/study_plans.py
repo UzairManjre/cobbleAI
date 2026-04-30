@@ -315,22 +315,37 @@ async def regenerate_study_plan(
     }
 
 @router.get("/active")
-async def get_active_plan(user: User = Depends(current_active_user)):
-    """Get the user's active study plan."""
-    plan = await StudyPlan.find_one(
-        StudyPlan.student_id == user.id,
-        StudyPlan.status == "active"
-    )
-    
+async def get_active_plan(
+    course_id: str = None,
+    user: User = Depends(current_active_user)
+):
+    """Get the user's active study plan, optionally filtered by course."""
+    if course_id:
+        try:
+            course_uuid = uuid.UUID(course_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid course ID")
+
+        plan = await StudyPlan.find_one(
+            StudyPlan.course_id == course_uuid,
+            StudyPlan.student_id == user.id,
+            StudyPlan.status == "active"
+        )
+    else:
+        plan = await StudyPlan.find_one(
+            StudyPlan.student_id == user.id,
+            StudyPlan.status == "active"
+        )
+
     if not plan:
         return {"study_plan": None, "progress": None}
-    
+
     # Get progress
     progress = await StudyProgress.find_one(
         StudyProgress.study_plan_id == plan.id,
         StudyProgress.student_id == user.id
     )
-    
+
     return {
         "study_plan": plan,
         "progress": progress
@@ -534,7 +549,7 @@ async def delete_study_plan(plan_id: str, user: User = Depends(current_active_us
     
     return {"message": "Study plan deleted"}
 
-# ── Topic-Level Study Plans ─────────────────────────────────────────────────
+#   Topic-Level Study Plans  
 
 @router.post("/topics/generate")
 async def generate_topic_study_plan(

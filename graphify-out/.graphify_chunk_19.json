@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    {"id":"project_documentation_cobbleai","label":"CobbleAI","file_type":"document","source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"project_documentation_fastapi","label":"FastAPI","file_type":"document","source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"project_documentation_mongodb","label":"MongoDB","file_type":"document","source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"project_documentation_qdrant","label":"Qdrant","file_type":"document","source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"project_documentation_redis","label":"Redis","file_type":"document","source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"project_documentation_minio","label":"MinIO","file_type":"document","source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"project_documentation_ollama","label":"Ollama","file_type":"document","source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"project_documentation_gemma4","label":"Gemma 4 e2b","file_type":"document","source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"project_documentation_react","label":"React","file_type":"document","source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"project_documentation_typescript","label":"TypeScript","file_type":"document","source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"fixes_applied_rag","label":"RAG","file_type":"document","source_file":"FIXES_APPLIED.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"cobble_ai_schema_cc6d5c2a_mongodb","label":"MongoDB","file_type":"document","source_file":"graphify-out/converted/cobble_ai_schema_cc6d5c2a.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"cobble_ai_schema_cc6d5c2a_qdrant","label":"Qdrant","file_type":"document","source_file":"graphify-out/converted/cobble_ai_schema_cc6d5c2a.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"cobble_ai_schema_cc6d5c2a_redis","label":"Redis","file_type":"document","source_file":"graphify-out/converted/cobble_ai_schema_cc6d5c2a.md","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"techstack_gemma4","label":"Gemma 4 e2b","file_type":"document","source_file":"techStack.txt","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"study_plan_20260410_sql","label":"SQL","file_type":"document","source_file":"backend/llm_outputs/study_plan_20260410_150518.txt","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null},
+    {"id":"study_plan_20260410_spark","label":"Apache Spark","file_type":"document","source_file":"backend/llm_outputs/study_plan_20260410_150518.txt","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}
+  ],
+  "edges": [
+    {"source":"project_documentation_cobbleai","target":"project_documentation_fastapi","relation":"uses","confidence":"EXTRACTED","confidence_score":1.0,"source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"weight":1.0},
+    {"source":"project_documentation_cobbleai","target":"project_documentation_react","relation":"uses","confidence":"EXTRACTED","confidence_score":1.0,"source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"weight":1.0},
+    {"source":"project_documentation_fastapi","target":"project_documentation_mongodb","relation":"uses","confidence":"EXTRACTED","confidence_score":1.0,"source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"weight":1.0},
+    {"source":"project_documentation_fastapi","target":"project_documentation_qdrant","relation":"uses","confidence":"EXTRACTED","confidence_score":1.0,"source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"weight":1.0},
+    {"source":"project_documentation_fastapi","target":"project_documentation_redis","relation":"uses","confidence":"EXTRACTED","confidence_score":1.0,"source_file":"PROJECT_DOCUMENTATION.md","source_location":null,"weight":1.0},
+    {"source":"fixes_applied_rag","target":"project_documentation_qdrant","relation":"uses","confidence":"EXTRACTED","confidence_score":1.0,"source_file":"FIXES_APPLIED.md","source_location":null,"weight":1.0},
+    {"source":"fixes_applied_rag","target":"project_documentation_ollama","relation":"uses","confidence":"EXTRACTED","confidence_score":1.0,"source_file":"FIXES_APPLIED.md","source_location":null,"weight":1.0},
+    {"source":"cobble_ai_schema_cc6d5c2a_mongodb","target":"project_documentation_mongodb","relation":"semantically_similar_to","confidence":"INFERRED","confidence_score":0.9,"source_file":"graphify-out/converted/cobble_ai_schema_cc6d5c2a.md","source_location":null,"weight":1.0},
+    {"source":"cobble_ai_schema_cc6d5c2a_qdrant","target":"project_documentation_qdrant","relation":"semantically_similar_to","confidence":"INFERRED","confidence_score":0.9,"source_file":"graphify-out/converted/cobble_ai_schema_cc6d5c2a.md","source_location":null,"weight":1.0},
+    {"source":"techstack_gemma4","target":"project_documentation_gemma4","relation":"semantically_similar_to","confidence":"INFERRED","confidence_score":0.9,"source_file":"techStack.txt","source_location":null,"weight":1.0},
+    {"source":"study_plan_20260410_spark","target":"project_documentation_qdrant","relation":"uses","confidence":"INFERRED","confidence_score":0.7,"source_file":"backend/llm_outputs/study_plan_20260410_150518.txt","source_location":null,"weight":1.0}
+  ],
+  "hyperedges": [
+    {"id":"cobbleai_backend_stack","label":"CobbleAI Backend Stack","nodes":["project_documentation_cobbleai","project_documentation_fastapi","project_documentation_mongodb","project_documentation_qdrant","project_documentation_redis"],"relation":"participate_in","confidence":"EXTRACTED","confidence_score":1.0,"source_file":"PROJECT_DOCUMENTATION.md"},
+    {"id":"cobbleai_frontend_stack","label":"CobbleAI Frontend Stack","nodes":["project_documentation_cobbleai","project_documentation_react","project_documentation_typescript"],"relation":"participate_in","confidence":"EXTRACTED","confidence_score":1.0,"source_file":"PROJECT_DOCUMENTATION.md"},
+    {"id":"rag_pipeline","label":"RAG Pipeline","nodes":["fixes_applied_rag","project_documentation_qdrant","project_documentation_ollama"],"relation":"participate_in","confidence":"EXTRACTED","confidence_score":1.0,"source_file":"FIXES_APPLIED.md"}
+  ],
+  "input_tokens":0,
+  "output_tokens":0
+}

@@ -253,88 +253,89 @@ async def ask_question(
         },
     )
 
-    # Call LLM tutor with RAG
+    # Get context and LLM generator
     tutor = TutorService()
-    result = await tutor.answer_question(
+    raw_sources, stream_gen = await tutor.get_context_and_stream(
         node=current_node,
         neighbors=neighbors,
         question=req.question,
         chat_history=chat_history,
         course_id=str(graph.course_id) if graph.course_id else None,
-        user_id=user.id,
-        session_id=session_id,
     )
-
-    # Save user message
-    user_msg = ChatMessage(
-        session_id=session_id,
-        node_id=req.node_id,
-        role="user",
-        content=req.question,
-        sources=[]
-    )
-    await user_msg.insert()
 
     # Resolve source doc_ids to actual filenames for frontend display
-    raw_sources = result.get("sources", [])
     resolved_sources = []
     if raw_sources:
-        # First, check if filename is already in the source (from Qdrant payload)
         for source in raw_sources:
             did = source.get("doc_id", "")
-            filename = source.get("filename")  # May already be populated from Qdrant
-            
-            # If no filename from Qdrant, try MongoDB lookup
+            filename = source.get("filename")  
             if not filename and did and did != "unknown":
                 try:
                     doc_uuid = uuid.UUID(did)
                     doc = await DocumentModel.get(doc_uuid)
                     if doc:
                         filename = doc.filename
-                        print(f"✅ Resolved doc {did} -> {filename}")
-                    else:
-                        print(f"⚠️ Document {did} not found in MongoDB")
                 except Exception as e:
-                    print(f"❌ Failed to resolve doc {did}: {e}")
+                    print(f"  Failed to resolve doc {did}: {e}")
             
             resolved_sources.append({
                 "doc_id": did,
                 "filename": filename or "Unknown Document",
                 "relevance_score": source.get("relevance_score", 0),
             })
+
+    from fastapi.responses import StreamingResponse
+    import json
+
+    async def event_generator():
+        # Yield sources right away
+        yield f"data: {json.dumps({'type': 'sources', 'sources': resolved_sources})}\n\n"
         
-        print(f"📊 Final resolved sources: {len(resolved_sources)}")
-        for s in resolved_sources:
-            print(f"   - {s['filename']} (score: {s['relevance_score']:.2f})")
+        full_answer = ""
+        # Stream LLM chunks
+        async for chunk in stream_gen:
+            if chunk.startswith("Error:"):
+                yield f"data: {json.dumps({'type': 'error', 'content': chunk})}\n\n"
+                break
+            full_answer += chunk
+            yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
 
-    # Save assistant message with resolved sources
-    assistant_msg = ChatMessage(
-        session_id=session_id,
-        node_id=req.node_id,
-        role="assistant",
-        content=result["answer"],
-        sources=resolved_sources
-    )
-    await assistant_msg.insert()
+        # After streaming completes, save to DB
+        user_msg = ChatMessage(
+            session_id=session_id,
+            node_id=req.node_id,
+            role="user",
+            content=req.question,
+            sources=[]
+        )
+        await user_msg.insert()
 
-    # Track answer received event
-    latency_ms = int((time.time() - start_time) * 1000)
-    _safe_track_event(
-        "answer_received", "chat", user.id, user.role,
-        graph_id=session.graph_id,
-        session_id=session_id,
-        node_id=req.node_id,
-        payload={
-            "answer_length_chars": len(result["answer"]),
-            "has_sources": len(resolved_sources) > 0,
-            "source_count": len(resolved_sources),
-            "response_latency_ms": latency_ms,
-            "node_label": current_node.get("label", ""),
-        },
-    )
+        assistant_msg = ChatMessage(
+            session_id=session_id,
+            node_id=req.node_id,
+            role="assistant",
+            content=full_answer,
+            sources=resolved_sources
+        )
+        await assistant_msg.insert()
 
-    return {
-        "answer": result["answer"],
-        "sources": resolved_sources,
-        "node_id": req.node_id
-    }
+        # Track answer received event
+        latency_ms = int((time.time() - start_time) * 1000)
+        _safe_track_event(
+            "answer_received", "chat", user.id, user.role,
+            graph_id=session.graph_id,
+            session_id=session_id,
+            node_id=req.node_id,
+            payload={
+                "answer_length_chars": len(full_answer),
+                "has_sources": len(resolved_sources) > 0,
+                "source_count": len(resolved_sources),
+                "response_latency_ms": latency_ms,
+                "node_label": current_node.get("label", ""),
+            },
+        )
+
+        # Indicate completion
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

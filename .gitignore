@@ -1,0 +1,55 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# Python / Backend
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/.pytest_cache/
+backend/env/
+backend/venv/
+backend/.venv/
+backend/.env
+backend/.env.*
+backend/celerybeat-schedule
+backend/*.log
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.*
+frontend/.env.local
+frontend/.eslintcache
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+designer_frontend/node_modules/
+designer_frontend/dist/
+designer_frontend/build/
+designer_frontend/.env
+designer_frontend/.env.*
+designer_frontend/.env.local
+
+# Qwen generated / Local models
+.qwen/
+
+# Docker / Deployment
+docker-compose.override.yml

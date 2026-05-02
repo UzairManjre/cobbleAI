@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
+import NewLanding from './pages/NewLanding';
 import ProfessorOnboarding from './pages/ProfessorOnboarding';
 import StudentOnboarding from './pages/StudentOnboarding';
 import Login from './pages/Login';
@@ -46,7 +47,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<NewLanding />} />
+        <Route path="/role-select" element={<LandingPage />} />
         <Route path="/login/student" element={<Login role="student" />} />
         <Route path="/login/professor" element={<Login role="professor" />} />
         <Route path="/signup/student" element={<Signup role="student" />} />

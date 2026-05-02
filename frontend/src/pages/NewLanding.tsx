@@ -85,10 +85,10 @@ export default function NewLanding() {
         </motion.div>
 
         <motion.div className="flex flex-col sm:flex-row gap-6 mt-8" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-          <button onClick={handleStart} className="bg-[#ff5c5c] text-white px-10 py-4 rounded-full text-xl font-semibold hover:bg-[#ff4444] transition-all hover:scale-105 hover:shadow-xl hover:shadow-[#ff5c5c]/20">
+          <button onClick={() => navigate('/signup/student')} className="bg-[#ff5c5c] text-white px-10 py-4 rounded-full text-xl font-semibold hover:bg-[#ff4444] transition-all hover:scale-105 hover:shadow-xl hover:shadow-[#ff5c5c]/20">
             Join a Class
           </button>
-          <button onClick={handleStart} className="bg-[#ff5c5c] text-white px-10 py-4 rounded-full text-xl font-semibold hover:bg-[#ff4444] transition-all hover:scale-105 hover:shadow-xl hover:shadow-[#ff5c5c]/20">
+          <button onClick={() => navigate('/signup/professor')} className="bg-[#ff5c5c] text-white px-10 py-4 rounded-full text-xl font-semibold hover:bg-[#ff4444] transition-all hover:scale-105 hover:shadow-xl hover:shadow-[#ff5c5c]/20">
             Create a Class
           </button>
         </motion.div>

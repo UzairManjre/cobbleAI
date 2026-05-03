@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-// Get API URL from environment variable or fallback to 127.0.0.1:8000
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+// Get API URL from environment variable or fallback to relative path for Vite proxy
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // Create axios instance with default config
 const api = axios.create({

@@ -33,34 +33,13 @@ Our architecture is split into a scalable **FastAPI** backend and a responsive *
 
 Getting Cobble AI running locally requires Docker and a working Python 3.10+ environment.
 
-### 1. Start Infrastructure
-We use Docker to orchestrate our databases and event brokers. 
+To make setup as easy as possible, we have provided a universal setup script that will check ports, spin up Docker, configure the Python environment, and start the frontend automatically.
+
 ```bash
-docker-compose up -d
-```
-*Spins up MongoDB, Redis, Qdrant, and MinIO.*
-
-### 2. Start the Backend
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Start the Celery task queue listener
-celery -A app.core.celery_app worker --loglevel=info &
-
-# Start the FastAPI Rest API
-uvicorn app.main:app --reload --port 8000
+bash start_cobble.sh
 ```
 
-### 3. Start the Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Navigate to `http://localhost:5173` to access the Cobble AI application.
+Once the script completes, navigate to `http://localhost:5173` to access the Cobble AI application.
 
 ## 📁 Repository Structure
 

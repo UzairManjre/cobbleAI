@@ -16,3 +16,6 @@ python-docx
 python-pptx
 openai
 pandas
+boto3
+nltk
+slowapi

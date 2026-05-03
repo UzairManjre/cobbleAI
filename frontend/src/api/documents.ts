@@ -14,7 +14,7 @@ export const documentsApi = {
   },
   
   list: (courseId: string) => {
-    return api.get('/documents', { params: { course_id: courseId } });
+    return api.get('/documents/', { params: { course_id: courseId } });
   },
   
   processAllPending: () => {

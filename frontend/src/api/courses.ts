@@ -3,11 +3,11 @@ import api from './client';
 // Courses API
 export const coursesApi = {
   create: (data: { title: string; code: string }) => {
-    return api.post('/courses', data);
+    return api.post('/courses/', data);
   },
   
   list: () => {
-    return api.get('/courses');
+    return api.get('/courses/');
   },
   
   get: (courseId: string) => {

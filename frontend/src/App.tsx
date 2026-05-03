@@ -6,6 +6,8 @@ import ProfessorOnboarding from './pages/ProfessorOnboarding';
 import StudentOnboarding from './pages/StudentOnboarding';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import StudentAuthFlow from './pages/StudentAuthFlow';
+import ProfessorAuthFlow from './pages/ProfessorAuthFlow';
 import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
 import Assignments from './pages/Assignments';
@@ -49,10 +51,10 @@ export default function App() {
         {/* Public Routes */}
         <Route path="/" element={<NewLanding />} />
         <Route path="/role-select" element={<LandingPage />} />
-        <Route path="/login/student" element={<Login role="student" />} />
-        <Route path="/login/professor" element={<Login role="professor" />} />
-        <Route path="/signup/student" element={<Signup role="student" />} />
-        <Route path="/signup/professor" element={<Signup role="professor" />} />
+        <Route path="/login/student" element={<StudentAuthFlow initialStep="welcome" />} />
+        <Route path="/login/professor" element={<ProfessorAuthFlow initialStep="welcome" />} />
+        <Route path="/signup/student" element={<StudentAuthFlow initialStep="welcome" />} />
+        <Route path="/signup/professor" element={<ProfessorAuthFlow initialStep="welcome" />} />
 
         <Route
           path="/onboarding/professor"

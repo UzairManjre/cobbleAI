@@ -340,7 +340,10 @@ export default function CourseDetail() {
                     <span className="gen-result-stat-label">Time</span>
                   </div>
                 </div>
-                <button onClick={dismissOverlay} className="gen-result-btn">
+                <button onClick={() => {
+                  dismissOverlay();
+                  navigate(`/course/${courseId}/map`);
+                }} className="gen-result-btn">
                   <Sparkles size={16} />
                   View Knowledge Graph
                 </button>

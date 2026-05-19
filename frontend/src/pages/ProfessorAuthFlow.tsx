@@ -25,12 +25,13 @@ export default function ProfessorAuthFlow({ initialStep = 'welcome' }: { initial
       if (step === 'login') {
         res = await authApi.login(email, password);
       } else {
-        res = await authApi.register({
+        await authApi.register({
           email,
           password,
           name,
           role: 'professor'
         });
+        res = await authApi.login(email, password);
       }
 
       const token = res.data.access_token;
@@ -220,7 +221,7 @@ export default function ProfessorAuthFlow({ initialStep = 'welcome' }: { initial
                {/* Illustration overlapping the band */}
                <div className="absolute top-[45%] -translate-y-1/2 right-[-2rem] xl:right-[-4rem] w-[110%] max-w-[800px] h-[700px] pointer-events-none">
                  <img 
-                   src="/professor_illustration.png" 
+                   src="/professor_illustration.svg" 
                    alt="Professor Illustration" 
                    className="w-full h-full object-contain drop-shadow-md" 
                    onError={(e) => e.currentTarget.style.display = 'none'} 

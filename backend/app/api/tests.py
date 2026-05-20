@@ -209,8 +209,10 @@ async def get_all_professor_tests(user: User = Depends(current_active_user)):
     if not course_ids:
         return {"tests": []}
     
+    from beanie.operators import In
+    
     # 2. Find all tests for these courses
-    tests = await Test.find({"course_id": {"$in": course_ids}}).to_list()
+    tests = await Test.find(In(Test.course_id, course_ids)).to_list()
     
     serialized_tests = []
     for test in tests:

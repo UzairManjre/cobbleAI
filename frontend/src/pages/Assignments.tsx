@@ -159,21 +159,24 @@ export default function Assignments() {
   // Metrics calculations
   const totalCount = assignments.length;
   const publishedAssignments = useMemo(() => assignments.filter(a => a.status === 'published'), [assignments]);
-  const upcomingAssignments = useMemo(() => {
-    return publishedAssignments.filter(a => {
-      if (!a.available_until) return true;
-      return new Date(a.available_until).getTime() > new Date().getTime();
+  const draftAssignments = useMemo(() => assignments.filter(a => a.status === 'draft'), [assignments]);
+  
+  const displayAssignments = useMemo(() => {
+    return [...assignments].sort((a, b) => {
+      if (a.status !== b.status) return a.status === 'draft' ? -1 : 1; // Drafts first
+      if (!a.available_until) return 1;
+      if (!b.available_until) return -1;
+      return new Date(a.available_until).getTime() - new Date(b.available_until).getTime();
     });
-  }, [publishedAssignments]);
+  }, [assignments]);
 
-  const draftCount = useMemo(() => assignments.filter(a => a.status === 'draft').length, [assignments]);
+  const draftCount = draftAssignments.length;
   const publishedCount = publishedAssignments.length;
-  const upcomingCount = upcomingAssignments.length;
 
-  // Grouped published assignments count by course
+  // Grouped assignments count by course
   const courseAssignmentCounts = useMemo(() => {
     return courses.map(c => {
-      const count = publishedAssignments.filter(a => a.course_id === c.id).length;
+      const count = assignments.filter(a => a.course_id === c.id).length;
       const meta = getSubjectMeta(c.code, c.title);
       return {
         id: c.id,
@@ -184,7 +187,7 @@ export default function Assignments() {
         icon: meta.icon
       };
     }).filter(c => c.count > 0);
-  }, [courses, publishedAssignments]);
+  }, [courses, assignments]);
 
   return (
     <div className="assignments-container animate-in fade-in duration-300">
@@ -206,7 +209,7 @@ export default function Assignments() {
           <span className="stats-label">Total Assignments</span>
           <span className="stats-value">{totalCount}</span>
           <div className="stats-pill">
-            <span>{upcomingCount} Upcoming • {publishedCount} Published</span>
+            <span>{draftCount} Drafts • {publishedCount} Published</span>
           </div>
         </div>
 
@@ -226,27 +229,28 @@ export default function Assignments() {
           <div className="column-header">
             <div className="header-title-block">
               <Calendar size={20} className="header-icon" />
-              <h3>Upcoming Assignments</h3>
+              <h3>Your Assignments</h3>
             </div>
-            {upcomingAssignments.length > 0 && (
+            {displayAssignments.length > 0 && (
               <button className="text-action-link">View All &gt;</button>
             )}
           </div>
 
           {isLoading ? (
             <div className="column-loading">Loading assignments...</div>
-          ) : upcomingAssignments.length === 0 ? (
+          ) : displayAssignments.length === 0 ? (
             <div className="column-empty-state">
               <FolderOpen size={48} className="empty-icon" />
-              <p>No upcoming assignments found.</p>
-              <span>Click "Create New Assignment" on the right to publish one.</span>
+              <p>No assignments found.</p>
+              <span>Click "Create New Assignment" on the right to start.</span>
             </div>
           ) : (
             <div className="upcoming-list">
-              {upcomingAssignments.map((ass) => {
+              {displayAssignments.map((ass) => {
                 const meta = getSubjectMeta('', ass.course_title);
                 const daysLeft = getDaysLeft(ass.available_until);
                 const isOverdue = daysLeft === 'Overdue';
+                const isDraft = ass.status === 'draft';
 
                 return (
                   <div 
@@ -259,17 +263,24 @@ export default function Assignments() {
                         {meta.icon}
                       </div>
                       <div className="card-details">
-                        <h4>{ass.title}</h4>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                          <h4>{ass.title}</h4>
+                          <span style={{fontSize: '11px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', background: isDraft ? '#f1f3f4' : '#e6f4ea', color: isDraft ? '#5f6368' : '#1e8e3e'}}>
+                            {isDraft ? 'DRAFT' : 'PUBLISHED'}
+                          </span>
+                        </div>
                         <span className="card-course-title">{ass.course_title}</span>
                       </div>
                     </div>
 
                     <div className="card-right-section">
                       <div className="card-dates-info">
-                        <span className="due-date-text">{formatDate(ass.available_until)}</span>
-                        <span className={`days-left-tag ${isOverdue ? 'overdue' : ''}`}>
-                          {daysLeft}
-                        </span>
+                        <span className="due-date-text">{isDraft ? 'Not Published' : formatDate(ass.available_until)}</span>
+                        {!isDraft && (
+                          <span className={`days-left-tag ${isOverdue ? 'overdue' : ''}`}>
+                            {daysLeft}
+                          </span>
+                        )}
                       </div>
                       <ChevronRight size={18} className="chevron-icon" />
                     </div>
@@ -280,12 +291,12 @@ export default function Assignments() {
               <button 
                 className="view-all-upcoming-btn"
                 onClick={() => {
-                  if (upcomingAssignments.length > 0) {
-                    navigate(`/professor/courses/${upcomingAssignments[0].course_id}/tests`);
+                  if (displayAssignments.length > 0) {
+                    navigate(`/professor/courses/${displayAssignments[0].course_id}/tests`);
                   }
                 }}
               >
-                View All Upcoming Assignments &gt;
+                View All Assignments &gt;
               </button>
             </div>
           )}
@@ -309,12 +320,12 @@ export default function Assignments() {
             </div>
           </div>
 
-          {/* Published Assignments summary list */}
+          {/* Assignments summary list */}
           <div className="published-summary-card">
             <div className="sidebar-header-row">
               <div className="sidebar-header">
                 <Send size={16} className="sidebar-header-icon" />
-                <h4>Published Assignments</h4>
+                <h4>Course Assignments</h4>
               </div>
               {courseAssignmentCounts.length > 0 && (
                 <button className="text-action-link">View All &gt;</button>

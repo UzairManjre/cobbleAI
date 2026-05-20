@@ -22,7 +22,7 @@ import { useAuthStore } from '../store/authStore';
 import './Dashboard.css';
 
 export default function Dashboard() {
-  const { token, logout } = useAuthStore();
+  const { token, role, logout } = useAuthStore();
   const navigate = useNavigate();
 
   // Data State
@@ -44,7 +44,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboardData();
-  }, [token]);
+  }, [token, role]);
 
   const loadDashboardData = async () => {
     if (!token) return;
@@ -71,22 +71,26 @@ export default function Dashboard() {
       setCourses([]);
     }
 
-    // 3. Load tests
-    try {
-      const testsRes = await testsApi.listAllProfessorTests();
-      setTests(testsRes.data?.tests || []);
-    } catch (err) {
-      console.error('Error loading tests:', err);
-      setTests([]);
+    // 3. Load tests (Professor Only)
+    if (role === 'professor') {
+      try {
+        const testsRes = await testsApi.listAllProfessorTests();
+        setTests(testsRes.data?.tests || []);
+      } catch (err) {
+        console.error('Error loading tests:', err);
+        setTests([]);
+      }
     }
 
-    // 4. Load students
-    try {
-      const studentsRes = await coursesApi.getProfessorStudents();
-      setStudents(studentsRes.data || []);
-    } catch (err) {
-      console.error('Error loading students:', err);
-      setStudents([]);
+    // 4. Load students (Professor Only)
+    if (role === 'professor') {
+      try {
+        const studentsRes = await coursesApi.getProfessorStudents();
+        setStudents(studentsRes.data || []);
+      } catch (err) {
+        console.error('Error loading students:', err);
+        setStudents([]);
+      }
     }
 
     // 5. Load documents & graph statuses for all courses in parallel
@@ -136,13 +140,15 @@ export default function Dashboard() {
       setCourseGraphStatuses({});
     }
 
-    // 6. Load analytics data
-    try {
-      const analyticsRes = await analyticsApi.getDashboardData();
-      setAnalyticsData(analyticsRes.data || null);
-    } catch (err) {
-      console.error('Error fetching analytics data:', err);
-      setAnalyticsData(null);
+    // 6. Load analytics data (Professor Only)
+    if (role === 'professor') {
+      try {
+        const analyticsRes = await analyticsApi.getDashboardData();
+        setAnalyticsData(analyticsRes.data || null);
+      } catch (err) {
+        console.error('Error fetching analytics data:', err);
+        setAnalyticsData(null);
+      }
     }
 
     setIsLoading(false);

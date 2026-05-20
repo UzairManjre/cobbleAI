@@ -475,6 +475,9 @@ export default function Dashboard() {
                 } else if (status === 'processing') {
                   statusLabel = 'Training...';
                   statusClass = 'training';
+                } else if (c.docs_count > 0) {
+                  statusLabel = 'Ready to Train';
+                  statusClass = 'training';
                 }
 
                 return (

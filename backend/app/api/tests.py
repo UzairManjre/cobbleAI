@@ -195,6 +195,44 @@ async def publish_test(test_id: str, user: User = Depends(current_active_user)):
     
     return {"test": test, "message": "Test published successfully"}
 
+@router.get("/professor/all")
+async def get_all_professor_tests(user: User = Depends(current_active_user)):
+    """Get all tests across all courses owned by the authenticated professor."""
+    if user.role != "professor":
+        raise HTTPException(status_code=403, detail="Only professors can access this endpoint")
+    
+    # 1. Find all courses owned by the professor
+    courses = await Course.find(Course.professor_id == user.id).to_list()
+    course_ids = [c.id for c in courses]
+    course_map = {c.id: c.title for c in courses}
+    
+    if not course_ids:
+        return {"tests": []}
+    
+    # 2. Find all tests for these courses
+    tests = await Test.find({"course_id": {"$in": course_ids}}).to_list()
+    
+    serialized_tests = []
+    for test in tests:
+        serialized_tests.append({
+            "id": str(test.id),
+            "course_id": str(test.course_id),
+            "course_title": course_map.get(test.course_id, "Unknown Course"),
+            "title": test.title,
+            "description": test.description,
+            "duration_minutes": test.duration_minutes,
+            "passing_percentage": test.passing_percentage,
+            "test_type": test.test_type,
+            "status": test.status,
+            "questions": [],  # Don't return questions in list view
+            "question_count": len(test.questions) if test.questions else 0,
+            "total_marks": test.total_marks,
+            "created_at": test.created_at.isoformat() if test.created_at else None,
+            "available_until": test.available_until.isoformat() if test.available_until else None,
+        })
+        
+    return {"tests": serialized_tests}
+
 @router.get("/course/{course_id}")
 async def get_course_tests(course_id: str, user: User = Depends(current_active_user)):
     """Get all tests for a course (professor sees all, student sees published)."""

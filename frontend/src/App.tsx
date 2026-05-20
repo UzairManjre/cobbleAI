@@ -9,6 +9,7 @@ import Signup from './pages/Signup';
 import StudentAuthFlow from './pages/StudentAuthFlow';
 import ProfessorAuthFlow from './pages/ProfessorAuthFlow';
 import Dashboard from './pages/Dashboard';
+import MyClasses from './pages/MyClasses';
 import Students from './pages/Students';
 import Assignments from './pages/Assignments';
 import CourseDetail from './pages/CourseDetail';
@@ -147,7 +148,8 @@ export default function App() {
         >
           <Route index element={<Navigate to="/professor/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="students" element={<Students />} />
+          <Route path="classes" element={<MyClasses />} />
+          <Route path="students" element={<Navigate to="/professor/classes?tab=students" replace />} />
           <Route path="assignments" element={<Assignments />} />
           <Route path="analytics" element={<AnalyticsDashboard />} />
           

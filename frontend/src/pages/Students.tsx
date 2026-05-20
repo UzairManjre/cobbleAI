@@ -85,7 +85,7 @@ const Students = () => {
                 <tr key={student.id} className="student-row">
                   <td>
                     <div className="designer-flex designer-items-center designer-gap-3">
-                      <img src={`https://randomuser.me/api/portraits/men/${student.bg}`} alt={student.name} className="designer-avatar" />
+                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random&color=fff`} alt={student.name} className="designer-avatar" />
                       <span>{student.name}</span>
                     </div>
                   </td>

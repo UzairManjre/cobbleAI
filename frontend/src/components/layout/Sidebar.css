@@ -52,12 +52,12 @@
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(0, 0, 0, 0.03);
   color: var(--designer-text-primary);
 }
 
 .nav-item.active {
-  background: var(--designer-card-bg-hover);
+  background: var(--designer-accent-green-bg);
   color: var(--designer-accent-green);
 }
 
@@ -71,7 +71,7 @@
 }
 
 .nav-title {
-  font-weight: 500;
+  font-weight: 600;
   font-size: 0.95rem;
   line-height: 1.2;
 }
@@ -83,6 +83,6 @@
 
 .ai-insights-nav {
   margin-top: 1rem;
-  border: 1px solid var(--designer-border);
-  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--designer-accent-green-bg);
+  background: var(--designer-accent-green-bg);
 }

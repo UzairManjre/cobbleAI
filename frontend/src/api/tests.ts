@@ -6,6 +6,10 @@ export const testsApi = {
     return api.post('/api/tests/create', data);
   },
   
+  listAllProfessorTests: () => {
+    return api.get('/api/tests/professor/all');
+  },
+  
   generateQuestions: (testId: string, data: Record<string, any>) => {
     return api.post(`/api/tests/${testId}/generate-questions`, data);
   },

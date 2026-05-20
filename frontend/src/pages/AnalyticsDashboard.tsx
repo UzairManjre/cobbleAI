@@ -81,22 +81,22 @@ export default function AnalyticsDashboard() {
         <div className="stat-card">
           <span className="stat-label">🧠 Knowledge Graph</span>
           <span className="stat-value">{data.content?.knowledge_graph?.nodes?.length || 0} Nodes</span>
-          <span className="stat-trend">+{Math.floor(Math.random() * 5)} today</span>
+          <span className="stat-trend">Concepts extracted</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">📦 Total Ingestion</span>
           <span className="stat-value">{data.content?.total_docs || 0} Docs</span>
-          <span className="stat-trend">2.4k Chunks</span>
+          <span className="stat-trend">{data.content?.total_chunks || 0} Chunks</span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">⚡ Avg Latency</span>
-          <span className="stat-value">124ms</span>
-          <span className="stat-trend down">-12% vs last hr</span>
+          <span className="stat-label">📡 Intent Signals</span>
+          <span className="stat-value">{data.engagement?.intent_radar?.reduce((s: number, r: any) => s + (r.count || 0), 0) || 0}</span>
+          <span className="stat-trend">Total interactions</span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">🎯 Engagement</span>
-          <span className="stat-value">84%</span>
-          <span className="stat-trend">0.95 Conf.</span>
+          <span className="stat-label">🎯 Active Modes</span>
+          <span className="stat-value">{data.engagement?.intent_radar?.length || 0}</span>
+          <span className="stat-trend">Intent categories</span>
         </div>
       </div>
 

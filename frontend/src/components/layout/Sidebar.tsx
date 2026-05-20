@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { AppWindow, Users, FileText, Lightbulb } from 'lucide-react';
+import { Home, GraduationCap, Users, FileText, Lightbulb } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = () => {
@@ -17,18 +17,18 @@ const Sidebar = () => {
       
       <nav className="sidebar-nav">
         <NavLink to="/professor/dashboard" end className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-          <AppWindow size={20} className="nav-icon" />
+          <Home size={20} className="nav-icon" />
           <div className="nav-text">
-            <span className="nav-title">My classes</span>
-            <span className="nav-subtitle">All active classes</span>
+            <span className="nav-title">Dashboard</span>
+            <span className="nav-subtitle">Overview & Schedule</span>
           </div>
         </NavLink>
 
-        <NavLink to="/professor/students" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-          <Users size={20} className="nav-icon" />
+        <NavLink to="/professor/classes" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+          <GraduationCap size={20} className="nav-icon" />
           <div className="nav-text">
-            <span className="nav-title">Students</span>
-            <span className="nav-subtitle">Roster and progress</span>
+            <span className="nav-title">My classes</span>
+            <span className="nav-subtitle">All active classes</span>
           </div>
         </NavLink>
 

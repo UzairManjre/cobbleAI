@@ -6,12 +6,16 @@ import uuid
 class CourseCreate(BaseModel):
     title: str
     code: str
+    description: Optional[str] = None
+    schedule: Optional[str] = None
 
 class CourseRead(BaseModel):
     id: uuid.UUID
     professor_id: uuid.UUID
     title: str
     code: str
+    description: Optional[str] = None
+    schedule: Optional[str] = None
     created_at: datetime
     docs_count: int = 0
     status: str = "ready"

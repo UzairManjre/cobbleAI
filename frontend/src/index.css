@@ -109,28 +109,28 @@
 
   /* Designer theme variables */
   :root {
-    --designer-bg: #0f1519;
-    --designer-sidebar-bg: #151b1f;
-    --designer-card-bg: #1c2328;
-    --designer-card-bg-hover: #232c32;
-    --designer-text-primary: #e6eef0;
-    --designer-text-secondary: #9dafb7;
-    --designer-border: #2b353a;
+    --designer-bg: #FCFCFC;
+    --designer-sidebar-bg: #FFFFFF;
+    --designer-card-bg: #FFFFFF;
+    --designer-card-bg-hover: #FAFAFA;
+    --designer-text-primary: #111827;
+    --designer-text-secondary: #4B5563;
+    --designer-border: #E5E7EB;
 
-    --designer-accent-green: #ff4f54;
-    --designer-accent-green-dark: #e03a3f;
-    --designer-accent-green-bg: rgba(255, 79, 84, 0.1);
-    --designer-accent-green-bg-solid: #3d1516;
+    --designer-accent-green: #FF4D5B;
+    --designer-accent-green-dark: #E04450;
+    --designer-accent-green-bg: rgba(255, 77, 91, 0.08);
+    --designer-accent-green-bg-solid: #FDF0EF;
 
-    --designer-badge-purple-bg: #29103e;
-    --designer-badge-purple-border: #6d3eb0;
-    --designer-badge-purple-text: #e1c0fa;
+    --designer-badge-purple-bg: #F3E8FF;
+    --designer-badge-purple-border: #C084FC;
+    --designer-badge-purple-text: #6B21A8;
 
-    --designer-badge-orange-bg: #4a270d;
-    --designer-badge-orange-border: #c46d2f;
-    --designer-badge-orange-text: #fcce9d;
+    --designer-badge-orange-bg: #FFEDD5;
+    --designer-badge-orange-border: #FDBA74;
+    --designer-badge-orange-text: #9A3412;
 
-    --designer-input-bg: #0f1519;
+    --designer-input-bg: #FAFAFA;
   }
 
   /* Designer utility classes */
@@ -166,7 +166,7 @@
   .designer-btn-primary {
     background: var(--designer-accent-green);
     border-color: var(--designer-accent-green);
-    color: #000;
+    color: #fff;
   }
 
   .designer-btn-primary:hover {

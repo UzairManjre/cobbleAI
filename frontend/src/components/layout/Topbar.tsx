@@ -1,16 +1,39 @@
-import React from 'react';
-import { Search, Bell, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Bell, ChevronDown } from 'lucide-react';
 import './Topbar.css';
 import { useAuthStore } from '../../store/authStore';
+import { authApi } from '../../api';
 
 const Topbar = () => {
-  const { logout } = useAuthStore();
+  const { token, logout } = useAuthStore();
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    if (!token) return;
+    const fetchUser = async () => {
+      try {
+        const res = await authApi.getCurrentUser();
+        if (res.data && res.data.name) {
+          setUserName(res.data.name);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user in Topbar:', err);
+      }
+    };
+    fetchUser();
+  }, [token]);
+
+  const greeting = useMemo(() => {
+    const hours = new Date().getHours();
+    if (hours < 12) return 'Morning';
+    if (hours < 17) return 'Afternoon';
+    return 'Evening';
+  }, []);
 
   return (
     <div className="topbar">
-      <div className="search-container">
-        <Search className="search-icon" size={18} />
-        <input type="text" placeholder="Search..." className="designer-search-input" />
+      <div className="topbar-greeting">
+        {greeting} {userName ? userName.split(' ')[0] : 'Professor'},
       </div>
 
       <div className="topbar-actions">
@@ -21,7 +44,7 @@ const Topbar = () => {
         
         <div className="profile-menu" onClick={logout}>
           <img 
-            src="https://randomuser.me/api/portraits/men/32.jpg" 
+            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName || 'Professor')}&background=random&color=fff`} 
             alt="Profile" 
             className="designer-avatar"
           />

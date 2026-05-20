@@ -47,7 +47,9 @@ async def create_course(
     course = Course(
         professor_id=user.id,
         title=course_in.title,
-        code=course_in.code
+        code=course_in.code,
+        description=course_in.description,
+        schedule=course_in.schedule
     )
     await course.insert()
 
@@ -63,6 +65,8 @@ async def create_course(
         professor_id=course.professor_id,
         title=course.title,
         code=course.code,
+        description=course.description,
+        schedule=course.schedule,
         created_at=course.created_at,
         docs_count=course.docs_count,
         status="ready"
@@ -83,6 +87,8 @@ async def list_courses(user: User = Depends(current_active_user)):
             professor_id=c.professor_id,
             title=c.title,
             code=c.code,
+            description=c.description,
+            schedule=c.schedule,
             created_at=c.created_at,
             docs_count=c.docs_count,
             status="ready"
@@ -120,6 +126,8 @@ async def get_course(course_id: str, user: User = Depends(current_active_user)):
         "professor_id": course.professor_id,
         "title": course.title,
         "code": course.code,
+        "description": course.description,
+        "schedule": course.schedule,
         "created_at": course.created_at,
         "graph_id": graph_id,
     }

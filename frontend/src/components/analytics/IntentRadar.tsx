@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  Radar, ResponsiveContainer, Tooltip, Legend,
+  Radar, ResponsiveContainer, Tooltip,
 } from 'recharts';
 
 interface IntentData {
@@ -24,33 +24,37 @@ export default function IntentRadar({ data }: Props) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <RadarChart data={data} outerRadius="75%">
-        <PolarGrid stroke="rgba(255,255,255,0.08)" />
+      <RadarChart data={data} outerRadius="70%">
+        <PolarGrid stroke="#e2e8f0" />
         <PolarAngleAxis
           dataKey="intent"
-          tick={{ fill: '#94a3b8', fontSize: 11 }}
+          tick={{ fill: '#475569', fontSize: 11, fontWeight: 500 }}
         />
         <PolarRadiusAxis
           angle={30}
           tick={{ fill: '#64748b', fontSize: 10 }}
-          stroke="rgba(255,255,255,0.06)"
+          stroke="#e2e8f0"
         />
         <Radar
           name="Query Intent"
           dataKey="count"
-          stroke="#818cf8"
-          fill="#818cf8"
-          fillOpacity={0.25}
+          stroke="#FF4D5B"
+          fill="#FF4D5B"
+          fillOpacity={0.2}
           strokeWidth={2}
+          isAnimationActive={false}
         />
         <Tooltip
           contentStyle={{
-            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-            borderColor: 'rgba(255,255,255,0.1)',
+            backgroundColor: '#ffffff',
+            borderColor: '#e2e8f0',
             borderRadius: '8px',
-            color: '#f8fafc',
+            color: '#0f172a',
+            fontSize: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
           }}
-          itemStyle={{ color: '#fff' }}
+          itemStyle={{ color: '#0f172a' }}
+          animationDuration={0}
         />
       </RadarChart>
     </ResponsiveContainer>

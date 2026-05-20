@@ -12,6 +12,8 @@ class Course(Document):
     professor_id: uuid.UUID
     title: str
     code: str
+    description: Optional[str] = None
+    schedule: Optional[str] = None
     docs_count: int = 0  # Maintained counter   updated on document lifecycle events
     created_at: datetime = Field(default_factory=_utcnow)
 

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { coursesApi, documentsApi, graphsApi } from '../api';
 import { useGraphStore } from '../store/graphStore';
-import { ArrowLeft, Upload, Sparkles, Users, FileText, Brain } from 'lucide-react';
+import { ArrowLeft, Upload, Sparkles, FileText } from 'lucide-react';
 import './CourseDetail.css';
 
 interface GenerationProgress {
@@ -233,7 +233,7 @@ export default function CourseDetail() {
     return (
       <div className="prof-course-empty">
         <h2>Course not found</h2>
-        <button onClick={() => navigate('/professor/dashboard')} className="prof-btn-back">
+        <button onClick={() => navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard')} className="prof-btn-back">
           <ArrowLeft size={16} />
           Back to Classes
         </button>
@@ -365,7 +365,7 @@ export default function CourseDetail() {
 
       {/* Header */}
       <div className="prof-course-header">
-        <button onClick={() => navigate('/professor/dashboard')} className="prof-back-btn">
+        <button onClick={() => navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard')} className="prof-back-btn">
           <ArrowLeft size={18} />
           <span>Back to Classes</span>
         </button>
@@ -376,16 +376,26 @@ export default function CourseDetail() {
         </div>
 
         <div className="prof-course-actions">
-          <button onClick={cleanupDuplicates} className="prof-action-btn">
-            Clean Duplicates
-          </button>
-          <button
-            onClick={generateGraph}
-            disabled={isGenerating}
-            className="prof-action-btn prof-action-btn-secondary"
-          >
-            {isGenerating ? 'Generating...' : 'Generate Graph'}
-          </button>
+          {role === 'professor' && (
+            <>
+              <button onClick={cleanupDuplicates} className="prof-action-btn">
+                Clean Duplicates
+              </button>
+              <button
+                onClick={generateGraph}
+                disabled={isGenerating}
+                className="prof-action-btn prof-action-btn-secondary"
+              >
+                {isGenerating ? 'Generating...' : 'Generate Graph'}
+              </button>
+              <button
+                onClick={() => navigate(`/course/${courseId}/tests`)}
+                className="prof-action-btn prof-action-btn-secondary"
+              >
+                Tests
+              </button>
+            </>
+          )}
           <button
             onClick={() => navigate(`/course/${courseId}/map`)}
             className="prof-action-btn prof-action-btn-secondary"
@@ -399,10 +409,10 @@ export default function CourseDetail() {
             Study Plan
           </button>
           <button
-            onClick={() => navigate(`/course/${courseId}/tests`)}
+            onClick={() => navigate(`/student/chat?course=${courseId}`)}
             className="prof-action-btn prof-action-btn-secondary"
           >
-            Tests
+            AI Tutor Chat
           </button>
           <button
             onClick={() => navigate(`/course/${courseId}/study`)}

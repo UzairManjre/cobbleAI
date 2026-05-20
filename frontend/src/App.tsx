@@ -1,11 +1,10 @@
-import React from 'react';
+import { useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import NewLanding from './pages/NewLanding';
 import ProfessorOnboarding from './pages/ProfessorOnboarding';
 import StudentOnboarding from './pages/StudentOnboarding';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
 import StudentAuthFlow from './pages/StudentAuthFlow';
 import ProfessorAuthFlow from './pages/ProfessorAuthFlow';
 import Dashboard from './pages/Dashboard';
@@ -18,11 +17,11 @@ import StudyMode from './pages/StudyMode';
 import StudyPlan from './pages/StudyPlan';
 import ProfessorTests from './pages/ProfessorTests';
 import TakeTest from './pages/TakeTest';
-import ProfessorLayout from './components/layout/ProfessorLayout';
+import AppLayout from './components/layout/ProfessorLayout';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import { useAuthStore } from './store/authStore';
 
-const ProtectedRoute = ({ children, allowedRole, requireOnboarding = true }: { children: React.ReactNode, allowedRole?: 'professor' | 'student' | Array<'professor' | 'student'>, requireOnboarding?: boolean }) => {
+const ProtectedRoute = ({ children, allowedRole, requireOnboarding = true }: { children: ReactNode, allowedRole?: 'professor' | 'student' | Array<'professor' | 'student'>, requireOnboarding?: boolean }) => {
   const { token, role, hasOnboarded } = useAuthStore();
   if (!token) return <Navigate to="/" replace />;
 
@@ -33,7 +32,7 @@ const ProtectedRoute = ({ children, allowedRole, requireOnboarding = true }: { c
 
   if (allowedRole) {
     const allowed = Array.isArray(allowedRole) ? allowedRole.includes(role!) : role === allowedRole;
-    if (!allowed) return <Navigate to={role === 'professor' ? '/professor/dashboard' : '/chat'} replace />;
+    if (!allowed) return <Navigate to={role === 'professor' ? '/professor/dashboard' : '/student/dashboard'} replace />;
   }
   return <>{children}</>;
 };
@@ -41,7 +40,7 @@ const ProtectedRoute = ({ children, allowedRole, requireOnboarding = true }: { c
 export default function App() {
   const initialize = useAuthStore(state => state.initialize);
 
-  React.useEffect(() => {
+  useEffect(() => {
     initialize();
   }, [initialize]);
 
@@ -74,12 +73,12 @@ export default function App() {
           }
         />
 
-        {/* Chat route */}
+        {/* Chat route - redirect to student layout */}
         <Route
           path="/chat"
           element={
             <ProtectedRoute>
-              <Chat />
+              <Navigate to="/student/chat" replace />
             </ProtectedRoute>
           }
         />
@@ -136,12 +135,12 @@ export default function App() {
           }
         />
 
-        {/* Professor Layout with Sidebar/Topbar - ALL professor routes */}
+        {/* Shared Layout with Sidebar/Topbar - ALL professor routes */}
         <Route
           path="/professor"
           element={
             <ProtectedRoute allowedRole="professor">
-              <ProfessorLayout />
+              <AppLayout />
             </ProtectedRoute>
           }
         >
@@ -157,6 +156,26 @@ export default function App() {
           <Route path="courses/:courseId/study" element={<StudyMode />} />
           <Route path="courses/:courseId/plan" element={<StudyPlan />} />
           <Route path="courses/:courseId/tests" element={<ProfessorTests />} />
+        </Route>
+
+        {/* Student Layout with Sidebar/Topbar - ALL student routes */}
+        <Route
+          path="/student"
+          element={
+            <ProtectedRoute allowedRole="student">
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/student/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="chat" element={<Chat />} />
+          
+          {/* Course routes */}
+          <Route path="courses/:courseId" element={<CourseDetail />} />
+          <Route path="courses/:courseId/map" element={<MindMap />} />
+          <Route path="courses/:courseId/study" element={<StudyMode />} />
+          <Route path="courses/:courseId/plan" element={<StudyPlan />} />
         </Route>
       </Routes>
     </BrowserRouter>

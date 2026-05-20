@@ -17,9 +17,9 @@ Thumbs.db
 .settings/
 
 # Python / Backend
-backend/__pycache__/
-backend/*.py[cod]
-backend/*$py.class
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
 backend/.pytest_cache/
 backend/env/
 backend/venv/

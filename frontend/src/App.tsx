@@ -9,7 +9,6 @@ import StudentAuthFlow from './pages/StudentAuthFlow';
 import ProfessorAuthFlow from './pages/ProfessorAuthFlow';
 import Dashboard from './pages/Dashboard';
 import MyClasses from './pages/MyClasses';
-import Students from './pages/Students';
 import Assignments from './pages/Assignments';
 import CourseDetail from './pages/CourseDetail';
 import MindMap from './pages/MindMap';
@@ -18,7 +17,7 @@ import StudyMode from './pages/StudyMode';
 import StudyPlan from './pages/StudyPlan';
 import ProfessorTests from './pages/ProfessorTests';
 import TakeTest from './pages/TakeTest';
-import AppLayout from './components/layout/ProfessorLayout';
+import AppLayout from './components/layout/AppLayout';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import { useAuthStore } from './store/authStore';
 

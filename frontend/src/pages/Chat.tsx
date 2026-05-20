@@ -17,32 +17,32 @@ interface Message {
 const MsgContent = ({ content }: { content: string }) => {
   const [showReasoning, setShowReasoning] = useState(false);
 
-  if (!content) return <span className="opacity-20">Initializing...</span>;
+  if (!content) return <span className="opacity-50 font-black tracking-widest uppercase text-xs">Initializing...</span>;
 
   const thoughtMatch = typeof content === 'string' ? content.match(/<thought>([\s\S]*?)<\/thought>/g) : null;
   const reasoning = thoughtMatch ? thoughtMatch.map(m => m.replace(/<\/?thought>/g, '')).join('\n') : '';
   const cleanContent = typeof content === 'string' ? content.replace(/<thought>[\s\S]*?<\/thought>/g, '').trim() : '';
 
-  if (!cleanContent && !reasoning) return <span className="opacity-20">...</span>;
+  if (!cleanContent && !reasoning) return <span className="opacity-50 font-black tracking-widest uppercase text-xs">...</span>;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {reasoning && (
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden transition-all duration-300">
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl overflow-hidden transition-all duration-300 shadow-sm">
           <button
             type="button"
             onClick={() => setShowReasoning(!showReasoning)}
-            className="w-full px-4 py-2 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-blue-100/50 transition-colors focus:outline-none"
           >
-            <div className="flex items-center gap-2 text-[11px] font-medium text-white/40 uppercase tracking-wider">
-              <Brain size={12} className={showReasoning ? 'text-blue-400' : ''} />
+            <div className="flex items-center gap-2 text-[12px] font-extrabold text-[#0A0A0A] uppercase tracking-widest">
+              <Brain size={14} className={showReasoning ? 'text-blue-600 stroke-[3px]' : 'text-blue-400 stroke-[3px]'} />
               Thinking Process
             </div>
-            {showReasoning ? <ChevronUp size={14} className="text-white/20" /> : <ChevronDown size={14} className="text-white/20" />}
+            {showReasoning ? <ChevronUp size={16} className="text-[#0A0A0A] stroke-[3px]" /> : <ChevronDown size={16} className="text-[#0A0A0A] stroke-[3px]" />}
           </button>
 
           {showReasoning && (
-            <div className="px-4 pb-3 text-[13px] text-white/40 leading-relaxed border-t border-white/[0.04] pt-2 italic whitespace-pre-wrap">
+            <div className="px-4 pb-4 text-[13px] text-[#0A0A0A]/70 font-bold font-['Inter'] leading-relaxed border-t-2 border-blue-200/50 pt-3 italic whitespace-pre-wrap">
               {reasoning}
             </div>
           )}
@@ -50,13 +50,13 @@ const MsgContent = ({ content }: { content: string }) => {
       )}
 
       {cleanContent && (
-        <div className="prose prose-invert max-w-none text-[14px] leading-relaxed">
+        <div className="prose max-w-none text-sm font-['Inter'] leading-relaxed text-[#0A0A0A]">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              p: ({node, ...props}) => <p className="my-0" {...props} />,
-              pre: ({node, ...props}) => <pre className="bg-black/40 border border-white/10 p-3 rounded-lg overflow-x-auto my-2" {...props} />,
-              code: ({node, ...props}) => <code className="text-blue-300 bg-blue-500/10 px-1 rounded" {...props} />
+              p: ({node, ...props}) => <p className="my-0 font-medium" {...props} />,
+              pre: ({node, ...props}) => <pre className="bg-gray-50 border-2 border-[#0A0A0A] p-4 rounded-xl overflow-x-auto my-3 shadow-[2px_2px_0_#0A0A0A]" {...props} />,
+              code: ({node, ...props}) => <code className="text-purple-700 bg-purple-50 font-bold px-1.5 py-0.5 rounded-md border border-purple-200" {...props} />
             }}
           >
             {cleanContent}
@@ -103,7 +103,7 @@ export default function Chat() {
     {
       role: 'assistant',
       content: initialTopic
-        ? `I see you're interested in ${initialTopic}. Let's dive deep into it. What specifically would you like to explore?`
+        ? `I see you're interested in **${initialTopic}**. Let's dive deep into it. What specifically would you like to explore?`
         : 'Hello! I\'m your Cobble AI tutor. What would you like to learn about today?'
     }
   ]);
@@ -269,41 +269,46 @@ export default function Chat() {
   ];
 
   const chatPanel = (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.06] shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-white/80">Socratic Tutor</span>
-          <span className="text-[11px] text-white/30">| {mode} mode</span>
+    <div className="flex flex-col h-full bg-[#FCFCFC] font-['Outfit']">
+      <div className="flex items-center justify-between px-6 py-4 border-b-[3px] border-[#0A0A0A] bg-white shrink-0 shadow-sm z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#FFD166] border-2 border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[2px_2px_0_#0A0A0A]">
+            <Brain className="w-5 h-5 text-[#0A0A0A] stroke-[2.5px]" />
+          </div>
+          <div>
+            <h2 className="text-lg font-black text-[#0A0A0A] uppercase tracking-tight">Cobble AI</h2>
+            <p className="text-[11px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">{mode} mode</p>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {modes.map(m => (
             <button
               key={m.key}
               onClick={() => setMode(m.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`px-3 py-2 rounded-xl text-xs font-black transition-all border-2 flex items-center gap-1.5 ${
                 mode === m.key
-                  ? 'bg-white/[0.08] text-white'
-                  : 'text-white/40 hover:text-white/60 hover:bg-white/[0.04]'
+                  ? 'bg-[#118AB2] text-white border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A]'
+                  : 'bg-white text-[#0A0A0A] border-transparent hover:border-[#0A0A0A]/20'
               }`}
             >
-              <m.icon size={14} className="inline mr-1" />
+              <m.icon size={14} className={mode === m.key ? 'stroke-[3px]' : 'stroke-[2.5px]'} />
               {m.label}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-6 py-6 space-y-5">
+      <div className="flex-1 overflow-y-auto bg-gray-50/50">
+        <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
           {messages.map((m, idx) => (
             <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`w-full max-w-[90%] ${
+              <div className={`w-full max-w-[85%] ${
                 m.role === 'user'
-                  ? 'bg-white text-[#0A0A0A] rounded-2xl rounded-br-md p-4'
-                  : 'bg-white/[0.04] border border-white/[0.06] text-white/90 rounded-2xl rounded-bl-md p-5'
+                  ? 'bg-[#FF4D5B] text-white rounded-2xl rounded-br-none p-5 shadow-[4px_4px_0_#0A0A0A] border-[3px] border-[#0A0A0A]'
+                  : 'bg-white text-[#0A0A0A] rounded-2xl rounded-bl-none p-6 shadow-[4px_4px_0_#0A0A0A] border-[3px] border-[#0A0A0A]'
               }`}>
                 {m.role === 'user' ? (
-                  <p className="text-sm leading-relaxed">{m.content}</p>
+                  <p className="text-[15px] font-bold leading-relaxed">{m.content}</p>
                 ) : (
                   <MsgContent content={m.content} />
                 )}
@@ -312,11 +317,12 @@ export default function Chat() {
           ))}
           {isTyping && (
             <div className="flex justify-start">
-              <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-bl-md px-4 py-3">
-                <div className="flex gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:0ms]" />
-                  <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:300ms]" />
+              <div className="bg-white border-[3px] border-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] rounded-2xl rounded-bl-none px-5 py-4 flex items-center gap-2 w-fit">
+                <span className="text-[12px] font-black uppercase tracking-widest text-[#0A0A0A] mr-2">Thinking</span>
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-[#FF4D5B] border border-[#0A0A0A] rounded-full animate-bounce [animation-delay:0ms]" />
+                  <span className="w-2 h-2 bg-[#118AB2] border border-[#0A0A0A] rounded-full animate-bounce [animation-delay:150ms]" />
+                  <span className="w-2 h-2 bg-[#06D6A0] border border-[#0A0A0A] rounded-full animate-bounce [animation-delay:300ms]" />
                 </div>
               </div>
             </div>
@@ -325,25 +331,26 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="border-t border-white/[0.06] p-4 bg-[#0A0A0A]">
-        <div className="max-w-2xl mx-auto">
-          <form onSubmit={handleSend} className="relative">
+      <div className="border-t-[3px] border-[#0A0A0A] p-5 bg-white z-10">
+        <div className="max-w-3xl mx-auto">
+          <form onSubmit={handleSend} className="relative flex gap-3">
             <input
               type="text"
               value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="Message Cobble AI..."
-              className="w-full bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-white/20 rounded-xl pl-4 pr-12 py-3.5 focus:outline-none focus:border-white/[0.15] focus:bg-white/[0.06] transition-all duration-200"
+              className="w-full bg-white border-[3px] border-[#0A0A0A] text-[15px] font-bold text-[#0A0A0A] placeholder:text-[#0A0A0A]/40 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-4 focus:ring-[#FF4D5B]/20 shadow-[4px_4px_0_#0A0A0A] transition-all"
+              disabled={isTyping}
             />
             <button
               type="submit"
-              disabled={isTyping}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-white text-[#0A0A0A] rounded-lg hover:bg-white/90 active:scale-95 transition-all duration-150 disabled:opacity-30"
+              disabled={!input.trim() || isTyping}
+              className="px-6 bg-[#FF4D5B] text-white border-[3px] border-[#0A0A0A] hover:bg-[#ff3344] disabled:opacity-50 disabled:active:translate-y-0 disabled:active:shadow-[4px_4px_0_#0A0A0A] rounded-xl transition-all shadow-[4px_4px_0_#0A0A0A] active:translate-y-1 active:shadow-none flex items-center justify-center shrink-0"
             >
-              <Send size={14} />
+              <Send size={20} className="stroke-[2.5px] -ml-1" />
             </button>
           </form>
-          <p className="text-center text-[10px] text-white/15 mt-3 font-medium">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
+          <p className="text-center text-[11px] text-[#0A0A0A]/40 mt-3 font-bold uppercase tracking-wider">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
         </div>
       </div>
     </div>
@@ -351,19 +358,20 @@ export default function Chat() {
 
   if (!courseId) {
     return (
-      <div className="h-full bg-[#0A0A0A] text-white">
+      <div className="h-full bg-[#FCFCFC] text-[#0A0A0A] font-['Outfit']">
         {chatPanel}
       </div>
     );
   }
 
   return (
-    <div className="h-full bg-[#0A0A0A] text-white flex overflow-hidden">
+    <div className="h-full bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] flex overflow-hidden">
       {/* Graph Panel */}
-      <div className="flex-1 border-r border-white/[0.06]">
+      <div className="flex-1 border-r-[3px] border-[#0A0A0A] bg-gray-50/50">
         <div className="h-full flex flex-col">
-          <div className="px-4 py-3 border-b border-white/[0.06] text-sm font-semibold text-white/70 shrink-0">
-            Knowledge Graph - {nodes.length} concepts
+          <div className="px-6 py-4 border-b-[3px] border-[#0A0A0A] bg-white shrink-0 flex items-center justify-between">
+            <h2 className="text-lg font-black text-[#0A0A0A] uppercase tracking-tight">Knowledge Graph</h2>
+            <span className="text-[12px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">{nodes.length} concepts</span>
           </div>
           <div className="flex-1">
             <KnowledgeGraph onNodeClick={handleNodeClick} />
@@ -371,7 +379,7 @@ export default function Chat() {
         </div>
       </div>
       {/* Chat Panel */}
-      <div className="w-[480px] flex flex-col">
+      <div className="w-[500px] flex flex-col border-l-2 border-[#0A0A0A]/10">
         {chatPanel}
       </div>
     </div>

@@ -30,17 +30,20 @@ export default function SankeyPipeline({ data }: Props) {
         labelPosition="inside"
         labelOrientation="horizontal"
         labelPadding={16}
-        labelTextColor="#ffffff"
+        labelTextColor="#0A0A0A"
         theme={{
-          textColor: '#f8fafc',
+          textColor: '#0A0A0A',
           fontSize: 12,
           tooltip: {
             container: {
-              background: 'rgba(15, 23, 42, 0.9)',
-              color: '#f8fafc',
+              background: '#FFFFFF',
+              color: '#0A0A0A',
               fontSize: 12,
               borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.1)'
+              border: '2px solid #0A0A0A',
+              boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.95)',
+              fontFamily: 'Outfit, sans-serif',
+              fontWeight: 600
             }
           }
         } as any}

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, GraduationCap, Users, FileText, Lightbulb, MessageSquare, AppWindow } from 'lucide-react';
+import { Home, GraduationCap, FileText, Lightbulb, Brain } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import './Sidebar.css';
 
@@ -19,7 +19,11 @@ const Sidebar = () => {
       </div>
       
       <nav className="sidebar-nav">
-        <NavLink to={`${baseRoute}/dashboard`} end className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+        <NavLink 
+          to={`${baseRoute}/dashboard`} 
+          end 
+          className={({isActive}) => `nav-item ${isActive ? 'active-dashboard' : ''}`}
+        >
           <Home size={20} className="nav-icon" />
           <div className="nav-text">
             <span className="nav-title">Dashboard</span>
@@ -27,9 +31,25 @@ const Sidebar = () => {
           </div>
         </NavLink>
 
-        {role === 'professor' ? (
+        {role === 'student' && (
+          <NavLink 
+            to="/student/chat" 
+            className={({isActive}) => `nav-item ${isActive ? 'active-chat' : ''}`}
+          >
+            <Brain size={20} className="nav-icon" />
+            <div className="nav-text">
+              <span className="nav-title">AI Tutor</span>
+              <span className="nav-subtitle">Personal chat assistant</span>
+            </div>
+          </NavLink>
+        )}
+
+        {role === 'professor' && (
           <>
-            <NavLink to="/professor/classes" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <NavLink 
+              to="/professor/classes" 
+              className={({isActive}) => `nav-item ${isActive ? 'active-classes' : ''}`}
+            >
               <GraduationCap size={20} className="nav-icon" />
               <div className="nav-text">
                 <span className="nav-title">My classes</span>
@@ -37,7 +57,10 @@ const Sidebar = () => {
               </div>
             </NavLink>
 
-            <NavLink to="/professor/assignments" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <NavLink 
+              to="/professor/assignments" 
+              className={({isActive}) => `nav-item ${isActive ? 'active-assignments' : ''}`}
+            >
               <FileText size={20} className="nav-icon" />
               <div className="nav-text">
                 <span className="nav-title">Assignments</span>
@@ -45,21 +68,14 @@ const Sidebar = () => {
               </div>
             </NavLink>
 
-            <NavLink to="/professor/analytics" className={({isActive}) => `nav-item ${isActive ? 'active' : ''} ai-insights-nav`}>
+            <NavLink 
+              to="/professor/analytics" 
+              className={({isActive}) => `nav-item ${isActive ? 'active-analytics' : ''}`}
+            >
               <Lightbulb size={20} className="nav-icon" />
               <div className="nav-text">
                 <span className="nav-title">Analytics</span>
                 <span className="nav-subtitle">System & Insights</span>
-              </div>
-            </NavLink>
-          </>
-        ) : (
-          <>
-            <NavLink to="/student/chat" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-              <MessageSquare size={20} className="nav-icon" />
-              <div className="nav-text">
-                <span className="nav-title">Tutor Chat</span>
-                <span className="nav-subtitle">Socratic learning</span>
               </div>
             </NavLink>
           </>

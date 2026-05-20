@@ -27,9 +27,9 @@ export default function VectorTreemap({ data }: Props) {
         labelTextColor="#ffffff"
         orientLabel={false}
         parentLabel={(node: any) => node.depth === 1 ? node.id : ''}
-        parentLabelSize={16}
+        parentLabelSize={14}
         parentLabelPosition="top"
-        parentLabelTextColor="#f8fafc"
+        parentLabelTextColor="#0A0A0A"
         // High-end neon palette
         colors={(node: any) => {
           const colors = ['#6366f1', '#10b981', '#f43f5e', '#f59e0b', '#06b6d4', '#d946ef'];
@@ -40,30 +40,32 @@ export default function VectorTreemap({ data }: Props) {
           const baseColor = colors[Math.abs(hash) % colors.length];
           
           if (node.depth === 1) return baseColor;
-          if (node.depth === 2) return baseColor + 'bb'; // Doc level
+          if (node.depth === 2) return baseColor + 'ee'; // Doc level (slightly darker for contrast)
           return baseColor + '44'; // Chunk level
         }}
         nodeOpacity={0.9}
-        borderWidth={1}
-        borderColor="rgba(15, 23, 42, 0.8)"
+        borderWidth={2}
+        borderColor="#0A0A0A"
         enableParentLabel={true}
         tile="squarify"
         leavesOnly={false}
-        innerPadding={2}
-        outerPadding={2}
+        innerPadding={3}
+        outerPadding={3}
         theme={{
-          textColor: '#f8fafc',
+          textColor: '#0A0A0A',
           fontSize: 10,
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: "'Outfit', 'Inter', sans-serif",
           tooltip: {
             container: {
-              background: '#0f172a',
-              color: '#f8fafc',
+              background: '#FFFFFF',
+              color: '#0A0A0A',
               fontSize: 12,
-              borderRadius: '12px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+              borderRadius: '8px',
+              border: '2px solid #0A0A0A',
+              boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.95)',
               padding: '12px',
+              fontFamily: 'Outfit, sans-serif',
+              fontWeight: 600
             }
           }
         } as any}

@@ -291,38 +291,53 @@ async def get_test(test_id: str, user: User = Depends(current_active_user)):
         raise HTTPException(status_code=403, detail="Test not available")
 
     now = datetime.now(timezone.utc)
-    if test.available_from and now < test.available_from:
-        raise HTTPException(status_code=403, detail="Test not yet available")
+    
+    if test.available_from:
+        av_from = test.available_from if test.available_from.tzinfo else test.available_from.replace(tzinfo=timezone.utc)
+        if now < av_from:
+            raise HTTPException(status_code=403, detail="Test not yet available")
 
-    if test.available_until and now > test.available_until:
-        raise HTTPException(status_code=403, detail="Test has ended")
+    if test.available_until:
+        av_until = test.available_until if test.available_until.tzinfo else test.available_until.replace(tzinfo=timezone.utc)
+        if now > av_until:
+            raise HTTPException(status_code=403, detail="Test has ended")
 
     # Return full test with questions for professors
     print(f"  Returning test {test.id} with {len(test.questions) if test.questions else 0} questions")
     
-    return {
-        "test": {
-            "id": str(test.id),
-            "title": test.title,
-            "description": test.description,
-            "instructions": test.instructions,
-            "duration_minutes": test.duration_minutes,
-            "passing_percentage": test.passing_percentage,
-            "test_type": test.test_type,
-            "status": test.status,
-            "questions": test.questions,
-            "total_marks": test.total_marks,
-            "shuffle_questions": test.shuffle_questions,
-            "shuffle_options": test.shuffle_options,
-            "show_results_immediately": test.show_results_immediately,
-            "allow_retakes": test.allow_retakes,
-            "max_attempts": test.max_attempts,
-            "available_from": test.available_from.isoformat() if test.available_from else None,
-            "available_until": test.available_until.isoformat() if test.available_until else None,
-            "created_at": test.created_at.isoformat() if test.created_at else None,
-            "published_at": test.published_at.isoformat() if test.published_at else None
+    try:
+        res = {
+            "test": {
+                "id": str(test.id),
+                "title": test.title,
+                "description": test.description,
+                "instructions": test.instructions,
+                "duration_minutes": test.duration_minutes,
+                "passing_percentage": test.passing_percentage,
+                "test_type": test.test_type,
+                "status": test.status,
+                "questions": [q.model_dump() for q in test.questions] if hasattr(test.questions[0], 'model_dump') else [q.dict() for q in test.questions] if test.questions else [],
+                "total_marks": test.total_marks,
+                "shuffle_questions": test.shuffle_questions,
+                "shuffle_options": test.shuffle_options,
+                "show_results_immediately": test.show_results_immediately,
+                "allow_retakes": test.allow_retakes,
+                "max_attempts": test.max_attempts,
+                "available_from": test.available_from.isoformat() if test.available_from else None,
+                "available_until": test.available_until.isoformat() if test.available_until else None,
+                "created_at": test.created_at.isoformat() if test.created_at else None,
+                "published_at": test.published_at.isoformat() if test.published_at else None
+            }
         }
-    }
+        # handle uuids in questions
+        import json
+        from fastapi.encoders import jsonable_encoder
+        return jsonable_encoder(res)
+    except Exception as e:
+        import traceback
+        print("ERROR IN GET_TEST:", e)
+        traceback.print_exc()
+        raise e
 
 #   Student Test Taking  
 

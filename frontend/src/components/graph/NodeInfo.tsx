@@ -16,26 +16,26 @@ const NodeInfo = ({ nodeId, onNavigate }: NodeInfoProps) => {
 
   if (!currentNode) {
     return (
-      <div className="p-6 text-white/20 text-[13px]">
-        Select a node to view details
+      <div className="p-6 text-[#0A0A0A]/40 text-[14px] font-black uppercase tracking-widest text-center">
+        Select a concept to view details
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-8 bg-white font-['Outfit']">
       {/* Node Details */}
-      <div>
-        <h3 className="text-sm font-semibold text-white mb-2">{currentNode.label}</h3>
-        <p className="text-xs text-white/50 leading-relaxed">{currentNode.description}</p>
+      <div className="bg-[#FFD166]/20 border-2 border-[#FFD166] p-5 rounded-2xl">
+        <h3 className="text-xl font-black text-[#0A0A0A] mb-3 leading-tight">{currentNode.label}</h3>
+        <p className="text-sm text-[#0A0A0A]/80 font-['Inter'] font-medium leading-relaxed">{currentNode.description}</p>
       </div>
 
       {/* Connected Concepts */}
       <div>
-        <h4 className="text-[12px] font-medium text-white/40 uppercase tracking-wider mb-3">
+        <h4 className="text-[13px] font-black text-[#0A0A0A] uppercase tracking-wider mb-4 border-b-2 border-[#0A0A0A]/10 pb-2">
           Connected Concepts
         </h4>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {neighbors.map((edge) => {
             const isOutgoing = edge.from === nodeId;
             const neighborId = isOutgoing ? edge.to : edge.from;
@@ -51,21 +51,23 @@ const NodeInfo = ({ nodeId, onNavigate }: NodeInfoProps) => {
                   onNavigate(neighborId);
                 }}
                 disabled={isLoading}
-                className="w-full flex items-center gap-3 p-3 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] rounded-xl transition-all disabled:opacity-30 group"
+                className="w-full flex items-center gap-4 p-4 bg-white hover:bg-gray-50 border-2 border-[#0A0A0A] rounded-xl transition-all shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0A0A0A] active:translate-y-0 active:shadow-none disabled:opacity-50 group"
               >
                 <div className="flex-1 text-left">
-                  <div className="text-[13px] text-white/80 group-hover:text-white transition-colors">
+                  <div className="text-[15px] font-extrabold text-[#0A0A0A]">
                     {neighborNode.label}
                   </div>
-                  <div className="text-[10px] text-white/20 mt-0.5">
+                  <div className="text-[11px] font-bold text-[#0A0A0A]/50 mt-1 uppercase tracking-wider">
                     {edge.relation.replace(/_/g, ' ')}
                   </div>
                 </div>
-                {isOutgoing ? (
-                  <ArrowRight className="w-3.5 h-3.5 text-white/20" />
-                ) : (
-                  <ArrowLeft className="w-3.5 h-3.5 text-white/20" />
-                )}
+                <div className="w-8 h-8 rounded-full border-2 border-[#0A0A0A] bg-gray-100 flex items-center justify-center shrink-0">
+                  {isOutgoing ? (
+                    <ArrowRight className="w-4 h-4 text-[#0A0A0A] stroke-[3px]" />
+                  ) : (
+                    <ArrowLeft className="w-4 h-4 text-[#0A0A0A] stroke-[3px]" />
+                  )}
+                </div>
               </button>
             );
           })}

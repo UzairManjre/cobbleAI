@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import NewLanding from './pages/NewLanding';
 import ProfessorOnboarding from './pages/ProfessorOnboarding';
@@ -35,6 +35,18 @@ const ProtectedRoute = ({ children, allowedRole, requireOnboarding = true }: { c
     if (!allowed) return <Navigate to={role === 'professor' ? '/professor/dashboard' : '/student/dashboard'} replace />;
   }
   return <>{children}</>;
+};
+
+const CourseRedirect = () => {
+  const { role } = useAuthStore();
+  const { courseId } = useParams();
+  return <Navigate to={`/${role}/courses/${courseId}`} replace />;
+};
+
+const CourseSubRouteRedirect = ({ subPath }: { subPath: string }) => {
+  const { role } = useAuthStore();
+  const { courseId } = useParams();
+  return <Navigate to={`/${role}/courses/${courseId}/${subPath}`} replace />;
 };
 
 export default function App() {
@@ -83,12 +95,12 @@ export default function App() {
           }
         />
 
-        {/* Standalone course routes (accessible from any role) */}
+        {/* Redirect standalone course routes into layout shell */}
         <Route
           path="/course/:courseId"
           element={
             <ProtectedRoute>
-              <CourseDetail />
+              <CourseRedirect />
             </ProtectedRoute>
           }
         />
@@ -96,7 +108,7 @@ export default function App() {
           path="/course/:courseId/map"
           element={
             <ProtectedRoute>
-              <MindMap />
+              <CourseSubRouteRedirect subPath="map" />
             </ProtectedRoute>
           }
         />
@@ -104,7 +116,7 @@ export default function App() {
           path="/course/:courseId/study"
           element={
             <ProtectedRoute>
-              <StudyMode />
+              <CourseSubRouteRedirect subPath="study" />
             </ProtectedRoute>
           }
         />
@@ -112,7 +124,7 @@ export default function App() {
           path="/course/:courseId/plan"
           element={
             <ProtectedRoute>
-              <StudyPlan />
+              <CourseSubRouteRedirect subPath="plan" />
             </ProtectedRoute>
           }
         />
@@ -120,7 +132,7 @@ export default function App() {
           path="/course/:courseId/tests"
           element={
             <ProtectedRoute allowedRole="professor">
-              <ProfessorTests />
+              <CourseSubRouteRedirect subPath="tests" />
             </ProtectedRoute>
           }
         />

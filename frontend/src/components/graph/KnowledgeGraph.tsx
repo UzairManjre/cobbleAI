@@ -20,54 +20,52 @@ const ConceptNode = ({ data, id }: NodeProps) => {
   const isVisited = visitedNodes.includes(id);
 
   // Difficulty-based colors
-  const difficultyColor = data.difficulty === 'advanced' ? 'bg-amber-400' :
-                          data.difficulty === 'beginner' ? 'bg-emerald-400' : 'bg-blue-400';
+  const difficultyColor = data.difficulty === 'advanced' ? 'bg-[#FFD166]' :
+                          data.difficulty === 'beginner' ? 'bg-[#06D6A0]' : 'bg-[#118AB2]';
 
   const borderColor = isCurrent
-    ? 'border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.3)]'
-    : isVisited
-      ? 'border-emerald-500/20'
-      : 'border-white/10 hover:border-white/20';
+    ? 'border-[#FF4D5B]'
+    : 'border-[#0A0A0A]';
 
   const bgColor = isCurrent
-    ? 'bg-blue-500/10 scale-105'
+    ? 'bg-[#FDF0EF]'
     : isVisited
-      ? 'bg-emerald-500/5'
-      : 'bg-white/[0.03]';
+      ? 'bg-[#E6FAF5]'
+      : 'bg-white';
+
+  const shadowColor = isCurrent
+    ? 'shadow-[4px_4px_0_#FF4D5B]'
+    : 'shadow-[4px_4px_0_#0A0A0A]';
 
   return (
     <div className={`
       relative px-6 py-4 rounded-2xl transition-all duration-300
-      backdrop-blur-xl border-2 cursor-pointer group ${borderColor} ${bgColor}
+      border-[3px] cursor-pointer group ${borderColor} ${bgColor} ${shadowColor}
+      hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0
     `}>
-      {/* Glow background */}
-      {isCurrent && (
-        <div className="absolute -inset-2 bg-blue-500/20 blur-2xl rounded-3xl -z-10" />
-      )}
-
-      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-white/20 !border-none" />
+      <Handle type="target" position={Position.Top} className="!w-2.5 !h-2.5 !bg-[#0A0A0A] !border-none" />
 
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-           <div className={`w-1.5 h-1.5 rounded-full ${difficultyColor}`} />
-           <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
+           <div className={`w-2 h-2 rounded-full border border-[#0A0A0A] ${difficultyColor}`} />
+           <span className="text-[9px] font-extrabold uppercase tracking-wider text-[#0A0A0A]/50">
              {data.difficulty || 'Concept'}
            </span>
         </div>
-        <h4 className={`text-sm font-semibold tracking-tight ${isCurrent ? 'text-white' : 'text-white/80'}`}>
+        <h4 className={`text-sm font-black tracking-tight text-[#0A0A0A]`}>
           {data.label}
         </h4>
-        <p className="text-[11px] text-white/40 line-clamp-1 max-w-[180px]">
+        <p className="text-[11px] font-bold text-[#0A0A0A]/60 line-clamp-1 max-w-[180px]">
           {data.description}
         </p>
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-white/20 !border-none" />
+      <Handle type="source" position={Position.Bottom} className="!w-2.5 !h-2.5 !bg-[#0A0A0A] !border-none" />
 
       {/* Pulse effect for current node */}
       {isCurrent && (
-        <div className="absolute bottom-1 right-3">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+        <div className="absolute bottom-2 right-3">
+          <div className="w-2 h-2 rounded-full bg-[#FF4D5B] border border-[#0A0A0A] animate-ping" />
         </div>
       )}
     </div>
@@ -139,8 +137,8 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
       source: edge.from,
       target: edge.to,
       animated: true,
-      style: { stroke: 'rgba(255, 255, 255, 0.1)', strokeWidth: 2 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: 'rgba(255, 255, 255, 0.2)' },
+      style: { stroke: '#0A0A0A', strokeWidth: 3 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#0A0A0A' },
     }));
 
     return getLayoutedElements(initialNodes, initialEdges);
@@ -151,7 +149,7 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
   }, [onNodeClick]);
 
   return (
-    <div className="w-full h-full bg-[#080808]">
+    <div className="w-full h-full bg-[#FCFCFC]">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -163,26 +161,29 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
         nodesConnectable={false}
         elementsSelectable={true}
       >
-        <Background color="#111" gap={30} size={1} />
+        <Background color="#0A0A0A" gap={25} size={1.5} style={{ opacity: 0.06 }} />
         <Controls 
-          className="!bg-black/50 !border-white/10 !fill-white" 
+          className="!bg-white !border-2 !border-[#0A0A0A] !rounded-xl !shadow-[2px_2px_0_#0A0A0A] !overflow-hidden !fill-[#0A0A0A]" 
           showInteractive={false} 
         />
       </ReactFlow>
       
       {/* Legend */}
-      <div className="absolute top-6 right-6 p-4 bg-white/[0.02] border border-white/5 backdrop-blur-md rounded-2xl pointer-events-none flex flex-col gap-2">
-         <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-[10px] text-white/40 uppercase font-bold tracking-tighter">Foundation</span>
+      <div className="absolute top-6 right-6 p-4 bg-white border-[3px] border-[#0A0A0A] rounded-2xl shadow-[4px_4px_0_#0A0A0A] pointer-events-none flex flex-col gap-2 font-['Outfit'] z-20">
+         <div className="text-[10px] font-black uppercase tracking-wider text-[#0A0A0A] border-b-2 border-[#0A0A0A]/10 pb-1 mb-1">
+           Legend
          </div>
          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-blue-400" />
-            <span className="text-[10px] text-white/40 uppercase font-bold tracking-tighter">Core Theory</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#06D6A0] border border-[#0A0A0A]" />
+            <span className="text-[9px] text-[#0A0A0A] uppercase font-black tracking-wider">Foundation</span>
          </div>
          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-amber-400" />
-            <span className="text-[10px] text-white/40 uppercase font-bold tracking-tighter">Advanced Implementation</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#118AB2] border border-[#0A0A0A]" />
+            <span className="text-[9px] text-[#0A0A0A] uppercase font-black tracking-wider">Core Theory</span>
+         </div>
+         <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#FFD166] border border-[#0A0A0A]" />
+            <span className="text-[9px] text-[#0A0A0A] uppercase font-black tracking-wider">Advanced</span>
          </div>
       </div>
     </div>

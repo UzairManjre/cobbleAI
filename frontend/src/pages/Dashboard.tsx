@@ -19,7 +19,6 @@ import { coursesApi, testsApi, authApi, documentsApi, graphsApi, analyticsApi } 
 import KnowledgeGraphViewer from '../components/analytics/KnowledgeGraphViewer';
 import IntentRadar from '../components/analytics/IntentRadar';
 import { useAuthStore } from '../store/authStore';
-import './Dashboard.css';
 
 export default function Dashboard() {
   const { token, role, logout } = useAuthStore();
@@ -27,7 +26,7 @@ export default function Dashboard() {
 
   // Data State
   const [courses, setCourses] = useState<any[]>([]);
-  const [tests, setTests] = useState<any[]>([]);
+  const [_tests, setTests] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [professorName, setProfessorName] = useState('Professor');
   const [isLoading, setIsLoading] = useState(true);
@@ -193,48 +192,53 @@ export default function Dashboard() {
 
   if (role === 'student') {
     return (
-      <div className="student-dashboard-grid animate-in fade-in duration-300 p-6">
-        <div className="dashboard-main max-w-5xl mx-auto">
-          <h1 className="welcome-title mb-6">Welcome back, {professorName}!</h1>
+      <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] p-8">
+        <div className="max-w-5xl mx-auto space-y-8">
+          <h1 className="text-4xl font-black uppercase tracking-tight">Welcome back, {professorName}!</h1>
           
           {isLoading ? (
-            <div style={{ color: 'var(--designer-text-secondary)' }}>Loading courses...</div>
+            <div className="text-[#0A0A0A]/50 font-bold uppercase tracking-widest text-sm">Loading courses...</div>
           ) : (
-            <div className="classes-grid">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map((cls) => (
-                <div key={cls.id} className="designer-card class-card">
-                  <div className="class-card-header designer-flex designer-justify-between">
-                    <h3>{cls.title}</h3>
-                    <MoreVertical size={18} className="text-secondary" style={{cursor: 'pointer'}} />
+                <div key={cls.id} className="bg-white border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[6px_6px_0_#0A0A0A] flex flex-col hover:-translate-y-1 hover:shadow-[8px_8px_0_#0A0A0A] transition-all">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-xl font-black uppercase tracking-tight">{cls.title}</h3>
+                    <MoreVertical size={20} className="text-[#0A0A0A]/40 cursor-pointer hover:text-[#0A0A0A]" />
                   </div>
                   
-                  <p className="class-desc">{cls.description || 'No description provided'}</p>
+                  <p className="text-sm font-bold font-['Inter'] text-[#0A0A0A]/70 mb-6 flex-1">
+                    {cls.description || 'No description provided'}
+                  </p>
                   
-                  <div className="class-card-actions mt-4">
-                    <div 
-                      className="action-row designer-flex designer-justify-between designer-items-center"
+                  <div className="space-y-3 mt-auto">
+                    <button 
+                      className="w-full flex items-center justify-between px-4 py-3 bg-[#FFD166] text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl font-black shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all uppercase text-sm tracking-wider"
                       onClick={() => navigate(`/student/courses/${cls.id}`)}
                     >
-                      <span>View Course Material</span>
-                      <ChevronRight size={16} />
-                    </div>
-                    <div 
-                      className="action-row designer-flex designer-justify-between designer-items-center"
+                      <span>Course Material</span>
+                      <ChevronRight size={18} className="stroke-[3px]" />
+                    </button>
+                    <button 
+                      className="w-full flex items-center justify-between px-4 py-3 bg-[#118AB2] text-white border-2 border-[#0A0A0A] rounded-xl font-black shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all uppercase text-sm tracking-wider"
                       onClick={() => navigate(`/student/courses/${cls.id}/study`)}
                     >
-                      <span>Enter Study Mode</span>
-                      <ChevronRight size={16} />
-                    </div>
+                      <span>Study Mode</span>
+                      <ChevronRight size={18} className="stroke-[3px]" />
+                    </button>
                   </div>
                 </div>
               ))}
               
               <div 
-                className="designer-card create-class-card designer-flex designer-flex-col designer-justify-center designer-items-center"
+                className="bg-[#06D6A0]/10 border-[3px] border-dashed border-[#0A0A0A]/30 rounded-2xl p-6 flex flex-col justify-center items-center cursor-pointer hover:border-[#0A0A0A] hover:bg-[#06D6A0]/20 transition-colors group"
                 onClick={() => setShowModal(true)}
               >
-                <h3>Join a class</h3>
-                <p className="desc">Enroll in a new course using a join code</p>
+                <div className="w-16 h-16 bg-white border-[3px] border-[#0A0A0A] rounded-full flex items-center justify-center mb-4 shadow-[4px_4px_0_#0A0A0A] group-hover:scale-110 transition-transform">
+                  <Plus size={32} className="text-[#0A0A0A] stroke-[3px]" />
+                </div>
+                <h3 className="text-xl font-black uppercase tracking-tight text-[#0A0A0A] mb-2">Join a class</h3>
+                <p className="text-sm font-bold text-[#0A0A0A]/50 uppercase tracking-widest text-center">Enroll using a code</p>
               </div>
             </div>
           )}
@@ -244,320 +248,332 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="professor-dashboard-grid animate-in fade-in duration-300">
+    <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] p-6 lg:p-8">
       
-      {/* LEFT COLUMN: Main dashboard */}
-      <div className="dashboard-main">
-        <div className="dashboard-welcome-row designer-flex designer-justify-between designer-items-center mb-6">
-          <div>
-            <h1 className="welcome-title">Overview Dashboard</h1>
-          </div>
-          <button onClick={() => setShowModal(true)} className="designer-btn designer-btn-primary add-class-btn shadow-sm">
-            <Plus size={18} />
-            <span>New Class</span>
-          </button>
-        </div>
-
-        {/* Welcome Banner Card (Premium Professor View) */}
-        <div className="welcome-banner-card mb-6">
-          <div className="banner-text">
-            <h2>Welcome back, {professorName}!</h2>
-            <p>You have {stats.classesCount} active classes and {stats.totalDocumentsCount} study materials uploaded for your AI to learn.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        
+        {/* LEFT COLUMN: Main dashboard */}
+        <div className="lg:col-span-3 space-y-8">
+          <div className="flex justify-between items-center bg-white border-[3px] border-[#0A0A0A] p-6 rounded-2xl shadow-[6px_6px_0_#0A0A0A]">
+            <div>
+              <h1 className="text-3xl font-black uppercase tracking-tight">Overview Dashboard</h1>
+            </div>
             <button 
-              onClick={() => navigate('/professor/classes')} 
-              className="banner-cta"
+              onClick={() => setShowModal(true)} 
+              className="flex items-center gap-2 px-6 py-3 bg-[#FF4D5B] text-white border-[3px] border-[#0A0A0A] rounded-xl font-black uppercase tracking-widest text-sm shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all"
             >
-              <span>Manage Classes & Materials</span>
-              <ArrowRight size={16} />
+              <Plus size={20} className="stroke-[3px]" />
+              <span>New Class</span>
             </button>
           </div>
-          <div className="banner-illustration">
-            <div className="illustration-wrapper">
-              <div className="blob blob-1"></div>
-              <div className="blob blob-2"></div>
-              <Sparkles className="banner-sparkle" size={32} />
-            </div>
-          </div>
-        </div>
 
-        {/* Stats Grid */}
-        <div className="dashboard-stats-grid mb-6">
-          <div 
-            onClick={() => navigate('/professor/classes')}
-            className="designer-card dashboard-stat-card classes hover-lift"
-          >
-            <div className="dashboard-stat-top">
-              <div className="dashboard-stat-icon-wrapper classes-icon">
-                <BookOpen size={22} />
-              </div>
-              <div className="dashboard-stat-data">
-                <h3 className="dashboard-stat-value">{stats.classesCount}</h3>
-                <span className="dashboard-stat-label">My Classes</span>
-              </div>
-            </div>
-            <div className="dashboard-stat-footer classes">
-              <span>View Classes Roster</span>
-              <ArrowRight size={14} />
-            </div>
-          </div>
-
-          <div 
-            onClick={() => navigate('/professor/classes')}
-            className="designer-card dashboard-stat-card docs hover-lift"
-          >
-            <div className="dashboard-stat-top">
-              <div className="dashboard-stat-icon-wrapper docs-icon">
-                <FolderOpen size={22} />
-              </div>
-              <div className="dashboard-stat-data">
-                <h3 className="dashboard-stat-value">{stats.totalDocumentsCount}</h3>
-                <span className="dashboard-stat-label">Total Documents</span>
-              </div>
-            </div>
-            <div className="dashboard-stat-footer docs">
-              <span>Manage Documents</span>
-              <ArrowRight size={14} />
-            </div>
-          </div>
-
-          <div 
-            onClick={() => navigate('/professor/classes?tab=students')}
-            className="designer-card dashboard-stat-card students hover-lift"
-          >
-            <div className="dashboard-stat-top">
-              <div className="dashboard-stat-icon-wrapper students-icon">
-                <Users size={22} />
-              </div>
-              <div className="dashboard-stat-data">
-                <h3 className="dashboard-stat-value">{stats.uniqueStudents}</h3>
-                <span className="dashboard-stat-label">Total Students</span>
-              </div>
-            </div>
-            <div className="dashboard-stat-footer students">
-              <span>View Students</span>
-              <ArrowRight size={14} />
-            </div>
-          </div>
-
-          <div 
-            onClick={() => navigate('/professor/classes')}
-            className="designer-card dashboard-stat-card progress hover-lift"
-          >
-            <div className="dashboard-stat-top">
-              <div className="dashboard-stat-icon-wrapper progress-icon">
-                <Award size={22} />
-              </div>
-              <div className="dashboard-stat-data">
-                <h3 className="dashboard-stat-value">{stats.avgProgress}%</h3>
-                <span className="dashboard-stat-label">Average Class Progress</span>
-              </div>
-            </div>
-            <div className="dashboard-stat-footer progress">
-              <span>View Progress Reports</span>
-              <ArrowRight size={14} />
-            </div>
-          </div>
-        </div>
-
-        {/* Widgets section (Recent Documents & Class Overview side-by-side) */}
-        <div className="widgets-container">
-          
-          {/* Recent Documents widget */}
-          <div className="designer-card widget-card">
-            <div className="widget-header designer-flex designer-justify-between designer-items-center mb-4">
-              <h4>Recent Documents</h4>
-              <button onClick={() => navigate('/professor/classes')} className="widget-header-link">
-                View Classes
+          {/* Welcome Banner Card (Premium Professor View) */}
+          <div className="bg-[#118AB2] border-[3px] border-[#0A0A0A] rounded-3xl p-8 lg:p-10 shadow-[8px_8px_0_#0A0A0A] flex flex-col md:flex-row justify-between items-center relative overflow-hidden group">
+            <div className="relative z-10 space-y-4 max-w-lg">
+              <h2 className="text-4xl font-black text-white uppercase tracking-tight">Welcome back, {professorName}!</h2>
+              <p className="text-lg font-bold font-['Inter'] text-white/90">
+                You have {stats.classesCount} active classes and {stats.totalDocumentsCount} study materials uploaded for your AI to learn.
+              </p>
+              <button 
+                onClick={() => navigate('/professor/classes')} 
+                className="mt-6 flex items-center gap-3 px-6 py-3 bg-white text-[#0A0A0A] border-[3px] border-[#0A0A0A] rounded-xl font-black uppercase tracking-widest text-sm shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all w-fit"
+              >
+                <span>Manage Classes & Materials</span>
+                <ArrowRight size={18} className="stroke-[3px]" />
               </button>
             </div>
+            <div className="absolute right-0 bottom-0 md:static mt-8 md:mt-0 opacity-20 md:opacity-100 transform translate-x-1/4 translate-y-1/4 md:translate-x-0 md:translate-y-0">
+              <Sparkles className="w-48 h-48 text-[#FFD166] group-hover:rotate-12 transition-transform duration-500 stroke-1" />
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div 
+              onClick={() => navigate('/professor/classes')}
+              className="bg-[#06D6A0] border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] transition-all cursor-pointer flex flex-col"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[2px_2px_0_#0A0A0A]">
+                  <BookOpen size={24} className="text-[#0A0A0A] stroke-[2.5px]" />
+                </div>
+              </div>
+              <div className="space-y-1 mb-6 mt-auto">
+                <h3 className="text-4xl font-black text-[#0A0A0A]">{stats.classesCount}</h3>
+                <span className="text-sm font-black uppercase tracking-widest text-[#0A0A0A]/80">My Classes</span>
+              </div>
+              <div className="flex items-center justify-between text-[#0A0A0A] font-bold text-sm uppercase tracking-wider border-t-[3px] border-[#0A0A0A]/20 pt-3">
+                <span>View Roster</span>
+                <ArrowRight size={16} className="stroke-[3px]" />
+              </div>
+            </div>
+
+            <div 
+              onClick={() => navigate('/professor/classes')}
+              className="bg-[#FFD166] border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] transition-all cursor-pointer flex flex-col"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[2px_2px_0_#0A0A0A]">
+                  <FolderOpen size={24} className="text-[#0A0A0A] stroke-[2.5px]" />
+                </div>
+              </div>
+              <div className="space-y-1 mb-6 mt-auto">
+                <h3 className="text-4xl font-black text-[#0A0A0A]">{stats.totalDocumentsCount}</h3>
+                <span className="text-sm font-black uppercase tracking-widest text-[#0A0A0A]/80">Documents</span>
+              </div>
+              <div className="flex items-center justify-between text-[#0A0A0A] font-bold text-sm uppercase tracking-wider border-t-[3px] border-[#0A0A0A]/20 pt-3">
+                <span>Manage</span>
+                <ArrowRight size={16} className="stroke-[3px]" />
+              </div>
+            </div>
+
+            <div 
+              onClick={() => navigate('/professor/classes?tab=students')}
+              className="bg-[#EF476F] border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] transition-all cursor-pointer flex flex-col text-white"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[2px_2px_0_#0A0A0A]">
+                  <Users size={24} className="text-[#0A0A0A] stroke-[2.5px]" />
+                </div>
+              </div>
+              <div className="space-y-1 mb-6 mt-auto">
+                <h3 className="text-4xl font-black text-white">{stats.uniqueStudents}</h3>
+                <span className="text-sm font-black uppercase tracking-widest text-white/90">Students</span>
+              </div>
+              <div className="flex items-center justify-between text-white font-bold text-sm uppercase tracking-wider border-t-[3px] border-white/30 pt-3">
+                <span>View All</span>
+                <ArrowRight size={16} className="stroke-[3px]" />
+              </div>
+            </div>
+
+            <div 
+              onClick={() => navigate('/professor/classes')}
+              className="bg-purple-400 border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] transition-all cursor-pointer flex flex-col"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[2px_2px_0_#0A0A0A]">
+                  <Award size={24} className="text-[#0A0A0A] stroke-[2.5px]" />
+                </div>
+              </div>
+              <div className="space-y-1 mb-6 mt-auto">
+                <h3 className="text-4xl font-black text-[#0A0A0A]">{stats.avgProgress}%</h3>
+                <span className="text-sm font-black uppercase tracking-widest text-[#0A0A0A]/80">Avg Progress</span>
+              </div>
+              <div className="flex items-center justify-between text-[#0A0A0A] font-bold text-sm uppercase tracking-wider border-t-[3px] border-[#0A0A0A]/20 pt-3">
+                <span>Reports</span>
+                <ArrowRight size={16} className="stroke-[3px]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Widgets section */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
             
-            {isLoading ? (
-              <div className="widget-loading">Loading documents...</div>
-            ) : recentDocuments.length === 0 ? (
-              <div className="widget-empty">
-                <FolderOpen size={32} />
-                <p>No documents uploaded yet.</p>
+            {/* Recent Documents */}
+            <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A] flex flex-col">
+              <div className="flex justify-between items-center mb-6 pb-4 border-b-[3px] border-[#0A0A0A]/10">
+                <h4 className="text-2xl font-black uppercase tracking-tight">Recent Documents</h4>
                 <button 
                   onClick={() => navigate('/professor/classes')} 
-                  className="widget-empty-action"
+                  className="px-4 py-2 bg-[#0A0A0A] text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-[#333] transition-colors"
                 >
-                  Upload one now
+                  View All
                 </button>
               </div>
-            ) : (
-              <div className="recent-docs-list">
-                {recentDocuments.map((item) => (
-                  <div key={item.id} className="doc-item designer-flex designer-justify-between designer-items-center">
-                    <div className="doc-info">
-                      <h5>{item.name}</h5>
-                      <span>{item.courseCode || item.courseTitle}</span>
-                    </div>
-                    <div className="doc-status text-right">
-                      <span className={`doc-status-pill ${item.status || 'pending'}`}>
-                        {item.status || 'pending'}
-                      </span>
-                      <p className="doc-date">
-                        {item.created_at ? new Date(item.created_at).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric'
-                        }) : ''}
-                      </p>
-                    </div>
+              
+              <div className="flex-1 overflow-y-auto">
+                {isLoading ? (
+                  <div className="h-full flex items-center justify-center font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Loading documents...</div>
+                ) : recentDocuments.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-[#0A0A0A]/50 space-y-4">
+                    <FolderOpen size={48} className="stroke-[1.5px]" />
+                    <p className="font-bold uppercase tracking-widest text-center">No documents uploaded yet.</p>
                   </div>
-                ))}
+                ) : (
+                  <div className="space-y-4">
+                    {recentDocuments.map((item) => (
+                      <div key={item.id} className="flex justify-between items-center p-4 bg-gray-50 border-2 border-[#0A0A0A] rounded-xl hover:bg-[#FFD166]/20 transition-colors">
+                        <div>
+                          <h5 className="font-black text-lg text-[#0A0A0A] truncate max-w-[200px] sm:max-w-xs">{item.name}</h5>
+                          <span className="text-xs font-bold uppercase tracking-widest text-[#0A0A0A]/50">{item.courseCode || item.courseTitle}</span>
+                        </div>
+                        <div className="text-right flex flex-col items-end gap-2">
+                          <span className={`px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded border-2 border-[#0A0A0A] ${item.status === 'processed' ? 'bg-[#06D6A0] text-[#0A0A0A]' : 'bg-amber-300 text-[#0A0A0A]'}`}>
+                            {item.status || 'pending'}
+                          </span>
+                          <span className="text-xs font-bold text-[#0A0A0A]/50">
+                            {item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* AI & Student Insights */}
+            <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A] flex flex-col">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 pb-4 border-b-[3px] border-[#0A0A0A]/10">
+                <h4 className="text-2xl font-black uppercase tracking-tight">AI & Student Insights</h4>
+                <div className="flex gap-2">
+                  <button 
+                    className={`px-3 py-1.5 border-2 border-[#0A0A0A] rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeInsightTab === 'kg' ? 'bg-[#FF4D5B] text-white shadow-[2px_2px_0_#0A0A0A]' : 'bg-gray-100 text-[#0A0A0A]/50 hover:bg-gray-200 shadow-none'}`}
+                    onClick={() => setActiveInsightTab('kg')}
+                  >
+                    Knowledge Graph
+                  </button>
+                  <button 
+                    className={`px-3 py-1.5 border-2 border-[#0A0A0A] rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeInsightTab === 'intent' ? 'bg-[#118AB2] text-white shadow-[2px_2px_0_#0A0A0A]' : 'bg-gray-100 text-[#0A0A0A]/50 hover:bg-gray-200 shadow-none'}`}
+                    onClick={() => setActiveInsightTab('intent')}
+                  >
+                    Interactions
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 min-h-[300px] border-[3px] border-[#0A0A0A] rounded-xl bg-gray-50/50 overflow-hidden relative p-2">
+                {isLoading ? (
+                  <div className="absolute inset-0 flex items-center justify-center font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Loading insights...</div>
+                ) : activeInsightTab === 'kg' ? (
+                  <div className="absolute inset-0">
+                    <KnowledgeGraphViewer data={analyticsData?.content?.knowledge_graph} />
+                  </div>
+                ) : (
+                  <div className="absolute inset-0">
+                    <IntentRadar data={analyticsData?.engagement?.intent_radar || []} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: AI Brain Status & Quick Actions */}
+        <aside className="space-y-8">
+          
+          {/* AI Brain Status widget */}
+          <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A]">
+            <div className="flex justify-between items-center mb-6 pb-4 border-b-[3px] border-[#0A0A0A]/10">
+              <h4 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+                <Sparkles size={24} className="text-[#FF4D5B] fill-[#FF4D5B]" />
+                <span>AI Brains</span>
+              </h4>
+              <span className="px-2 py-1 bg-[#0A0A0A] text-white text-[10px] font-black uppercase tracking-widest rounded border-2 border-[#0A0A0A]">
+                {courses.length} Active
+              </span>
+            </div>
+
+            {courses.length === 0 ? (
+              <div className="text-center py-8 space-y-4">
+                <Sparkles size={48} className="mx-auto text-[#0A0A0A]/20" />
+                <p className="font-bold text-sm text-[#0A0A0A]/50 uppercase tracking-widest">No AI Brains active.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {courses.map((c) => {
+                  const status = courseGraphStatuses[c.id] || 'no_documents';
+                  let statusLabel = 'No Materials';
+                  let statusClass = 'bg-gray-100 text-[#0A0A0A]/50 border-gray-300';
+                  
+                  if (status === 'ready') {
+                    statusLabel = 'AI Trained';
+                    statusClass = 'bg-[#06D6A0] text-[#0A0A0A] border-[#0A0A0A]';
+                  } else if (status === 'processing') {
+                    statusLabel = 'Training...';
+                    statusClass = 'bg-[#FFD166] text-[#0A0A0A] border-[#0A0A0A] animate-pulse';
+                  } else if (c.docs_count > 0) {
+                    statusLabel = 'Ready to Train';
+                    statusClass = 'bg-[#FFD166] text-[#0A0A0A] border-[#0A0A0A]';
+                  }
+
+                  return (
+                    <div 
+                      key={c.id} 
+                      className="flex items-center justify-between p-3 border-2 border-[#0A0A0A] rounded-xl hover:bg-gray-50 cursor-pointer group transition-colors"
+                      onClick={() => navigate(`/professor/courses/${c.id}`)}
+                    >
+                      <div className="truncate pr-4">
+                        <h5 className="font-black text-sm uppercase tracking-tight">{c.code}</h5>
+                        <p className="text-[11px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest truncate max-w-[120px]">{c.title}</p>
+                      </div>
+                      <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest border-2 rounded ${statusClass} whitespace-nowrap`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* AI & Student Insights widget */}
-          <div className="designer-card widget-card insights-card">
-            <div className="widget-header designer-flex designer-justify-between designer-items-center mb-4">
-              <h4>AI & Student Insights</h4>
-              <div className="insights-tabs designer-flex gap-2">
-                <button 
-                  className={`insight-tab-btn ${activeInsightTab === 'kg' ? 'active' : ''}`}
-                  onClick={() => setActiveInsightTab('kg')}
-                >
-                  Knowledge Graph
-                </button>
-                <button 
-                  className={`insight-tab-btn ${activeInsightTab === 'intent' ? 'active' : ''}`}
-                  onClick={() => setActiveInsightTab('intent')}
-                >
-                  Student Interactions
-                </button>
-              </div>
+          {/* Quick Actions widget */}
+          <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A]">
+            <div className="mb-6 pb-4 border-b-[3px] border-[#0A0A0A]/10">
+              <h4 className="text-xl font-black uppercase tracking-tight">Quick Actions</h4>
             </div>
 
-            <div className="insight-chart-container">
-              {isLoading ? (
-                <div className="widget-loading">Loading insights...</div>
-              ) : activeInsightTab === 'kg' ? (
-                <KnowledgeGraphViewer data={analyticsData?.content?.knowledge_graph} />
-              ) : (
-                <IntentRadar data={analyticsData?.engagement?.intent_radar || []} />
-              )}
+            <div className="space-y-4">
+              <button 
+                onClick={() => navigate('/professor/classes')}
+                className="w-full flex items-center gap-4 p-4 bg-white border-[3px] border-[#0A0A0A] rounded-xl shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all group"
+              >
+                <div className="w-10 h-10 bg-[#FFD166] border-2 border-[#0A0A0A] rounded-lg flex items-center justify-center text-xl shrink-0">
+                  📁
+                </div>
+                <div className="text-left flex-1">
+                  <h5 className="font-black text-[15px] uppercase tracking-tight">Upload Materials</h5>
+                  <p className="text-[11px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Add PDFs/notes</p>
+                </div>
+                <ChevronRight size={20} className="stroke-[3px] text-[#0A0A0A]/30 group-hover:text-[#0A0A0A]" />
+              </button>
+
+              <button 
+                onClick={() => navigate('/professor/assignments')}
+                className="w-full flex items-center gap-4 p-4 bg-white border-[3px] border-[#0A0A0A] rounded-xl shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all group"
+              >
+                <div className="w-10 h-10 bg-[#EF476F] border-2 border-[#0A0A0A] rounded-lg flex items-center justify-center text-xl shrink-0">
+                  📝
+                </div>
+                <div className="text-left flex-1">
+                  <h5 className="font-black text-[15px] uppercase tracking-tight">Create Assignment</h5>
+                  <p className="text-[11px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Set up tests</p>
+                </div>
+                <ChevronRight size={20} className="stroke-[3px] text-[#0A0A0A]/30 group-hover:text-[#0A0A0A]" />
+              </button>
+
+              <button 
+                onClick={() => navigate('/professor/classes?tab=students')}
+                className="w-full flex items-center gap-4 p-4 bg-white border-[3px] border-[#0A0A0A] rounded-xl shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all group"
+              >
+                <div className="w-10 h-10 bg-[#118AB2] border-2 border-[#0A0A0A] rounded-lg flex items-center justify-center text-xl shrink-0">
+                  👥
+                </div>
+                <div className="text-left flex-1">
+                  <h5 className="font-black text-[15px] uppercase tracking-tight">Student Roster</h5>
+                  <p className="text-[11px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Manage enrolled</p>
+                </div>
+                <ChevronRight size={20} className="stroke-[3px] text-[#0A0A0A]/30 group-hover:text-[#0A0A0A]" />
+              </button>
             </div>
           </div>
 
-        </div>
+        </aside>
+
       </div>
-
-      {/* RIGHT COLUMN: AI Brain Status & Quick Actions */}
-      <aside className="dashboard-side">
-        
-        {/* AI Brain Status widget */}
-        <div className="designer-card side-widget-card mb-6">
-          <div className="side-widget-header designer-flex designer-justify-between designer-items-center mb-4">
-            <h4 className="side-widget-title designer-flex designer-items-center gap-2">
-              <Sparkles size={18} className="text-primary animate-pulse" />
-              <span>AI Brain Status</span>
-            </h4>
-            <span className="overview-count">{courses.length} Brains</span>
-          </div>
-
-          {courses.length === 0 ? (
-            <div className="widget-empty">
-              <Sparkles size={32} />
-              <p>No AI Brains active.</p>
-              <span>Create a class and upload PDFs to begin training.</span>
-            </div>
-          ) : (
-            <div className="ai-brains-list">
-              {courses.map((c) => {
-                const status = courseGraphStatuses[c.id] || 'no_documents';
-                let statusLabel = 'No Materials';
-                let statusClass = 'empty';
-                
-                if (status === 'ready') {
-                  statusLabel = 'AI Trained';
-                  statusClass = 'ready';
-                } else if (status === 'processing') {
-                  statusLabel = 'Training...';
-                  statusClass = 'training';
-                } else if (c.docs_count > 0) {
-                  statusLabel = 'Ready to Train';
-                  statusClass = 'training';
-                }
-
-                return (
-                  <div 
-                    key={c.id} 
-                    className="ai-brain-item hover-lift"
-                    onClick={() => navigate(`/professor/courses/${c.id}`)}
-                  >
-                    <div className="brain-info">
-                      <h5>{c.code}</h5>
-                      <p>{c.title}</p>
-                    </div>
-                    <span className={`brain-status-badge ${statusClass}`}>
-                      {statusLabel}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Quick Actions widget */}
-        <div className="designer-card side-widget-card">
-          <div className="side-widget-header mb-4">
-            <h4 className="side-widget-title">Quick Actions</h4>
-          </div>
-
-          <div className="quick-actions-list">
-            <button 
-              onClick={() => navigate('/professor/classes')}
-              className="quick-action-btn hover-lift"
-            >
-              <div className="btn-icon">📁</div>
-              <div className="btn-text">
-                <h5>Upload Materials</h5>
-                <p>Add PDFs/notes to classes</p>
-              </div>
-              <ChevronRight size={16} />
-            </button>
-
-            <button 
-              onClick={() => navigate('/professor/assignments')}
-              className="quick-action-btn hover-lift"
-            >
-              <div className="btn-icon">📝</div>
-              <div className="btn-text">
-                <h5>Create Assignment</h5>
-                <p>Set up tests & assignments</p>
-              </div>
-              <ChevronRight size={16} />
-            </button>
-
-            <button 
-              onClick={() => navigate('/professor/classes?tab=students')}
-              className="quick-action-btn hover-lift"
-            >
-              <div className="btn-icon">👥</div>
-              <div className="btn-text">
-                <h5>Student Roster</h5>
-                <p>Manage enrolled students</p>
-              </div>
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-
-      </aside>
 
       {/* CREATE CLASS MODAL */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content animate-in zoom-in-95 duration-200">
-            <h2 className="modal-title">Create New Class</h2>
-            <form onSubmit={handleCreateCourse} className="space-y-4">
-              <div className="form-group">
-                <label className="form-label">Class Title</label>
+        <div className="fixed inset-0 bg-[#0A0A0A]/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-[4px] border-[#0A0A0A] rounded-3xl p-8 max-w-md w-full shadow-[12px_12px_0_#0A0A0A]">
+            <h2 className="text-2xl font-black uppercase tracking-tight mb-6">Create New Class</h2>
+            <form onSubmit={handleCreateCourse} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-black uppercase tracking-widest">Class Title</label>
                 <input
                   autoFocus
-                  className="designer-search-input modal-input"
+                  className="w-full px-4 py-3 bg-white border-[3px] border-[#0A0A0A] rounded-xl font-bold font-['Inter'] shadow-[4px_4px_0_#0A0A0A] focus:outline-none focus:ring-4 focus:ring-[#FF4D5B]/20"
                   placeholder="e.g. Mathematics - Grade 10"
                   value={courseTitle}
                   onChange={e => setCourseTitle(e.target.value)}
@@ -565,10 +581,10 @@ export default function Dashboard() {
                 />
               </div>
               
-              <div className="form-group">
-                <label className="form-label">Department Code</label>
+              <div className="space-y-2">
+                <label className="text-sm font-black uppercase tracking-widest">Department Code</label>
                 <input
-                  className="designer-search-input modal-input"
+                  className="w-full px-4 py-3 bg-white border-[3px] border-[#0A0A0A] rounded-xl font-bold font-['Inter'] shadow-[4px_4px_0_#0A0A0A] focus:outline-none focus:ring-4 focus:ring-[#FF4D5B]/20"
                   placeholder="e.g. MATH-101"
                   value={courseCode}
                   onChange={e => setCourseCode(e.target.value)}
@@ -576,23 +592,28 @@ export default function Dashboard() {
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Description</label>
+              <div className="space-y-2">
+                <label className="text-sm font-black uppercase tracking-widest">Description</label>
                 <input
-                  className="designer-search-input modal-input"
+                  className="w-full px-4 py-3 bg-white border-[3px] border-[#0A0A0A] rounded-xl font-bold font-['Inter'] shadow-[4px_4px_0_#0A0A0A] focus:outline-none focus:ring-4 focus:ring-[#FF4D5B]/20"
                   placeholder="e.g. Quadratic Equations, Trigonometry"
                   value={courseDesc}
                   onChange={e => setCourseDesc(e.target.value)}
                 />
               </div>
 
-
-
-              <div className="modal-actions mt-6">
-                <button type="button" onClick={() => setShowModal(false)} className="designer-btn">
+              <div className="flex gap-4 pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => setShowModal(false)} 
+                  className="flex-1 py-3 px-4 bg-white border-[3px] border-[#0A0A0A] text-[#0A0A0A] rounded-xl font-black uppercase tracking-widest shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all"
+                >
                   Cancel
                 </button>
-                <button type="submit" className="designer-btn designer-btn-primary">
+                <button 
+                  type="submit" 
+                  className="flex-1 py-3 px-4 bg-[#FF4D5B] border-[3px] border-[#0A0A0A] text-white rounded-xl font-black uppercase tracking-widest shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all"
+                >
                   Create
                 </button>
               </div>

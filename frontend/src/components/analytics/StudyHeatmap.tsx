@@ -35,24 +35,27 @@ export default function StudyHeatmap({ data }: Props) {
           type: 'sequential',
           scheme: 'inferno'
         }}
-        emptyColor="rgba(255, 255, 255, 0.05)"
+        emptyColor="rgba(0, 0, 0, 0.04)"
         borderWidth={1}
-        borderColor="rgba(255, 255, 255, 0.1)"
+        borderColor="rgba(0, 0, 0, 0.08)"
         enableLabels={false}
         theme={{
-          textColor: '#ffffff',
-          fontSize: 12,
+          textColor: '#0A0A0A',
+          fontSize: 11,
           axis: {
-            domain: { line: { stroke: 'rgba(255, 255, 255, 0.2)' } },
-            ticks: { line: { stroke: 'rgba(255, 255, 255, 0.2)' } }
+            domain: { line: { stroke: 'rgba(0, 0, 0, 0.1)' } },
+            ticks: { line: { stroke: 'rgba(0, 0, 0, 0.1)' } }
           },
           tooltip: {
             container: {
-              background: 'rgba(15, 23, 42, 0.95)',
-              color: '#f8fafc',
+              background: '#FFFFFF',
+              color: '#0A0A0A',
               fontSize: 12,
               borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.2)'
+              border: '2px solid #0A0A0A',
+              boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.95)',
+              fontFamily: 'Outfit, sans-serif',
+              fontWeight: 600
             }
           }
         } as any}

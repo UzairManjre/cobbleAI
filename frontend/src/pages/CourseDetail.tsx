@@ -223,19 +223,22 @@ export default function CourseDetail() {
 
   if (isLoading) {
     return (
-      <div className="prof-course-loading">
-        <p>Loading course...</p>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-[4px] border-[#0A0A0A] border-t-transparent"></div>
       </div>
     );
   }
 
   if (!course) {
     return (
-      <div className="prof-course-empty">
-        <h2>Course not found</h2>
-        <button onClick={() => navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard')} className="prof-btn-back">
+      <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] p-8 flex flex-col items-center justify-center space-y-6">
+        <h2 className="text-3xl font-black uppercase tracking-tight text-[#0A0A0A]">Course not found</h2>
+        <button 
+          onClick={() => navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard')}
+          className="px-6 py-3 border-[3px] border-[#0A0A0A] bg-white rounded-xl font-black uppercase shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2"
+        >
           <ArrowLeft size={16} />
-          Back to Classes
+          <span>Back to Dashboard</span>
         </button>
       </div>
     );
@@ -247,53 +250,51 @@ export default function CourseDetail() {
     : 0;
 
   return (
-    <div className="prof-course-detail">
+    <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] p-6 lg:p-8 space-y-8">
       {/* Graph Generation Progress Overlay */}
       {(isGenerating || genResult || genError) && (
-        <div className="gen-overlay">
-          <div className="gen-overlay-backdrop" />
-          <div className="gen-modal">
+        <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4">
+          <div className="absolute inset-0 bg-[#111827]/40 backdrop-blur-md" onClick={dismissOverlay} />
+          
+          <div className="bg-white border-[4px] border-[#0A0A0A] rounded-3xl p-8 max-w-lg w-full relative z-10 shadow-[10px_10px_0_#0A0A0A] space-y-6">
+            
             {/* Header */}
-            <div className="gen-modal-header">
-              <div className="gen-modal-icon">
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 bg-[#FFD166] border-[3px] border-[#0A0A0A] rounded-2xl shadow-[4px_4px_0_#0A0A0A] flex items-center justify-center mx-auto text-3xl">
                 {genResult ? '🎉' : genError ? '❌' : '🧠'}
               </div>
-              <h2>
-                {genResult
-                  ? 'Knowledge Graph Ready!'
-                  : genError
-                  ? 'Generation Failed'
-                  : 'Building Knowledge Graph'}
+              <h2 className="text-2xl font-black uppercase tracking-tight text-[#0A0A0A] pt-2">
+                {genResult ? 'Knowledge Graph Ready!' : genError ? 'Generation Failed' : 'Building Knowledge Graph'}
               </h2>
               {!genResult && !genError && (
-                <p className="gen-modal-subtitle">
-                  This may take a few minutes depending on document size
+                <p className="text-xs font-bold text-[#0A0A0A]/50 font-['Inter']">
+                  This may take a few minutes depending on document size.
                 </p>
               )}
             </div>
 
             {/* Progress Content */}
             {!genResult && !genError && (
-              <div className="gen-progress-content">
+              <div className="space-y-6">
                 {/* Progress Bar */}
-                <div className="gen-progress-bar-container">
-                  <div className="gen-progress-bar" style={{ width: `${progressPct}%` }}>
-                    <div className="gen-progress-bar-glow" />
+                <div>
+                  <div className="h-6 bg-gray-100 border-[3px] border-[#0A0A0A] rounded-full overflow-hidden relative shadow-[2px_2px_0_#0A0A0A]">
+                    <div className="h-full bg-[#EF476F] transition-all duration-300" style={{ width: `${progressPct}%` }} />
                   </div>
-                </div>
-                <div className="gen-progress-meta">
-                  <span className="gen-progress-pct">{progressPct}%</span>
-                  {progress && (
-                    <span className="gen-progress-time">
-                      ⏱ {formatElapsed(progress.elapsed)}
-                    </span>
-                  )}
+                  <div className="flex justify-between items-center font-black text-xs uppercase tracking-widest mt-2 text-[#0A0A0A]">
+                    <span>{progressPct}% Done</span>
+                    {progress && (
+                      <span className="flex items-center gap-1">
+                        ⏱ {formatElapsed(progress.elapsed)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Step List */}
-                <div className="gen-steps">
+                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
                   {STEP_LABELS.map((label, i) => {
-                    const stepNum = i; // step 0-6
+                    const stepNum = i;
                     const currentStep = progress?.step ?? -1;
                     const isActive = currentStep === stepNum;
                     const isDone = currentStep > stepNum;
@@ -302,19 +303,23 @@ export default function CourseDetail() {
                     return (
                       <div
                         key={i}
-                        className={`gen-step ${isActive ? 'gen-step-active' : ''} ${isDone ? 'gen-step-done' : ''} ${isPending ? 'gen-step-pending' : ''}`}
+                        className={`flex items-center justify-between p-3 border-2 border-[#0A0A0A] rounded-xl transition-all ${
+                          isActive ? 'bg-[#FFD166] shadow-[2px_2px_0_#0A0A0A]' : isDone ? 'bg-[#06D6A0]/10 opacity-70' : 'bg-gray-50 opacity-40'
+                        }`}
                       >
-                        <span className="gen-step-icon">
-                          {isDone ? '✓' : STEP_ICONS[i]}
-                        </span>
-                        <div className="gen-step-text">
-                          <span className="gen-step-label">{label}</span>
-                          {isActive && progress?.detail && (
-                            <span className="gen-step-detail">{progress.detail}</span>
-                          )}
+                        <div className="flex items-center gap-3">
+                          <span className="w-6 h-6 rounded-full border-2 border-[#0A0A0A] flex items-center justify-center text-xs font-black bg-white">
+                            {isDone ? '✓' : STEP_ICONS[i]}
+                          </span>
+                          <div className="text-xs font-black uppercase">
+                            <span>{label}</span>
+                            {isActive && progress?.detail && (
+                              <p className="text-[10px] font-bold font-['Inter'] text-[#0A0A0A]/60 mt-0.5 normal-case">{progress.detail}</p>
+                            )}
+                          </div>
                         </div>
                         {isActive && (
-                          <div className="gen-step-spinner" />
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#0A0A0A] border-t-transparent" />
                         )}
                       </div>
                     );
@@ -325,36 +330,45 @@ export default function CourseDetail() {
 
             {/* Success Result */}
             {genResult && (
-              <div className="gen-result">
-                <div className="gen-result-stats">
-                  <div className="gen-result-stat">
-                    <span className="gen-result-stat-value">{genResult.nodes_count}</span>
-                    <span className="gen-result-stat-label">Concepts</span>
+              <div className="space-y-6">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 border-2 border-[#0A0A0A] rounded-xl bg-gray-50 text-center">
+                    <span className="block text-2xl font-black text-[#0A0A0A]">{genResult.nodes_count}</span>
+                    <span className="text-[10px] font-black uppercase text-[#0A0A0A]/50">Concepts</span>
                   </div>
-                  <div className="gen-result-stat">
-                    <span className="gen-result-stat-value">{genResult.edges_count}</span>
-                    <span className="gen-result-stat-label">Connections</span>
+                  <div className="p-3 border-2 border-[#0A0A0A] rounded-xl bg-gray-50 text-center">
+                    <span className="block text-2xl font-black text-[#0A0A0A]">{genResult.edges_count}</span>
+                    <span className="text-[10px] font-black uppercase text-[#0A0A0A]/50">Links</span>
                   </div>
-                  <div className="gen-result-stat">
-                    <span className="gen-result-stat-value">{formatElapsed(genResult.elapsed)}</span>
-                    <span className="gen-result-stat-label">Time</span>
+                  <div className="p-3 border-2 border-[#0A0A0A] rounded-xl bg-gray-50 text-center">
+                    <span className="block text-2xl font-black text-[#0A0A0A]">{formatElapsed(genResult.elapsed)}</span>
+                    <span className="text-[10px] font-black uppercase text-[#0A0A0A]/50">Time</span>
                   </div>
                 </div>
-                <button onClick={() => {
-                  dismissOverlay();
-                  navigate(`/course/${courseId}/map`);
-                }} className="gen-result-btn">
+                
+                <button 
+                  onClick={() => {
+                    dismissOverlay();
+                    navigate(`/${role}/courses/${courseId}/map`);
+                  }}
+                  className="w-full py-4 border-[3px] border-[#0A0A0A] bg-[#0A0A0A] text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[4px_4px_0_#06D6A0] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#06D6A0] active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2"
+                >
                   <Sparkles size={16} />
-                  View Knowledge Graph
+                  <span>View Knowledge Graph</span>
                 </button>
               </div>
             )}
 
             {/* Error */}
             {genError && (
-              <div className="gen-error">
-                <p>{genError}</p>
-                <button onClick={dismissOverlay} className="gen-error-btn">
+              <div className="space-y-4">
+                <div className="p-4 border-[3px] border-[#0A0A0A] bg-[#EF476F]/10 text-[#EF476F] font-bold text-sm rounded-xl">
+                  {genError}
+                </div>
+                <button 
+                  onClick={dismissOverlay}
+                  className="w-full py-3 border-[3px] border-[#0A0A0A] bg-[#0A0A0A] text-white font-black uppercase tracking-wider text-xs rounded-xl"
+                >
                   Dismiss
                 </button>
               </div>
@@ -363,159 +377,207 @@ export default function CourseDetail() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="prof-course-header">
-        <button onClick={() => navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard')} className="prof-back-btn">
-          <ArrowLeft size={18} />
-          <span>Back to Classes</span>
-        </button>
-        
-        <div className="prof-course-title-section">
-          <h1>{course.title}</h1>
-          <span className="prof-course-code">{course.code}</span>
-        </div>
+      {/* Header Back Button */}
+      <button 
+        onClick={() => navigate(role === 'professor' ? '/professor/classes' : '/student/dashboard')}
+        className="px-4 py-2 border-[3px] border-[#0A0A0A] bg-white rounded-xl font-black uppercase text-xs shadow-[3px_3px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-1.5 w-fit"
+      >
+        <ArrowLeft size={14} className="stroke-[3px]" />
+        <span>Back to {role === 'professor' ? 'Classes' : 'Dashboard'}</span>
+      </button>
 
-        <div className="prof-course-actions">
-          {role === 'professor' && (
-            <>
-              <button onClick={cleanupDuplicates} className="prof-action-btn">
-                Clean Duplicates
-              </button>
-              <button
-                onClick={generateGraph}
-                disabled={isGenerating}
-                className="prof-action-btn prof-action-btn-secondary"
-              >
-                {isGenerating ? 'Generating...' : 'Generate Graph'}
-              </button>
-              <button
-                onClick={() => navigate(`/course/${courseId}/tests`)}
-                className="prof-action-btn prof-action-btn-secondary"
-              >
-                Tests
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => navigate(`/course/${courseId}/map`)}
-            className="prof-action-btn prof-action-btn-secondary"
-          >
-            Visual Mind Map
-          </button>
-          <button
-            onClick={() => navigate(`/course/${courseId}/plan`)}
-            className="prof-action-btn prof-action-btn-secondary"
-          >
-            Study Plan
-          </button>
-          <button
-            onClick={() => navigate(`/student/chat?course=${courseId}`)}
-            className="prof-action-btn prof-action-btn-secondary"
-          >
-            AI Tutor Chat
-          </button>
-          <button
-            onClick={() => navigate(`/course/${courseId}/study`)}
-            className="prof-action-btn prof-action-btn-primary"
-          >
-            Enter Study Mode
-          </button>
+      {/* Header Banner */}
+      <div className="bg-[#118AB2] border-[3px] border-[#0A0A0A] rounded-3xl p-8 lg:p-10 shadow-[8px_8px_0_#0A0A0A] flex flex-col md:flex-row justify-between items-center relative overflow-hidden group">
+        <div className="relative z-10 flex items-center gap-6">
+          <div className="w-20 h-20 bg-white border-[3px] border-[#0A0A0A] rounded-2xl shadow-[4px_4px_0_#0A0A0A] flex items-center justify-center text-4xl">
+            📖
+          </div>
+          <div>
+            <h2 className="text-4xl font-black text-white uppercase tracking-tight">{course.title}</h2>
+            <div className="flex flex-wrap items-center gap-3 mt-3">
+              <span className="px-3 py-1 bg-[#0A0A0A] text-white text-xs font-black uppercase tracking-widest rounded-lg border-2 border-white/20">
+                {course.code}
+              </span>
+              <span className="px-3 py-1 bg-white text-[#0A0A0A] text-xs font-black uppercase tracking-widest rounded-lg border-2 border-[#0A0A0A]">
+                {role === 'professor' ? 'Professor View' : 'Student Study Center'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="prof-course-grid">
-        {/* Left: Documents */}
-        <div className="prof-course-main">
-          <div className="prof-section-header">
-            <h2>Learning Materials</h2>
-            {role === 'professor' && (
-              <>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleUpload}
-                  className="hidden"
-                  accept=".pdf,.docx,.pptx"
-                  multiple
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="prof-add-doc-btn"
-                >
-                  <Upload size={14} />
-                  {isUploading ? 'Uploading...' : 'Add Documents'}
-                </button>
-              </>
-            )}
-          </div>
+      {/* Dynamic Navigation Action Bar */}
+      <div className="flex flex-wrap gap-4 items-center">
+        {role === 'professor' && (
+          <>
+            <button 
+              onClick={cleanupDuplicates}
+              className="px-5 py-3 border-[3px] border-[#0A0A0A] bg-[#FFD166] text-[#0A0A0A] rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2"
+            >
+              🧹 Clean Duplicates
+            </button>
+            <button 
+              onClick={generateGraph}
+              disabled={isGenerating}
+              className="px-5 py-3 border-[3px] border-[#0A0A0A] bg-[#EF476F] text-white rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              🧠 {isGenerating ? 'Generating...' : 'Re-Generate Graph'}
+            </button>
+            <button 
+              onClick={() => navigate(`/professor/courses/${courseId}/tests`)}
+              className="px-5 py-3 border-[3px] border-[#0A0A0A] bg-[#06D6A0] text-[#0A0A0A] rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2"
+            >
+              📝 Create & Manage Tests
+            </button>
+          </>
+        )}
+        
+        <button 
+          onClick={() => navigate(`/${role}/courses/${courseId}/map`)}
+          className="px-5 py-3 border-[3px] border-[#0A0A0A] bg-white text-[#0A0A0A] rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2"
+        >
+          🕸 Visual Mind Map
+        </button>
+        <button 
+          onClick={() => navigate(`/${role}/courses/${courseId}/plan`)}
+          className="px-5 py-3 border-[3px] border-[#0A0A0A] bg-white text-[#0A0A0A] rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2"
+        >
+          📅 Study Plan
+        </button>
+        <button 
+          onClick={() => navigate(`/${role}/courses/${courseId}/study`)}
+          className="px-6 py-3.5 border-[3px] border-[#0A0A0A] bg-[#0A0A0A] text-white rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#06D6A0] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#06D6A0] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2 md:ml-auto"
+        >
+          🚀 Enter Study Mode
+        </button>
+      </div>
 
-          <div className="prof-documents-list">
-            {documents.map((doc) => (
-              <div key={doc.id} className="prof-document-item">
-                <div className="prof-doc-info">
-                  <div className="prof-doc-icon">
-                    {doc.filename.split('.').pop()?.toUpperCase() || 'FILE'}
-                  </div>
-                  <div>
-                    <h4>{doc.filename}</h4>
-                    <p>Added {new Date(doc.created_at).toLocaleDateString()}</p>
-                  </div>
-                </div>
-                <span className={`prof-doc-status prof-doc-status-${doc.status}`}>
-                  {doc.status}
-                </span>
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left Column: Learning Materials */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A] space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b-[3px] border-[#0A0A0A]/10">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">📚</span>
+                <h3 className="text-xl font-black uppercase tracking-tight text-[#0A0A0A]">Learning Materials</h3>
               </div>
-            ))}
+              
+              {role === 'professor' && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleUpload}
+                    className="hidden"
+                    accept=".pdf,.docx,.pptx"
+                    multiple
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="px-4 py-2 border-[3px] border-[#0A0A0A] bg-[#0A0A0A] text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-[3px_3px_0_#EF476F] hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#EF476F] active:translate-y-0 active:shadow-none transition-all flex items-center gap-1.5"
+                  >
+                    <Upload size={14} className="stroke-[3px]" />
+                    <span>{isUploading ? 'Uploading...' : 'Add Materials'}</span>
+                  </button>
+                </>
+              )}
+            </div>
             
-            {documents.length === 0 && (
-              <div className="prof-empty-docs">
-                <FileText size={32} />
-                <p>No documents available for this course yet.</p>
-              </div>
-            )}
+            <div className="space-y-4">
+              {documents.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-4 border-[3px] border-[#0A0A0A] rounded-2xl bg-[#FCFCFC] shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center font-black uppercase text-xs text-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A]">
+                      {doc.filename.split('.').pop()?.toUpperCase() || 'DOC'}
+                    </div>
+                    <div>
+                      <h4 className="font-black text-[#0A0A0A] line-clamp-1">{doc.filename}</h4>
+                      <p className="text-xs font-bold text-[#0A0A0A]/50 font-['Inter'] mt-0.5">Added {new Date(doc.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  
+                  <span className={`px-3 py-1 text-xs font-black uppercase border-[3px] border-[#0A0A0A] rounded-xl shadow-[2px_2px_0_#0A0A0A] ${
+                    doc.status === 'processed' || doc.status === 'completed'
+                      ? 'bg-[#06D6A0] text-[#0A0A0A]' 
+                      : doc.status === 'processing'
+                      ? 'bg-[#FFD166] text-[#0A0A0A] animate-pulse'
+                      : 'bg-[#EF476F] text-white'
+                  }`}>
+                    {doc.status}
+                  </span>
+                </div>
+              ))}
+              
+              {documents.length === 0 && (
+                <div className="py-12 flex flex-col items-center justify-center space-y-3 text-[#0A0A0A]/40 text-center">
+                  <FileText size={48} className="stroke-[1.5px]" />
+                  <p className="font-black uppercase tracking-widest text-sm">No materials added yet</p>
+                  {role === 'professor' && (
+                    <span className="text-xs font-bold font-['Inter']">Upload syllabus or course lecture notes to power the AI.</span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Right: Sidebar */}
-        <div className="prof-course-sidebar">
-          {/* Stats Card */}
-          <div className="prof-sidebar-card">
-            <h3>Course Intelligence</h3>
-            <div className="prof-stats">
-              <div className="prof-stat-row">
-                <span>Total Concepts</span>
-                <span className="prof-stat-value">{graphNodes.length || '--'}</span>
+        
+        {/* Right Column: Intelligence & Student Access */}
+        <div className="space-y-8">
+          {/* Course Intelligence Card */}
+          <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A] space-y-6">
+            <div className="flex items-center gap-3 pb-4 border-b-[3px] border-[#0A0A0A]/10">
+              <span className="text-2xl">🧠</span>
+              <h3 className="text-xl font-black uppercase tracking-tight text-[#0A0A0A]">Course Intelligence</h3>
+            </div>
+            
+            <div className="space-y-4 font-bold text-sm">
+              <div className="flex justify-between items-center p-3 border-2 border-[#0A0A0A] rounded-xl bg-[#FCFCFC]">
+                <span className="text-[#0A0A0A]/60">Total Concepts</span>
+                <span className="font-black text-base">{graphNodes.length || '--'}</span>
               </div>
-              <div className="prof-stat-row">
-                <span>Study Synapses</span>
-                <span className="prof-stat-value">{graphEdges.length || '--'}</span>
+              <div className="flex justify-between items-center p-3 border-2 border-[#0A0A0A] rounded-xl bg-[#FCFCFC]">
+                <span className="text-[#0A0A0A]/60">Study Synapses</span>
+                <span className="font-black text-base">{graphEdges.length || '--'}</span>
               </div>
-              <div className="prof-stat-row">
-                <span>Document Count</span>
-                <span className="prof-stat-value">{documents.length}</span>
+              <div className="flex justify-between items-center p-3 border-2 border-[#0A0A0A] rounded-xl bg-[#FCFCFC]">
+                <span className="text-[#0A0A0A]/60">Document Count</span>
+                <span className="font-black text-base">{documents.length}</span>
               </div>
-              <div className="prof-stat-row">
-                <span>Intelligence Status</span>
-                <span className={`prof-stat-value ${graphNodes.length > 0 ? 'prof-status-ready' : 'prof-status-pending'}`}>
+              <div className="flex justify-between items-center p-3 border-2 border-[#0A0A0A] rounded-xl bg-[#FCFCFC]">
+                <span className="text-[#0A0A0A]/60">Intelligence Status</span>
+                <span className={`px-2.5 py-0.5 border-2 border-[#0A0A0A] rounded-lg text-xs font-black uppercase ${
+                  graphNodes.length > 0 ? 'bg-[#06D6A0] text-[#0A0A0A]' : 'bg-[#FFD166] text-[#0A0A0A]'
+                }`}>
                   {graphNodes.length > 0 ? 'Map Optimized' : 'Map Required'}
                 </span>
               </div>
             </div>
           </div>
-
+          
           {/* Student Access Card */}
           {role === 'professor' && (
-            <div className="prof-sidebar-card">
-              <h3>Student Access</h3>
-              <p>Provide this code to your students to grant access to this course.</p>
+            <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A] space-y-6">
+              <div className="flex items-center gap-3 pb-4 border-b-[3px] border-[#0A0A0A]/10">
+                <span className="text-2xl">🎟</span>
+                <h3 className="text-xl font-black uppercase tracking-tight text-[#0A0A0A]">Student Access</h3>
+              </div>
+              
+              <p className="text-sm font-bold font-['Inter'] text-[#0A0A0A]/60 leading-relaxed">
+                Provide this invitation code to your students to grant them full access to this course's AI materials.
+              </p>
+              
               {inviteCode ? (
-                <div className="prof-invite-code">
+                <div className="p-4 border-[3px] border-[#0A0A0A] bg-[#FFD166] text-[#0A0A0A] font-black text-2xl text-center rounded-2xl tracking-widest shadow-[4px_4px_0_#0A0A0A]">
                   {inviteCode}
                 </div>
               ) : (
-                <button onClick={generateInvite} className="prof-btn-submit">
+                <button 
+                  onClick={generateInvite} 
+                  className="w-full py-4 border-[3px] border-[#0A0A0A] bg-[#0A0A0A] text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[4px_4px_0_#06D6A0] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#06D6A0] active:translate-y-0 active:shadow-none transition-all"
+                >
                   Generate Invitation Code
                 </button>
               )}

@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import {
   BookOpen, CheckCircle, Clock, Target, Brain, Code, MessageSquare,
-  Lightbulb, FileText, ChevronRight, ChevronDown, Play, Award,
-  RefreshCw, AlertCircle, Sparkles, X
+  Lightbulb, FileText, ChevronDown, Award,
+  RefreshCw, AlertCircle, Sparkles, X, ArrowLeft
 } from 'lucide-react';
 import { studyPlansApi, coursesApi } from '../api';
 import ReactMarkdown from 'react-markdown';
@@ -71,13 +71,13 @@ const ExerciseIcon = ({ type }: { type: string }) => {
 
 const DifficultyBadge = ({ difficulty }: { difficulty: string }) => {
   const colors = {
-    easy: 'bg-green-500/20 text-green-400 border-green-500/30',
-    medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    hard: 'bg-red-500/20 text-red-400 border-red-500/30'
+    easy: 'bg-emerald-100 text-emerald-800 border-emerald-400',
+    medium: 'bg-amber-100 text-amber-800 border-amber-400',
+    hard: 'bg-red-100 text-red-800 border-red-400'
   };
   return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${colors[difficulty as keyof typeof colors]}`}>
-      {difficulty.toUpperCase()}
+    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase border-2 tracking-wide ${colors[difficulty as keyof typeof colors]}`}>
+      {difficulty}
     </span>
   );
 };
@@ -85,7 +85,7 @@ const DifficultyBadge = ({ difficulty }: { difficulty: string }) => {
 export default function StudyPlanView() {
   const navigate = useNavigate();
   const { courseId } = useParams();
-  const { token } = useAuthStore();
+  const { token, role } = useAuthStore();
 
   const [plan, setPlan] = useState<StudyPlan | null>(null);
   const [progress, setProgress] = useState<StudyProgress | null>(null);
@@ -114,21 +114,14 @@ export default function StudyPlanView() {
       setError(null);
       const res = await studyPlansApi.getActive(courseId);
 
-      console.log('StudyPlan - API Response:', res.data);
-      console.log('StudyPlan - Plan data:', res.data.study_plan);
-
       if (res.data.study_plan) {
-        console.log('Setting plan with topics:', res.data.study_plan.topics?.length);
         setPlan(res.data.study_plan);
         setProgress(res.data.progress);
       } else {
-        console.log('No matching plan found. Available plan course_id:', res.data.study_plan?.course_id);
         setPlan(null);
         setProgress(null);
       }
     } catch (err: any) {
-      console.error('Failed to load plan:', err);
-      // Don't show error for 404 (no plan exists yet)
       if (err.response?.status !== 404) {
         setError(err.response?.data?.detail || 'Failed to load study plan');
       }
@@ -149,7 +142,7 @@ export default function StudyPlanView() {
 
       const graphId = courseRes.data.graph_id;
       if (!graphId) {
-        setError('No knowledge graph found for this course. Please create one first.');
+        setError('No knowledge graph found for this course. Please generate one from Course Detail.');
         return;
       }
 
@@ -254,48 +247,48 @@ export default function StudyPlanView() {
   // No plan view
   if (!plan && !isLoading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] p-8">
+      <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] p-8">
         <div className="max-w-3xl mx-auto">
-          <div className="text-center py-16">
-            <div className="w-20 h-20 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <BookOpen className="w-10 h-10 text-blue-400" />
+          <button
+            onClick={() => navigate(`/${role}/courses/${courseId}`)}
+            className="mb-8 px-5 py-2.5 bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[3px_3px_0_#0A0A0A] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_#0A0A0A] transition-all inline-flex items-center gap-2 text-sm"
+          >
+            <ArrowLeft size={16} className="stroke-[3px]" /> Back to Course
+          </button>
+          
+          <div className="bg-white border-[3px] border-[#0A0A0A] rounded-2xl p-16 text-center shadow-[8px_8px_0_#0A0A0A]">
+            <div className="w-24 h-24 bg-blue-100 border-[3px] border-[#0A0A0A] rounded-full flex items-center justify-center mx-auto mb-8 shadow-[4px_4px_0_#0A0A0A]">
+              <FileText className="w-12 h-12 text-[#0A0A0A]" />
             </div>
-            <h1 className="text-3xl font-semibold text-white mb-3">No Study Plan Yet</h1>
-            <p className="text-white/40 mb-8 max-w-md mx-auto">
-              Generate a personalized study plan based on your course materials and knowledge graph.
-              Get structured learning with practical exercises for each topic.
+            <h1 className="text-4xl font-black text-[#0A0A0A] mb-4">No Study Plan Yet</h1>
+            <p className="text-[#0A0A0A]/60 font-bold text-lg mb-10 max-w-lg mx-auto font-['Inter']">
+              Generate a personalized study plan based on your course materials and knowledge graph. Get structured learning with practical exercises for each topic.
             </p>
             <button
               onClick={handleGeneratePlan}
               disabled={isGenerating}
-              className="inline-flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white px-8 py-3 rounded-xl font-semibold transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-[#FF4D5B] hover:bg-[#ff3344] disabled:opacity-50 text-white px-8 py-4 border-[3px] border-[#0A0A0A] rounded-xl font-black text-lg transition-all shadow-[6px_6px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[8px_8px_0_#0A0A0A] active:translate-y-0 active:shadow-[2px_2px_0_#0A0A0A]"
             >
               {isGenerating ? (
                 <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <RefreshCw className="w-6 h-6 animate-spin" />
                   Generating Plan...
                 </>
               ) : (
                 <>
-                  <Play className="w-5 h-5" />
+                  <Sparkles className="w-6 h-6" />
                   Generate Study Plan
                 </>
               )}
             </button>
             {error && (
-              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-                <div className="flex items-center gap-2 text-red-400">
-                  <AlertCircle className="w-4 h-4" />
-                  <span className="text-sm">{error}</span>
+              <div className="mt-8 p-4 bg-red-50 border-2 border-red-500 rounded-xl text-left shadow-[4px_4px_0_#EF4444]">
+                <div className="flex items-center gap-2 text-red-600 font-bold">
+                  <AlertCircle className="w-5 h-5 stroke-[3px]" />
+                  <span>{error}</span>
                 </div>
               </div>
             )}
-            <button
-              onClick={() => navigate(`/course/${courseId}`)}
-              className="mt-4 text-white/30 hover:text-white/60 text-sm transition-colors"
-            >
-              ← Back to Course
-            </button>
           </div>
         </div>
       </div>
@@ -305,10 +298,10 @@ export default function StudyPlanView() {
   // Loading state
   if (isLoading || isGenerating) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-4" />
-          <p className="text-white/40">Loading study plan...</p>
+          <RefreshCw className="w-12 h-12 text-[#FF4D5B] animate-spin mx-auto mb-4 stroke-[3px]" />
+          <p className="text-[#0A0A0A]/60 font-black text-xl tracking-wider">LOADING STUDY PLAN...</p>
         </div>
       </div>
     );
@@ -320,81 +313,95 @@ export default function StudyPlanView() {
   const progressPercentage = getProgressPercentage();
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
+    <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] selection:bg-[#FF4D5B] selection:text-white">
       {/* Header */}
-      <div className="border-b border-white/[0.06]">
-        <div className="max-w-5xl mx-auto px-6 py-6">
+      <div className="bg-white border-b-[3px] border-[#0A0A0A] sticky top-0 z-10 shadow-sm">
+        <div className="max-w-5xl mx-auto px-6 py-8">
           <button
-            onClick={() => navigate(`/course/${courseId}`)}
-            className="text-white/30 hover:text-white/60 text-sm mb-4 transition-colors"
+            onClick={() => navigate(`/${role}/courses/${courseId}`)}
+            className="mb-6 px-4 py-2 bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[2px_2px_0_#0A0A0A] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-all inline-flex items-center gap-2 text-sm"
           >
-            ← Back to Course
+            <ArrowLeft size={16} className="stroke-[3px]" /> Back to Course
           </button>
           
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-white mb-2">{plan.title}</h1>
-              <p className="text-white/40 text-sm">{plan.description}</p>
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+            <div className="flex-1">
+              <h1 className="text-4xl font-black text-[#0A0A0A] mb-3 tracking-tight">{plan.title}</h1>
+              <p className="text-[#0A0A0A]/60 font-bold text-lg font-['Inter'] max-w-2xl">{plan.description}</p>
             </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setShowRegenerateConfirm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white rounded-xl text-sm font-medium transition-all"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Regenerate
-              </button>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-[var(--accent)]">{progressPercentage}%</div>
-                <div className="text-xs text-white/30">Complete</div>
+            
+            <div className="flex flex-col items-end gap-4 shrink-0 min-w-[200px]">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowRegenerateConfirm(true)}
+                  className="px-4 py-2 bg-white hover:bg-gray-50 border-2 border-[#0A0A0A] text-[#0A0A0A] rounded-xl font-extrabold shadow-[2px_2px_0_#0A0A0A] active:translate-y-0.5 active:shadow-none transition-all flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4 stroke-[3px]" /> Regenerate
+                </button>
               </div>
-            </div>
-          </div>
-
-          {/* Progress bars */}
-          <div className="mt-6 grid grid-cols-3 gap-4">
-            <div className="bg-white/[0.03] rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Target className="w-4 h-4 text-blue-400" />
-                <span className="text-xs text-white/40">Topics</span>
-              </div>
-              <div className="text-lg font-semibold text-white">
-                {progress?.completed_topics?.length || 0} / {plan.total_topics}
-              </div>
-            </div>
-            <div className="bg-white/[0.03] rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                <span className="text-xs text-white/40">Exercises</span>
-              </div>
-              <div className="text-lg font-semibold text-white">
-                {exerciseProgress.completed} / {exerciseProgress.total}
-              </div>
-            </div>
-            <div className="bg-white/[0.03] rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="w-4 h-4 text-purple-400" />
-                <span className="text-xs text-white/40">Est. Duration</span>
-              </div>
-              <div className="text-lg font-semibold text-white">
-                {plan.estimated_duration_hours} hours
+              
+              <div className="text-right bg-white border-[3px] border-[#0A0A0A] rounded-xl p-4 shadow-[4px_4px_0_#0A0A0A] w-full">
+                <div className="text-4xl font-black text-[#FF4D5B] mb-1">{progressPercentage}%</div>
+                <div className="text-sm font-extrabold text-[#0A0A0A]/50 uppercase tracking-widest">Complete</div>
+                {/* Progress bar */}
+                <div className="mt-3 h-3 bg-gray-100 border-2 border-[#0A0A0A] rounded-full overflow-hidden shadow-inner">
+                  <div
+                    className="h-full bg-[#FF4D5B] border-r-2 border-[#0A0A0A] transition-all duration-500 ease-out"
+                    style={{ width: `${progressPercentage}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Progress bar */}
-          <div className="mt-4 h-2 bg-white/[0.05] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-[var(--accent)] to-rose-500 transition-all duration-500"
-              style={{ width: `${progressPercentage}%` }}
-            />
+          {/* Progress Stats */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white border-[3px] border-[#0A0A0A] rounded-2xl p-5 shadow-[4px_4px_0_#0A0A0A] flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-100 border-2 border-[#0A0A0A] rounded-xl flex items-center justify-center">
+                <Target className="w-6 h-6 text-blue-600 stroke-[2.5px]" />
+              </div>
+              <div>
+                <span className="block text-sm font-extrabold text-[#0A0A0A]/50 uppercase">Topics</span>
+                <span className="block text-2xl font-black text-[#0A0A0A]">
+                  {progress?.completed_topics?.length || 0} / {plan.total_topics}
+                </span>
+              </div>
+            </div>
+            
+            <div className="bg-white border-[3px] border-[#0A0A0A] rounded-2xl p-5 shadow-[4px_4px_0_#0A0A0A] flex items-center gap-4">
+              <div className="w-12 h-12 bg-emerald-100 border-2 border-[#0A0A0A] rounded-xl flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-emerald-600 stroke-[2.5px]" />
+              </div>
+              <div>
+                <span className="block text-sm font-extrabold text-[#0A0A0A]/50 uppercase">Exercises</span>
+                <span className="block text-2xl font-black text-[#0A0A0A]">
+                  {exerciseProgress.completed} / {exerciseProgress.total}
+                </span>
+              </div>
+            </div>
+            
+            <div className="bg-white border-[3px] border-[#0A0A0A] rounded-2xl p-5 shadow-[4px_4px_0_#0A0A0A] flex items-center gap-4">
+              <div className="w-12 h-12 bg-purple-100 border-2 border-[#0A0A0A] rounded-xl flex items-center justify-center">
+                <Clock className="w-6 h-6 text-purple-600 stroke-[2.5px]" />
+              </div>
+              <div>
+                <span className="block text-sm font-extrabold text-[#0A0A0A]/50 uppercase">Est. Duration</span>
+                <span className="block text-2xl font-black text-[#0A0A0A]">
+                  {plan.estimated_duration_hours} hrs
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Topics List */}
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <div className="space-y-4">
+      <div className="max-w-5xl mx-auto px-6 py-10">
+        <h2 className="text-2xl font-extrabold text-[#0A0A0A] mb-6 flex items-center gap-2">
+          <BookOpen className="w-6 h-6 text-[#FF4D5B] stroke-[2.5px]" /> Learning Path
+        </h2>
+        
+        <div className="space-y-6">
           {plan.topics.map((topic) => {
             const isCompleted = isTopicCompleted(topic.node_id);
             const isExpanded = expandedTopic === topic.id;
@@ -404,45 +411,45 @@ export default function StudyPlanView() {
             return (
               <div
                 key={topic.id}
-                className={`rounded-xl border transition-all ${
+                className={`bg-white border-[3px] border-[#0A0A0A] rounded-2xl transition-all ${
                   isCompleted
-                    ? 'bg-green-500/5 border-green-500/20'
-                    : 'bg-white/[0.02] border-white/[0.06]'
+                    ? 'shadow-[4px_4px_0_#10B981] hover:shadow-[6px_6px_0_#10B981]'
+                    : 'shadow-[6px_6px_0_#0A0A0A] hover:shadow-[8px_8px_0_#0A0A0A]'
                 }`}
               >
                 {/* Topic Header */}
                 <button
                   onClick={() => setExpandedTopic(isExpanded ? null : topic.id)}
-                  className="w-full px-6 py-4 flex items-center gap-4"
+                  className="w-full px-6 py-5 flex items-center gap-5 focus:outline-none"
                 >
                   {/* Order & Status */}
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                    isCompleted ? 'bg-green-500/20' : 'bg-blue-500/10'
+                  <div className={`w-12 h-12 rounded-xl border-2 border-[#0A0A0A] flex items-center justify-center shrink-0 shadow-[2px_2px_0_#0A0A0A] ${
+                    isCompleted ? 'bg-emerald-400 text-white' : 'bg-[#FFD166] text-[#0A0A0A]'
                   }`}>
                     {isCompleted ? (
-                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <CheckCircle className="w-6 h-6 stroke-[3px]" />
                     ) : (
-                      <span className="text-sm font-bold text-blue-400">{topic.order}</span>
+                      <span className="text-xl font-black">{topic.order}</span>
                     )}
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 text-left">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-white">{topic.node_label}</h3>
+                    <div className="flex flex-wrap items-center gap-3 mb-1">
+                      <h3 className={`font-black text-xl ${isCompleted ? 'text-emerald-900' : 'text-[#0A0A0A]'}`}>{topic.node_label}</h3>
                       <DifficultyBadge difficulty={topic.difficulty} />
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-white/30">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
+                    <div className="flex flex-wrap items-center gap-4 text-sm font-bold text-[#0A0A0A]/60">
+                      <span className="flex items-center gap-1.5 bg-gray-100 px-2 py-1 rounded-md border border-[#0A0A0A]/10">
+                        <Clock className="w-4 h-4 stroke-[2.5px]" />
                         {topic.estimated_time_minutes} min
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Target className="w-3 h-3" />
+                      <span className="flex items-center gap-1.5 bg-gray-100 px-2 py-1 rounded-md border border-[#0A0A0A]/10">
+                        <Target className="w-4 h-4 stroke-[2.5px]" />
                         {exerciseCount} exercises
                       </span>
                       {completedExercises > 0 && (
-                        <span className="text-green-400">
+                        <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
                           ✓ {completedExercises} done
                         </span>
                       )}
@@ -450,31 +457,29 @@ export default function StudyPlanView() {
                   </div>
 
                   {/* Expand Icon */}
-                  {isExpanded ? (
-                    <ChevronDown className="w-5 h-5 text-white/30" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-white/30" />
-                  )}
+                  <div className={`w-10 h-10 rounded-full border-2 border-[#0A0A0A] flex items-center justify-center transition-transform ${isExpanded ? 'rotate-180 bg-gray-100' : 'bg-white'}`}>
+                    <ChevronDown className="w-5 h-5 text-[#0A0A0A] stroke-[3px]" />
+                  </div>
                 </button>
 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="px-6 pb-6 border-t border-white/[0.06] pt-4 space-y-6">
+                  <div className="px-6 pb-6 border-t-[3px] border-[#0A0A0A] pt-6 space-y-8 bg-gray-50/50 rounded-b-xl">
                     {/* Description */}
                     {topic.node_description && (
-                      <p className="text-sm text-white/50">{topic.node_description}</p>
+                      <p className="text-[#0A0A0A]/80 font-medium font-['Inter'] text-lg border-l-4 border-[#FF4D5B] pl-4">{topic.node_description}</p>
                     )}
 
                     {/* Learning Objectives */}
                     {topic.learning_objectives?.length > 0 && (
                       <div>
-                        <h4 className="text-xs font-medium text-white/40 uppercase tracking-wider mb-2">
+                        <h4 className="text-sm font-extrabold text-[#0A0A0A] uppercase tracking-wider mb-3">
                           Learning Objectives
                         </h4>
-                        <ul className="space-y-1.5">
+                        <ul className="space-y-2">
                           {topic.learning_objectives.map((obj, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm text-white/60">
-                              <Target className="w-3.5 h-3.5 text-blue-400 mt-0.5 shrink-0" />
+                            <li key={idx} className="flex items-start gap-3 text-[#0A0A0A]/70 font-bold font-['Inter']">
+                              <div className="w-5 h-5 rounded-full bg-[#06D6A0] border-2 border-[#0A0A0A] flex-shrink-0 mt-0.5" />
                               {obj}
                             </li>
                           ))}
@@ -482,61 +487,62 @@ export default function StudyPlanView() {
                       </div>
                     )}
 
-                    {/* Key Concepts */}
-                    {topic.key_concepts?.length > 0 && (
-                      <div>
-                        <h4 className="text-xs font-medium text-white/40 uppercase tracking-wider mb-2">
-                          Key Concepts
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {topic.key_concepts.map((concept, idx) => (
-                            <span
-                              key={idx}
-                              className="px-3 py-1 bg-purple-500/10 text-purple-300 rounded-full text-xs"
-                            >
-                              {concept}
-                            </span>
-                          ))}
+                    {/* Key Concepts & References Row */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {topic.key_concepts?.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-extrabold text-[#0A0A0A] uppercase tracking-wider mb-3">
+                            Key Concepts
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {topic.key_concepts.map((concept, idx) => (
+                              <span
+                                key={idx}
+                                className="px-3 py-1.5 bg-purple-100 text-purple-900 border-2 border-purple-300 rounded-lg text-sm font-extrabold shadow-[2px_2px_0_#D8B4FE]"
+                              >
+                                {concept}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Document References */}
-                    {topic.document_references?.length > 0 && (
-                      <div>
-                        <h4 className="text-xs font-medium text-white/40 uppercase tracking-wider mb-2">
-                          Related Documents
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {topic.document_references.map((doc, idx) => (
-                            <span
-                              key={idx}
-                              className="px-3 py-1 bg-white/5 text-white/50 rounded-full text-xs flex items-center gap-1"
-                            >
-                              <FileText className="w-3 h-3" />
-                              {doc}
-                            </span>
-                          ))}
+                      {topic.document_references?.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-extrabold text-[#0A0A0A] uppercase tracking-wider mb-3">
+                            Related Documents
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {topic.document_references.map((doc, idx) => (
+                              <span
+                                key={idx}
+                                className="px-3 py-1.5 bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-lg text-sm font-extrabold flex items-center gap-1.5 shadow-[2px_2px_0_#0A0A0A]"
+                              >
+                                <FileText className="w-4 h-4 stroke-[2.5px]" />
+                                {doc}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     {/* Deep Dive Study Plan Button */}
                     <div className="pt-2">
                       <button
                         onClick={() => handleLoadTopicPlan(topic.node_id)}
                         disabled={isGeneratingTopicPlan && topicPlanNodeId === topic.node_id}
-                        className="w-full py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30 border border-purple-500/20 text-purple-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-4 bg-gradient-to-r from-[#118AB2] to-[#073B4C] hover:from-[#0F7A9D] hover:to-[#052834] text-white border-2 border-[#0A0A0A] rounded-xl font-black shadow-[4px_4px_0_#0A0A0A] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-70"
                       >
                         {isGeneratingTopicPlan && topicPlanNodeId === topic.node_id ? (
                           <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <RefreshCw className="w-5 h-5 animate-spin stroke-[3px]" />
                             Generating Deep Dive Plan...
                           </>
                         ) : (
                           <>
-                            <Sparkles className="w-4 h-4" />
-                            Generate Deep Dive Study Plan for This Topic
+                            <Sparkles className="w-5 h-5 stroke-[2.5px]" />
+                            Generate Deep Dive Plan for This Topic
                           </>
                         )}
                       </button>
@@ -544,11 +550,12 @@ export default function StudyPlanView() {
 
                     {/* Exercises */}
                     {topic.exercises?.length > 0 && (
-                      <div>
-                        <h4 className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">
+                      <div className="pt-4 border-t-2 border-[#0A0A0A]/10">
+                        <h4 className="text-xl font-extrabold text-[#0A0A0A] mb-4 flex items-center gap-2">
+                          <Code className="w-6 h-6 stroke-[3px] text-[#FFD166]" />
                           Exercises ({topic.exercises.length})
                         </h4>
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                           {topic.exercises.map((exercise) => {
                             const exCompleted = isExerciseCompleted(exercise.id);
                             const exExpanded = expandedExercise === exercise.id;
@@ -556,52 +563,57 @@ export default function StudyPlanView() {
                             return (
                               <div
                                 key={exercise.id}
-                                className={`rounded-lg border overflow-hidden transition-all ${
+                                className={`bg-white border-2 border-[#0A0A0A] rounded-xl overflow-hidden transition-all ${
                                   exCompleted
-                                    ? 'bg-green-500/5 border-green-500/20'
-                                    : 'bg-white/[0.02] border-white/[0.06]'
+                                    ? 'shadow-[3px_3px_0_#10B981]'
+                                    : 'shadow-[4px_4px_0_#0A0A0A]'
                                 }`}
                               >
                                 <button
                                   onClick={() => setExpandedExercise(exExpanded ? null : exercise.id)}
-                                  className="w-full px-4 py-3 flex items-center gap-3"
+                                  className="w-full px-5 py-4 flex items-center gap-4 hover:bg-gray-50 focus:outline-none"
                                 >
-                                  <div className={`p-1.5 rounded-md ${
-                                    exCompleted ? 'bg-green-500/20' : 'bg-blue-500/10'
+                                  <div className={`p-2 border-2 border-[#0A0A0A] rounded-lg shadow-[2px_2px_0_#0A0A0A] ${
+                                    exCompleted ? 'bg-[#06D6A0] text-[#0A0A0A]' : 'bg-[#118AB2] text-white'
                                   }`}>
                                     <ExerciseIcon type={exercise.type} />
                                   </div>
+                                  
                                   <div className="flex-1 text-left">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm text-white">{exercise.title}</span>
+                                    <div className="flex items-center gap-3 mb-1">
+                                      <span className="font-extrabold text-lg text-[#0A0A0A] line-clamp-1">{exercise.title}</span>
                                       <DifficultyBadge difficulty={exercise.difficulty} />
                                     </div>
-                                    <span className="text-xs text-white/30">
-                                      {exercise.type} • {exercise.estimated_time_minutes} min
-                                    </span>
+                                    <div className="flex items-center gap-3 text-sm font-bold text-[#0A0A0A]/60 uppercase tracking-wider">
+                                      <span>{exercise.type}</span>
+                                      <span>•</span>
+                                      <span>{exercise.estimated_time_minutes} min</span>
+                                    </div>
                                   </div>
+                                  
                                   {exCompleted ? (
-                                    <CheckCircle className="w-5 h-5 text-green-400" />
+                                    <div className="bg-[#06D6A0] p-1 rounded-full border-2 border-[#0A0A0A]">
+                                      <CheckCircle className="w-5 h-5 text-[#0A0A0A] stroke-[3px]" />
+                                    </div>
                                   ) : (
-                                    <ChevronRight className="w-4 h-4 text-white/30" />
+                                    <ChevronDown className={`w-6 h-6 text-[#0A0A0A] stroke-[3px] transition-transform ${exExpanded ? 'rotate-180' : ''}`} />
                                   )}
                                 </button>
 
                                 {exExpanded && (
-                                  <div className="px-4 pb-4 border-t border-white/[0.06] pt-3 space-y-3">
-                                    <p className="text-sm text-white/60">{exercise.description}</p>
+                                  <div className="px-5 pb-5 border-t-2 border-[#0A0A0A] pt-4 bg-gray-50">
+                                    <p className="text-[#0A0A0A]/80 font-medium font-['Inter'] mb-6 bg-white p-4 rounded-xl border border-[#0A0A0A]/20">{exercise.description}</p>
                                     
                                     {/* Hints */}
                                     {exercise.hints?.length > 0 && (
-                                      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-                                        <div className="flex items-center gap-1.5 text-yellow-400 text-xs font-medium mb-1">
-                                          <Lightbulb className="w-3.5 h-3.5" />
-                                          Hints
+                                      <div className="bg-[#FFD166]/20 border-2 border-[#FFD166] rounded-xl p-4 mb-4">
+                                        <div className="flex items-center gap-2 text-[#0A0A0A] font-extrabold mb-2 uppercase text-sm">
+                                          <Lightbulb className="w-4 h-4 stroke-[3px]" /> Hints
                                         </div>
-                                        <ul className="space-y-1">
+                                        <ul className="space-y-1.5 pl-2">
                                           {exercise.hints.map((hint, idx) => (
-                                            <li key={idx} className="text-xs text-yellow-300/70">
-                                              • {hint}
+                                            <li key={idx} className="text-[#0A0A0A]/70 font-bold text-sm flex gap-2">
+                                              <span className="text-[#FFD166]">•</span> {hint}
                                             </li>
                                           ))}
                                         </ul>
@@ -610,9 +622,9 @@ export default function StudyPlanView() {
 
                                     {/* Solution */}
                                     {exercise.solution && (
-                                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3">
-                                        <div className="text-xs font-medium text-white/40 mb-2">Solution</div>
-                                        <div className="text-sm text-white/60">
+                                      <div className="bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl p-4 mb-6 shadow-[4px_4px_0_#0A0A0A]">
+                                        <div className="text-sm font-extrabold text-[#06D6A0] mb-2 uppercase tracking-wider">Solution</div>
+                                        <div className="text-sm font-['Inter'] prose max-w-none prose-pre:bg-gray-100 prose-pre:border-2 prose-pre:border-[#0A0A0A] prose-pre:rounded-xl">
                                           <ReactMarkdown>{exercise.solution}</ReactMarkdown>
                                         </div>
                                       </div>
@@ -622,13 +634,17 @@ export default function StudyPlanView() {
                                     <button
                                       onClick={() => handleCompleteExercise(exercise.id)}
                                       disabled={exCompleted}
-                                      className={`w-full py-2 rounded-lg text-sm font-medium transition-all ${
+                                      className={`w-full py-3 border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[3px_3px_0_#0A0A0A] transition-all flex justify-center items-center gap-2 ${
                                         exCompleted
-                                          ? 'bg-green-500/20 text-green-400 cursor-default'
-                                          : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                                          ? 'bg-[#06D6A0] text-[#0A0A0A] active:translate-y-0 cursor-default'
+                                          : 'bg-white text-[#0A0A0A] hover:bg-gray-100 active:translate-y-1 active:shadow-none'
                                       }`}
                                     >
-                                      {exCompleted ? '✓ Completed' : 'Mark as Complete'}
+                                      {exCompleted ? (
+                                        <>
+                                          <CheckCircle className="w-5 h-5 stroke-[3px]" /> Completed
+                                        </>
+                                      ) : 'Mark as Complete'}
                                     </button>
                                   </div>
                                 )}
@@ -639,33 +655,30 @@ export default function StudyPlanView() {
                       </div>
                     )}
 
-                    {/* Complete Topic Button */}
-                    <div className="flex gap-3">
+                    {/* Complete Topic Action Row */}
+                    <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t-2 border-[#0A0A0A]/10">
                       <button
-                        onClick={() => navigate(`/course/${courseId}/study?node=${topic.node_id}`)}
-                        className="flex-1 py-3 rounded-xl text-sm font-medium bg-white/5 text-white/60 hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                        onClick={() => navigate(`/${role}/courses/${courseId}/study?node=${topic.node_id}`)}
+                        className="flex-1 py-4 bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2"
                       >
-                        <Brain className="w-4 h-4" />
-                        Practice in Study Mode
+                        <Brain className="w-5 h-5 stroke-[2.5px]" /> Practice in Study Mode
                       </button>
                       <button
                         onClick={() => handleCompleteTopic(topic.node_id)}
                         disabled={isCompleted}
-                        className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                        className={`flex-1 py-4 border-2 border-[#0A0A0A] rounded-xl font-extrabold transition-all flex items-center justify-center gap-2 ${
                           isCompleted
-                            ? 'bg-green-500/20 text-green-400 cursor-default'
-                            : 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600'
+                            ? 'bg-[#06D6A0] text-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] cursor-default opacity-80'
+                            : 'bg-[#FF4D5B] text-white shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-[2px_2px_0_#0A0A0A]'
                         }`}
                       >
                         {isCompleted ? (
                           <>
-                            <CheckCircle className="w-4 h-4" />
-                            Topic Completed
+                            <CheckCircle className="w-5 h-5 stroke-[3px]" /> Topic Completed
                           </>
                         ) : (
                           <>
-                            <Award className="w-4 h-4" />
-                            Mark as Complete
+                            <Award className="w-5 h-5 stroke-[2.5px]" /> Mark Topic Complete
                           </>
                         )}
                       </button>
@@ -680,20 +693,22 @@ export default function StudyPlanView() {
 
       {/* Regenerate Confirmation Modal */}
       {showRegenerateConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-2xl p-8 max-w-md w-full mx-4">
-            <div className="text-center mb-6">
-              <RefreshCw className="w-12 h-12 text-yellow-400 mx-auto mb-4 animate-spin" style={{ animationDuration: '3s' }} />
-              <h3 className="text-xl font-bold text-white mb-2">Regenerate Study Plan?</h3>
-              <p className="text-white/40 text-sm">
-                This will delete your current plan and all progress, then generate a new one.
+        <div className="fixed inset-0 bg-[#0A0A0A]/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-['Outfit']">
+          <div className="bg-[#FCFCFC] border-[3px] border-[#0A0A0A] rounded-2xl p-8 max-w-md w-full shadow-[12px_12px_0_#0A0A0A] animate-in zoom-in-95 duration-200">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 bg-amber-100 border-[3px] border-[#0A0A0A] rounded-full flex items-center justify-center mx-auto mb-6 shadow-[4px_4px_0_#0A0A0A]">
+                <RefreshCw className="w-10 h-10 text-amber-500 stroke-[3px]" />
+              </div>
+              <h3 className="text-2xl font-black text-[#0A0A0A] mb-3">Regenerate Plan?</h3>
+              <p className="text-[#0A0A0A]/70 font-bold font-['Inter']">
+                This will delete your current plan and all progress, then generate a new one based on the latest knowledge graph.
               </p>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
                 onClick={() => setShowRegenerateConfirm(false)}
-                className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-medium transition-all"
+                className="flex-1 py-3.5 bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[4px_4px_0_#0A0A0A] active:translate-y-1 active:shadow-none transition-all"
               >
                 Cancel
               </button>
@@ -702,9 +717,9 @@ export default function StudyPlanView() {
                   setShowRegenerateConfirm(false);
                   handleGeneratePlan();
                 }}
-                className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl font-medium transition-all"
+                className="flex-1 py-3.5 bg-[#FF4D5B] text-white border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[4px_4px_0_#0A0A0A] active:translate-y-1 active:shadow-none transition-all"
               >
-                Regenerate
+                Yes, Regenerate
               </button>
             </div>
           </div>
@@ -713,46 +728,48 @@ export default function StudyPlanView() {
 
       {/* Topic Deep Dive Plan Modal */}
       {showTopicPlanModal && topicPlan && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#0A0A0A]/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-['Outfit']">
+          <div className="bg-[#FCFCFC] border-[3px] border-[#0A0A0A] rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-[12px_12px_0_#0A0A0A] animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-[#1A1A1A] border-b border-white/[0.06] px-8 py-6 flex items-center justify-between">
+            <div className="bg-white border-b-[3px] border-[#0A0A0A] px-8 py-6 flex items-center justify-between shrink-0 shadow-sm z-10">
               <div>
-                <h2 className="text-xl font-bold text-white">{topicPlan.title}</h2>
-                <p className="text-sm text-white/40 mt-1">{topicPlan.description}</p>
+                <h2 className="text-2xl font-black text-[#0A0A0A]">{topicPlan.title}</h2>
+                <p className="text-sm font-bold text-[#0A0A0A]/60 mt-1">{topicPlan.description}</p>
               </div>
               <button
                 onClick={() => setShowTopicPlanModal(false)}
-                className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                className="p-2 bg-white border-2 border-[#0A0A0A] rounded-lg shadow-[2px_2px_0_#0A0A0A] hover:bg-red-50 active:translate-y-0.5 active:shadow-none transition-all"
               >
-                <X className="w-5 h-5 text-white/40" />
+                <X className="w-6 h-6 text-[#0A0A0A] stroke-[3px]" />
               </button>
             </div>
 
-            <div className="p-8 space-y-8">
+            <div className="p-8 overflow-y-auto space-y-10">
               {/* Learning Path */}
               {topicPlan.learning_path?.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-white/60 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Target className="w-4 h-4 text-blue-400" />
+                  <h3 className="text-xl font-black text-[#0A0A0A] uppercase tracking-wide mb-6 flex items-center gap-3">
+                    <Target className="w-6 h-6 text-[#118AB2] stroke-[3px]" />
                     Learning Path
                   </h3>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {topicPlan.learning_path.map((step: any) => (
-                      <div key={step.step} className="flex gap-4 p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl">
-                        <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center shrink-0">
-                          <span className="text-sm font-bold text-blue-400">{step.step}</span>
+                      <div key={step.step} className="flex gap-5 p-6 bg-white border-2 border-[#0A0A0A] rounded-xl shadow-[4px_4px_0_#0A0A0A]">
+                        <div className="w-12 h-12 bg-[#118AB2] text-white border-2 border-[#0A0A0A] rounded-xl flex items-center justify-center shrink-0 shadow-[2px_2px_0_#0A0A0A]">
+                          <span className="text-xl font-black">{step.step}</span>
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium text-white">{step.title}</h4>
-                            <span className="text-xs text-white/30">{step.estimated_minutes} min</span>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="font-extrabold text-[#0A0A0A] text-lg">{step.title}</h4>
+                            <span className="bg-gray-100 px-2 py-1 rounded-md border border-[#0A0A0A]/20 text-xs font-bold text-[#0A0A0A]">
+                              {step.estimated_minutes} min
+                            </span>
                           </div>
-                          <p className="text-sm text-white/50">{step.content}</p>
+                          <p className="text-[15px] text-[#0A0A0A]/70 font-['Inter'] mb-3">{step.content}</p>
                           {step.document_references?.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
+                            <div className="flex flex-wrap gap-2 pt-2 border-t border-[#0A0A0A]/10">
                               {step.document_references.map((doc: string, idx: number) => (
-                                <span key={idx} className="px-2 py-0.5 bg-white/5 text-white/40 rounded text-xs">
+                                <span key={idx} className="px-2 py-1 bg-white border border-[#0A0A0A] text-[#0A0A0A] rounded text-xs font-bold shadow-[1px_1px_0_#0A0A0A]">
                                   📄 {doc}
                                 </span>
                               ))}
@@ -768,33 +785,51 @@ export default function StudyPlanView() {
               {/* Exercises */}
               {topicPlan.exercises?.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-white/60 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-purple-400" />
-                    Exercises
+                  <h3 className="text-xl font-black text-[#0A0A0A] uppercase tracking-wide mb-6 flex items-center gap-3">
+                    <BookOpen className="w-6 h-6 text-[#FF4D5B] stroke-[3px]" />
+                    Practice Exercises
                   </h3>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {topicPlan.exercises.map((ex: any, idx: number) => (
-                      <div key={idx} className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl">
-                        <div className="flex items-center gap-2 mb-2">
-                          <ExerciseIcon type={ex.type} />
-                          <h4 className="font-medium text-white">{ex.title}</h4>
-                          <DifficultyBadge difficulty={ex.difficulty} />
+                      <div key={idx} className="p-6 bg-white border-2 border-[#0A0A0A] rounded-xl shadow-[4px_4px_0_#0A0A0A] flex flex-col h-full">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-[#FF4D5B] text-white border-2 border-[#0A0A0A] rounded-lg shadow-[2px_2px_0_#0A0A0A]">
+                            <ExerciseIcon type={ex.type} />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-extrabold text-[#0A0A0A] text-lg leading-tight">{ex.title}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <DifficultyBadge difficulty={ex.difficulty} />
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-sm text-white/50 mb-2">{ex.description}</p>
-                        {ex.hints?.length > 0 && (
-                          <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                            <p className="text-xs text-yellow-400 font-medium mb-1">Hints:</p>
-                            {ex.hints.map((h: string, i: number) => (
-                              <p key={i} className="text-xs text-yellow-300/70">• {h}</p>
-                            ))}
-                          </div>
-                        )}
-                        {ex.solution && (
-                          <div className="mt-2 p-2 bg-white/[0.03] rounded-lg">
-                            <p className="text-xs text-white/40 mb-1">Solution:</p>
-                            <p className="text-sm text-white/60">{ex.solution}</p>
-                          </div>
-                        )}
+                        <p className="text-sm text-[#0A0A0A]/70 font-['Inter'] mb-6 flex-grow">{ex.description}</p>
+                        
+                        <div className="space-y-4 mt-auto">
+                          {ex.hints?.length > 0 && (
+                            <div className="p-3 bg-[#FFD166]/20 border-2 border-[#FFD166] rounded-xl">
+                              <p className="text-xs text-[#0A0A0A] font-extrabold uppercase mb-1 flex items-center gap-1">
+                                <Lightbulb className="w-3 h-3 stroke-[3px]" /> Hints
+                              </p>
+                              <ul className="pl-2 space-y-1">
+                                {ex.hints.map((h: string, i: number) => (
+                                  <li key={i} className="text-xs font-bold text-[#0A0A0A]/70">• {h}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {ex.solution && (
+                            <details className="group bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl shadow-[2px_2px_0_#0A0A0A] cursor-pointer">
+                              <summary className="p-3 font-extrabold text-sm uppercase tracking-wide flex justify-between items-center outline-none bg-gray-50 rounded-xl">
+                                View Solution
+                                <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+                              </summary>
+                              <div className="p-4 border-t-2 border-[#0A0A0A] text-sm font-['Inter'] prose max-w-none prose-pre:bg-gray-100 prose-pre:border-2 prose-pre:border-[#0A0A0A] prose-pre:rounded-xl">
+                                <ReactMarkdown>{ex.solution}</ReactMarkdown>
+                              </div>
+                            </details>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -804,17 +839,20 @@ export default function StudyPlanView() {
               {/* Self Check Questions */}
               {topicPlan.self_check_questions?.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-white/60 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-green-400" />
+                  <h3 className="text-xl font-black text-[#0A0A0A] uppercase tracking-wide mb-6 flex items-center gap-3">
+                    <Brain className="w-6 h-6 text-[#06D6A0] stroke-[3px]" />
                     Self-Check Questions
                   </h3>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {topicPlan.self_check_questions.map((q: any, idx: number) => (
-                      <details key={idx} className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-xl">
-                        <summary className="text-sm text-white cursor-pointer font-medium">{q.question}</summary>
-                        <div className="mt-3 pl-4 border-l-2 border-green-500/30">
-                          <p className="text-sm text-white/60"><strong>Answer:</strong> {q.answer}</p>
-                          {q.explanation && <p className="text-xs text-white/40 mt-1">{q.explanation}</p>}
+                      <details key={idx} className="group p-5 bg-white border-2 border-[#0A0A0A] rounded-xl shadow-[4px_4px_0_#0A0A0A] cursor-pointer">
+                        <summary className="text-[#0A0A0A] font-extrabold text-lg flex justify-between items-center outline-none">
+                          {q.question}
+                          <ChevronDown className="w-5 h-5 transition-transform group-open:rotate-180 shrink-0" />
+                        </summary>
+                        <div className="mt-4 pt-4 border-t-2 border-[#0A0A0A]/10 bg-emerald-50 rounded-lg p-4 border-l-4 border-l-[#06D6A0]">
+                          <p className="text-[#0A0A0A] font-bold font-['Inter']"><span className="text-[#06D6A0] font-black uppercase">Answer:</span> {q.answer}</p>
+                          {q.explanation && <p className="text-[#0A0A0A]/70 text-sm font-medium mt-2">{q.explanation}</p>}
                         </div>
                       </details>
                     ))}
@@ -824,19 +862,19 @@ export default function StudyPlanView() {
 
               {/* Related Topics */}
               {topicPlan.related_topics?.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-white/60 uppercase tracking-wider mb-3">Related Topics</h3>
-                  <div className="flex flex-wrap gap-2">
+                <div className="pt-6 border-t-2 border-[#0A0A0A]/10">
+                  <h3 className="text-sm font-extrabold text-[#0A0A0A] uppercase tracking-wider mb-4">Jump to Related Topics</h3>
+                  <div className="flex flex-wrap gap-3">
                     {topicPlan.related_topics.map((t: any, idx: number) => (
                       <button
                         key={idx}
                         onClick={() => {
                           setShowTopicPlanModal(false);
-                          navigate(`/course/${courseId}/study?node=${t.node_id}`);
+                          navigate(`/${role}/courses/${courseId}/study?node=${t.node_id}`);
                         }}
-                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 rounded-full text-xs transition-all"
+                        className="px-4 py-2 bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl font-extrabold text-sm shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all"
                       >
-                        {t.label} ({t.relation})
+                        {t.label} <span className="text-[#0A0A0A]/40 font-medium">({t.relation})</span>
                       </button>
                     ))}
                   </div>

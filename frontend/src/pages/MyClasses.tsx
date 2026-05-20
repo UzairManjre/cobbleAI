@@ -5,16 +5,15 @@ import {
   ChevronRight, 
   Plus, 
   BookOpen, 
-  Calendar, 
   Users, 
   FolderOpen,
   Search,
   Mail,
-  Flag
+  Flag,
+  ArrowRight
 } from 'lucide-react';
 import { coursesApi } from '../api';
 import { useAuthStore } from '../store/authStore';
-import './MyClasses.css';
 
 interface StudentData {
   id: string;
@@ -135,27 +134,27 @@ export default function MyClasses() {
       return {
         category: 'Mathematics',
         icon: '√x',
-        class: 'math-theme'
+        bg: 'bg-[#FFD166]'
       };
     }
     if (cleanCode.includes('PHY') || cleanTitle.includes('physic')) {
       return {
         category: 'Physics',
         icon: '⚛',
-        class: 'physics-theme'
+        bg: 'bg-[#EF476F]'
       };
     }
     if (cleanCode.includes('CSE') || cleanCode.includes('CS') || cleanTitle.includes('comput') || cleanTitle.includes('data')) {
       return {
         category: 'Computer Science',
         icon: '⟨/⟩',
-        class: 'cs-theme'
+        bg: 'bg-[#118AB2]'
       };
     }
     return {
       category: cleanCode || 'General',
       icon: '📖',
-      class: 'general-theme'
+      bg: 'bg-[#06D6A0]'
     };
   };
 
@@ -174,7 +173,7 @@ export default function MyClasses() {
         studentsCount: studentCount,
         category: meta.category,
         icon: meta.icon,
-        themeClass: meta.class
+        bg: meta.bg
       };
     });
   }, [courses, students]);
@@ -188,109 +187,101 @@ export default function MyClasses() {
   }, [students, studentSearchQuery]);
 
   return (
-    <div className="my-classes-container animate-in fade-in duration-300">
+    <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] p-6 lg:p-8 space-y-8">
       
       {/* 1. Header Banner */}
-      <div className="classes-banner-card">
-        <div className="banner-left">
-          <div className="banner-icon-bg">
-            <GraduationCap size={32} />
+      <div className="bg-[#06D6A0] border-[3px] border-[#0A0A0A] rounded-3xl p-8 lg:p-10 shadow-[8px_8px_0_#0A0A0A] flex flex-col md:flex-row justify-between items-center relative overflow-hidden group">
+        <div className="relative z-10 flex items-center gap-6">
+          <div className="w-20 h-20 bg-white border-[3px] border-[#0A0A0A] rounded-2xl shadow-[4px_4px_0_#0A0A0A] flex items-center justify-center">
+            <GraduationCap size={40} className="text-[#0A0A0A] stroke-[2px]" />
           </div>
-          <div className="banner-info">
-            <h2>Classes & Students</h2>
-            <p>Manage your active courses and track student performance in one place.</p>
+          <div>
+            <h2 className="text-4xl font-black text-[#0A0A0A] uppercase tracking-tight">Classes & Students</h2>
+            <p className="text-lg font-bold font-['Inter'] text-[#0A0A0A]/80 mt-2">Manage your active courses and track student performance.</p>
           </div>
         </div>
         
         {/* Banner Stats Card */}
-        <div className="banner-stats-card">
-          <span className="stats-label">Total Classes</span>
-          <span className="stats-value">{courses.length}</span>
-          <span className="stats-subtag">{students.length} Students</span>
-        </div>
-        
-        {/* Decorative elements */}
-        <div className="banner-bg-decoration">
-          <div className="banner-books-deco">📚</div>
-          <div className="banner-plant-deco">🌱</div>
+        <div className="relative z-10 mt-6 md:mt-0 bg-white border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[6px_6px_0_#0A0A0A] flex flex-col items-center min-w-[200px]">
+          <span className="text-sm font-black uppercase tracking-widest text-[#0A0A0A]/60">Total Classes</span>
+          <span className="text-5xl font-black text-[#0A0A0A] my-2">{courses.length}</span>
+          <span className="text-sm font-bold uppercase tracking-widest text-[#118AB2]">{students.length} Students Enrolled</span>
         </div>
       </div>
 
       {/* 2. Beautiful Tab Switcher Switch */}
-      <div className="classes-tabs-bar">
+      <div className="flex flex-col sm:flex-row gap-4">
         <button 
-          className={`tab-switch-btn ${activeTab === 'classes' ? 'active' : ''}`}
+          className={`flex-1 flex items-center justify-center gap-3 py-4 border-[3px] border-[#0A0A0A] rounded-2xl font-black uppercase tracking-widest text-sm transition-all ${activeTab === 'classes' ? 'bg-[#0A0A0A] text-white shadow-[6px_6px_0_#FFD166]' : 'bg-white text-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A]'}`}
           onClick={() => handleTabChange('classes')}
         >
-          <BookOpen size={18} />
+          <BookOpen size={20} className={activeTab === 'classes' ? 'stroke-white' : 'stroke-[#0A0A0A]'} />
           <span>Active Classes ({courses.length})</span>
         </button>
         <button 
-          className={`tab-switch-btn ${activeTab === 'students' ? 'active' : ''}`}
+          className={`flex-1 flex items-center justify-center gap-3 py-4 border-[3px] border-[#0A0A0A] rounded-2xl font-black uppercase tracking-widest text-sm transition-all ${activeTab === 'students' ? 'bg-[#0A0A0A] text-white shadow-[6px_6px_0_#118AB2]' : 'bg-white text-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A]'}`}
           onClick={() => handleTabChange('students')}
         >
-          <Users size={18} />
+          <Users size={20} className={activeTab === 'students' ? 'stroke-white' : 'stroke-[#0A0A0A]'} />
           <span>Student Roster ({students.length})</span>
         </button>
       </div>
 
       {/* 3. Main Views depending on activeTab */}
       {activeTab === 'classes' ? (
-        <div className="my-classes-grid">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left Side: Active Classes List */}
-          <div className="classes-list-section">
-            <div className="section-header">
-              <BookOpen size={20} className="header-icon" />
-              <h3>Active Classes</h3>
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center gap-3 pb-4 border-b-[3px] border-[#0A0A0A]/10">
+              <BookOpen size={28} className="stroke-[3px]" />
+              <h3 className="text-2xl font-black uppercase tracking-tight">Active Classes</h3>
             </div>
 
             {isLoading ? (
-              <div className="classes-loading">Loading classes...</div>
+              <div className="py-12 flex items-center justify-center font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Loading classes...</div>
             ) : activeClasses.length === 0 ? (
-              <div className="classes-empty-state">
-                <FolderOpen size={48} className="empty-state-icon" />
-                <p>No active classes found.</p>
-                <span>Click "Add New Class" on the right to get started.</span>
+              <div className="py-12 flex flex-col items-center justify-center space-y-4 text-[#0A0A0A]/50">
+                <FolderOpen size={48} className="stroke-[1.5px]" />
+                <p className="font-bold uppercase tracking-widest">No active classes found.</p>
+                <span className="text-sm font-['Inter']">Click "Add New Class" on the right to get started.</span>
               </div>
             ) : (
-              <div className="classes-cards-list">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {activeClasses.map((course) => (
                   <div 
                     key={course.id} 
-                    className={`class-item-card hover-lift ${course.themeClass}`}
+                    className={`${course.bg} border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[6px_6px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[8px_8px_0_#0A0A0A] transition-all cursor-pointer flex flex-col group`}
                     onClick={() => navigate(`/professor/courses/${course.id}`)}
                   >
-                    <div className="class-card-left">
-                      <div className="class-subject-icon">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="w-14 h-14 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[4px_4px_0_#0A0A0A] text-2xl font-black text-[#0A0A0A]">
                         {course.icon}
                       </div>
-                      <div className="class-card-details">
-                        <span className="class-category-tag">{course.category}</span>
-                        <h4>{course.title}</h4>
-                        <div className="class-card-meta">
-                          <div className="meta-info-item">
-                            <FolderOpen size={14} />
-                            <span>{course.docsCount} {course.docsCount === 1 ? 'Document' : 'Documents'}</span>
-                          </div>
-                          <div className="meta-info-item">
-                            <Users size={14} />
-                            <span>{course.studentsCount} Students</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="class-card-right" onClick={(e) => e.stopPropagation()}>
-                      <span className={`class-status-badge ${course.docsCount > 0 ? 'trained' : 'empty'}`}>
+                      <span className={`px-3 py-1 text-xs font-black uppercase tracking-widest border-2 border-[#0A0A0A] rounded-lg bg-white text-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A]`}>
                         {course.docsCount > 0 ? 'AI Trained' : 'No Materials'}
                       </span>
-                      <button 
-                        className="class-card-action-btn"
-                        onClick={() => navigate(`/professor/courses/${course.id}`)}
-                      >
-                        <ChevronRight size={20} />
-                      </button>
+                    </div>
+                    
+                    <div className="mb-6 flex-1">
+                      <span className="inline-block px-2 py-1 bg-[#0A0A0A] text-white text-[10px] font-black uppercase tracking-widest rounded mb-2">
+                        {course.category}
+                      </span>
+                      <h4 className="text-xl font-black uppercase tracking-tight text-[#0A0A0A] line-clamp-2">{course.title}</h4>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[#0A0A0A] font-bold text-sm bg-white/50 p-3 border-2 border-[#0A0A0A] rounded-xl">
+                      <div className="flex gap-4">
+                        <div className="flex items-center gap-1.5" title="Documents">
+                          <FolderOpen size={16} className="stroke-[2.5px]" />
+                          <span>{course.docsCount}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5" title="Students">
+                          <Users size={16} className="stroke-[2.5px]" />
+                          <span>{course.studentsCount}</span>
+                        </div>
+                      </div>
+                      <ChevronRight size={20} className="stroke-[3px] opacity-50 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
                 ))}
@@ -299,51 +290,46 @@ export default function MyClasses() {
           </div>
 
           {/* Right Side: Add Class CTA */}
-          <div className="classes-sidebar-section">
-            <div className="add-class-sidebar-card">
-              <div className="sidebar-card-header">
-                <div className="header-add-icon">
-                  <Plus size={16} />
+          <div className="space-y-6">
+            <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-8 shadow-[8px_8px_0_#0A0A0A] flex flex-col text-center">
+              <div className="w-20 h-20 bg-[#FFD166] border-[3px] border-[#0A0A0A] rounded-2xl shadow-[4px_4px_0_#0A0A0A] flex items-center justify-center mx-auto mb-6 relative">
+                <span className="text-3xl">📂</span>
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#EF476F] border-2 border-[#0A0A0A] rounded-full flex items-center justify-center text-white font-black shadow-[2px_2px_0_#0A0A0A]">
+                  +
                 </div>
-                <h4>Add Class</h4>
               </div>
-
-              <div className="sidebar-card-body">
-                <div className="card-illustration-wrapper">
-                  <div className="folder-illustration">📂</div>
-                  <div className="illustration-plus">+</div>
-                </div>
-                <h5>Create a New Class</h5>
-                <p>Set up a new class and start managing your students</p>
-                <button 
-                  onClick={() => setShowModal(true)} 
-                  className="add-new-class-sidebar-btn"
-                >
-                  <Plus size={16} />
-                  <span>Add New Class</span>
-                </button>
-              </div>
+              <h5 className="text-2xl font-black uppercase tracking-tight mb-2">Create a New Class</h5>
+              <p className="font-bold text-sm font-['Inter'] text-[#0A0A0A]/70 mb-8">Set up a new class and start managing your students</p>
+              <button 
+                onClick={() => setShowModal(true)} 
+                className="w-full py-4 bg-[#0A0A0A] text-white border-[3px] border-[#0A0A0A] rounded-xl font-black uppercase tracking-widest text-sm shadow-[4px_4px_0_#FF4D5B] hover:-translate-y-1 hover:shadow-[6px_6px_0_#FF4D5B] active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2"
+              >
+                <Plus size={20} className="stroke-[3px]" />
+                <span>Add New Class</span>
+              </button>
             </div>
           </div>
 
         </div>
       ) : (
         /* Tab: Student Roster */
-        <div className="students-roster-section animate-in fade-in duration-200">
+        <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-8 shadow-[8px_8px_0_#0A0A0A]">
           
-          <div className="roster-header-container">
-            <div className="section-header">
-              <Users size={20} className="header-icon" />
-              <h3>Student Roster</h3>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b-[3px] border-[#0A0A0A]/10">
+            <div className="flex items-center gap-3">
+              <Users size={28} className="stroke-[3px]" />
+              <h3 className="text-2xl font-black uppercase tracking-tight">Student Roster</h3>
             </div>
             
             {/* Search Box */}
-            <div className="roster-search-wrapper">
-              <Search className="roster-search-icon" size={16} />
+            <div className="relative w-full md:w-80">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search size={18} className="text-[#0A0A0A]/50 stroke-[3px]" />
+              </div>
               <input 
                 type="text" 
                 placeholder="Search students or classes..." 
-                className="roster-search-input"
+                className="w-full pl-11 pr-4 py-3 bg-gray-50 border-[3px] border-[#0A0A0A] rounded-xl font-bold font-['Inter'] shadow-[4px_4px_0_#0A0A0A] focus:outline-none focus:ring-4 focus:ring-[#118AB2]/20 transition-all"
                 value={studentSearchQuery}
                 onChange={(e) => setStudentSearchQuery(e.target.value)}
               />
@@ -351,68 +337,77 @@ export default function MyClasses() {
           </div>
 
           {isLoading ? (
-            <div className="classes-loading">Loading student roster...</div>
+            <div className="py-12 flex items-center justify-center font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Loading student roster...</div>
           ) : filteredStudents.length === 0 ? (
-            <div className="classes-empty-state">
-              <Users size={48} className="empty-state-icon" />
-              <p>{students.length === 0 ? "No students enrolled in your classes yet." : "No students match your search query."}</p>
+            <div className="py-12 flex flex-col items-center justify-center space-y-4 text-[#0A0A0A]/50">
+              <Users size={48} className="stroke-[1.5px]" />
+              <p className="font-bold uppercase tracking-widest">
+                {students.length === 0 ? "No students enrolled in your classes yet." : "No students match your search query."}
+              </p>
             </div>
           ) : (
-            <div className="table-container">
-              <table className="roster-table">
+            <div className="overflow-x-auto rounded-xl border-2 border-[#0A0A0A]">
+              <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
-                  <tr>
-                    <th>Student Name</th>
-                    <th>Class</th>
-                    <th>Progress Bar</th>
-                    <th>Flag Status</th>
-                    <th>Actions</th>
+                  <tr className="bg-[#0A0A0A] text-white font-black uppercase tracking-widest text-xs">
+                    <th className="p-4 border-b-2 border-r-2 border-[#0A0A0A]">Student Name</th>
+                    <th className="p-4 border-b-2 border-r-2 border-[#0A0A0A]">Class</th>
+                    <th className="p-4 border-b-2 border-r-2 border-[#0A0A0A]">Progress Bar</th>
+                    <th className="p-4 border-b-2 border-r-2 border-[#0A0A0A]">Flag Status</th>
+                    <th className="p-4 border-b-2 border-[#0A0A0A]">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredStudents.map((student) => (
-                    <tr key={student.id} className="roster-row">
-                      <td>
-                        <div className="student-profile-info">
+                <tbody className="font-bold font-['Inter'] text-sm">
+                  {filteredStudents.map((student, idx) => (
+                    <tr key={student.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-[#118AB2]/10 transition-colors`}>
+                      <td className="p-4 border-b-2 border-r-2 border-[#0A0A0A]">
+                        <div className="flex items-center gap-3">
                           <img 
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random&color=fff`} 
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random&color=fff&bold=true`} 
                             alt={student.name} 
-                            className="student-avatar-img"
+                            className="w-10 h-10 rounded-lg border-2 border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A]"
                           />
-                          <div className="student-name-details">
-                            <span className="student-name-text">{student.name}</span>
-                            <span className="student-email-text">{student.email}</span>
+                          <div>
+                            <span className="block font-black text-[#0A0A0A] text-base">{student.name}</span>
+                            <span className="block font-bold text-xs text-[#0A0A0A]/60">{student.email}</span>
                           </div>
                         </div>
                       </td>
-                      <td>
-                        <span className="student-class-tag">{student.cls}</span>
+                      <td className="p-4 border-b-2 border-r-2 border-[#0A0A0A]">
+                        <span className="px-2 py-1 bg-gray-200 border-2 border-[#0A0A0A] rounded text-xs font-black uppercase tracking-widest shadow-[2px_2px_0_#0A0A0A]">{student.cls}</span>
                       </td>
-                      <td>
-                        <div className="roster-progress-container">
-                          <div className="roster-progress-bar-bg">
+                      <td className="p-4 border-b-2 border-r-2 border-[#0A0A0A]">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-4 bg-gray-200 border-2 border-[#0A0A0A] rounded-full overflow-hidden">
                             <div 
-                              className="roster-progress-bar-fill" 
+                              className={`h-full border-r-2 border-[#0A0A0A] ${student.progress > 75 ? 'bg-[#06D6A0]' : student.progress > 40 ? 'bg-[#FFD166]' : 'bg-[#EF476F]'}`} 
                               style={{ width: `${student.progress}%` }}
                             ></div>
                           </div>
-                          <span className="roster-progress-text">{student.progress}%</span>
+                          <span className="font-black text-sm min-w-[3ch]">{student.progress}%</span>
                         </div>
                       </td>
-                      <td>
-                        <div className="roster-flag-badge">
-                          <span className="flag-badge-title">Flag Student?</span>
-                          <span className="flag-badge-status">{student.status}</span>
+                      <td className="p-4 border-b-2 border-r-2 border-[#0A0A0A]">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-[#0A0A0A]/50">Flag Student?</span>
+                          <span className="font-black capitalize">{student.status}</span>
                         </div>
                       </td>
-                      <td>
+                      <td className="p-4 border-b-2 border-[#0A0A0A]">
                         {student.flagIcon ? (
-                          <button className="roster-flag-btn" onClick={handleNudgeClick} title="Flagged">
-                            <Flag size={14} className="flagged-icon" />
+                          <button 
+                            className="p-2 bg-[#EF476F] text-white border-2 border-[#0A0A0A] rounded-lg shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all" 
+                            onClick={handleNudgeClick} 
+                            title="Flagged"
+                          >
+                            <Flag size={18} className="stroke-[3px]" />
                           </button>
                         ) : (
-                          <button className="roster-nudge-btn" onClick={handleNudgeClick}>
-                            <Mail size={14} />
+                          <button 
+                            className="flex items-center gap-2 px-3 py-2 bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-lg shadow-[2px_2px_0_#0A0A0A] font-black text-xs uppercase tracking-widest hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all"
+                            onClick={handleNudgeClick}
+                          >
+                            <Mail size={16} className="stroke-[3px]" />
                             <span>Send Nudge</span>
                           </button>
                         )}
@@ -428,61 +423,56 @@ export default function MyClasses() {
 
       {/* 4. New Class Modal Popup */}
       {showModal && (
-        <div className="modal-backdrop">
-          <div className="modal-container animate-in zoom-in-95 duration-200">
-            <div className="modal-header">
-              <h3>Create New Class</h3>
-              <button onClick={() => setShowModal(false)} className="modal-close-btn">&times;</button>
-            </div>
-            <form onSubmit={handleCreateCourse}>
-              <div className="modal-body">
-                <div className="form-group mb-4">
-                  <label htmlFor="courseTitle">Class Name</label>
-                  <input 
-                    type="text" 
-                    id="courseTitle" 
-                    required 
-                    placeholder="e.g. Introduction to Physics"
-                    value={courseTitle}
-                    onChange={(e) => setCourseTitle(e.target.value)}
-                    className="modal-input"
-                  />
-                </div>
-                <div className="form-group mb-4">
-                  <label htmlFor="courseCode">Class Code</label>
-                  <input 
-                    type="text" 
-                    id="courseCode" 
-                    required 
-                    placeholder="e.g. PHY101"
-                    value={courseCode}
-                    onChange={(e) => setCourseCode(e.target.value)}
-                    className="modal-input"
-                  />
-                </div>
-                <div className="form-group mb-4">
-                  <label htmlFor="courseDesc">Description (Optional)</label>
-                  <textarea 
-                    id="courseDesc" 
-                    placeholder="Brief description of the course..."
-                    value={courseDesc}
-                    onChange={(e) => setCourseDesc(e.target.value)}
-                    className="modal-input"
-                    rows={3}
-                  />
-                </div>
+        <div className="fixed inset-0 bg-[#0A0A0A]/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-[4px] border-[#0A0A0A] rounded-3xl p-8 max-w-md w-full shadow-[12px_12px_0_#0A0A0A] animate-in zoom-in-95 duration-200">
+            <h2 className="text-2xl font-black uppercase tracking-tight mb-6">Create New Class</h2>
+            <form onSubmit={handleCreateCourse} className="space-y-5">
+              <div className="space-y-2">
+                <label htmlFor="courseTitle" className="text-sm font-black uppercase tracking-widest">Class Name</label>
+                <input 
+                  type="text" 
+                  id="courseTitle" 
+                  required 
+                  placeholder="e.g. Introduction to Physics"
+                  value={courseTitle}
+                  onChange={(e) => setCourseTitle(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border-[3px] border-[#0A0A0A] rounded-xl font-bold font-['Inter'] shadow-[4px_4px_0_#0A0A0A] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#06D6A0]/20 transition-all"
+                />
               </div>
-              <div className="modal-footer">
+              <div className="space-y-2">
+                <label htmlFor="courseCode" className="text-sm font-black uppercase tracking-widest">Class Code</label>
+                <input 
+                  type="text" 
+                  id="courseCode" 
+                  required 
+                  placeholder="e.g. PHY101"
+                  value={courseCode}
+                  onChange={(e) => setCourseCode(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border-[3px] border-[#0A0A0A] rounded-xl font-bold font-['Inter'] shadow-[4px_4px_0_#0A0A0A] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#06D6A0]/20 transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="courseDesc" className="text-sm font-black uppercase tracking-widest">Description (Optional)</label>
+                <textarea 
+                  id="courseDesc" 
+                  placeholder="Brief description of the course..."
+                  value={courseDesc}
+                  onChange={(e) => setCourseDesc(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border-[3px] border-[#0A0A0A] rounded-xl font-bold font-['Inter'] shadow-[4px_4px_0_#0A0A0A] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#06D6A0]/20 transition-all resize-y min-h-[100px]"
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-4 pt-4">
                 <button 
                   type="button" 
                   onClick={() => setShowModal(false)} 
-                  className="modal-btn-cancel"
+                  className="flex-1 py-3 px-4 bg-white border-[3px] border-[#0A0A0A] text-[#0A0A0A] rounded-xl font-black uppercase tracking-widest shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className="modal-btn-submit"
+                  className="flex-1 py-3 px-4 bg-[#0A0A0A] border-[3px] border-[#0A0A0A] text-white rounded-xl font-black uppercase tracking-widest shadow-[4px_4px_0_#06D6A0] hover:-translate-y-1 hover:shadow-[6px_6px_0_#06D6A0] active:translate-y-0 active:shadow-none transition-all"
                 >
                   Create Class
                 </button>

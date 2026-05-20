@@ -75,8 +75,8 @@ export default function VectorSpace3D({ data }: Props) {
           bgcolor: 'transparent',
           xaxis: { 
             showgrid: true, 
-            gridcolor: 'rgba(255,255,255,0.08)', 
-            zerolinecolor: 'rgba(255,255,255,0.1)', 
+            gridcolor: 'rgba(0,0,0,0.06)', 
+            zerolinecolor: 'rgba(0,0,0,0.1)', 
             showticklabels: false, 
             title: '',
             backgroundcolor: 'transparent',
@@ -84,8 +84,8 @@ export default function VectorSpace3D({ data }: Props) {
           },
           yaxis: { 
             showgrid: true, 
-            gridcolor: 'rgba(255,255,255,0.08)', 
-            zerolinecolor: 'rgba(255,255,255,0.1)', 
+            gridcolor: 'rgba(0,0,0,0.06)', 
+            zerolinecolor: 'rgba(0,0,0,0.1)', 
             showticklabels: false, 
             title: '',
             backgroundcolor: 'transparent',
@@ -93,8 +93,8 @@ export default function VectorSpace3D({ data }: Props) {
           },
           zaxis: { 
             showgrid: true, 
-            gridcolor: 'rgba(255,255,255,0.08)', 
-            zerolinecolor: 'rgba(255,255,255,0.1)', 
+            gridcolor: 'rgba(0,0,0,0.06)', 
+            zerolinecolor: 'rgba(0,0,0,0.1)', 
             showticklabels: false, 
             title: '',
             backgroundcolor: 'transparent',
@@ -103,14 +103,14 @@ export default function VectorSpace3D({ data }: Props) {
           camera: { eye: { x: 1.6, y: 1.6, z: 1.2 } },
         },
         legend: {
-          font: { color: '#94a3b8', size: 11 },
-          bgcolor: 'rgba(15,23,42,0.6)',
-          bordercolor: 'rgba(255,255,255,0.08)',
-          borderwidth: 1,
+          font: { color: '#0A0A0A', size: 11, family: 'Outfit, sans-serif' },
+          bgcolor: 'rgba(255,255,255,0.95)',
+          bordercolor: '#0A0A0A',
+          borderwidth: 2,
           x: 0.01,
           y: 0.99,
         },
-        font: { color: '#94a3b8' },
+        font: { color: '#0A0A0A', family: 'Outfit, sans-serif' },
       }}
       config={{
         displayModeBar: true,

@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Send, GraduationCap, PenTool, LayoutDashboard, ChevronLeft, Brain, ChevronDown, ChevronUp } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Send, GraduationCap, PenTool, LayoutDashboard, Brain, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { analytics } from '../utils/analytics';
 import { API_URL } from '../api';
+import KnowledgeGraph from '../components/graph/KnowledgeGraph';
+import { useGraphStore } from '../store/graphStore';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -110,8 +112,8 @@ export default function Chat() {
   const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { logout, token } = useAuthStore();
-  const navigate = useNavigate();
+  const { token } = useAuthStore();
+  const { nodes, currentNodeId, fetchCourseGraph, navigateToNode, setCurrentNode } = useGraphStore();
 
   // Stable session ID across renders (not tab-close)
   const sessionIdRef = useRef<string>(getOrCreateSessionId());
@@ -119,6 +121,24 @@ export default function Chat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Fetch graph when courseId is present
+  useEffect(() => {
+    if (courseId) {
+      fetchCourseGraph(courseId);
+    }
+  }, [courseId, fetchCourseGraph]);
+
+  // Auto-select first node when graph loads
+  useEffect(() => {
+    if (nodes.length > 0 && !currentNodeId) {
+      setCurrentNode(nodes[0].id);
+    }
+  }, [nodes, currentNodeId, setCurrentNode]);
+
+  const handleNodeClick = (nodeId: string) => {
+    navigateToNode(nodeId);
+  };
 
   const handleSend = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +160,6 @@ export default function Chat() {
         topic: initialTopic || '',
       });
 
-      // Use centralized API URL
       const url = new URL(`${API_URL}/chat/`);
       url.searchParams.append('session_id', sessionIdRef.current);
       url.searchParams.append('message', input);
@@ -160,11 +179,9 @@ export default function Chat() {
         throw new Error(errorText || `Server returned ${response.status}`);
       }
 
-      // Check if response is streaming or JSON
       const contentType = response.headers.get('content-type');
       
       if (contentType && contentType.includes('text/event-stream')) {
-        // Handle streaming response
         const reader = response.body?.getReader();
         if (!reader) {
           throw new Error('Failed to get stream reader');
@@ -182,10 +199,8 @@ export default function Chat() {
 
           const chunk = decoder.decode(value, { stream: true });
 
-          // Detect SSE-style error events: "event: error\ndata: ..."
           if (chunk.includes('event: error')) {
             hasError = true;
-            // Extract the error data after "data: "
             const lines = chunk.split('\n');
             const errorLine = lines.find(l => l.startsWith('data: '));
             if (errorLine) {
@@ -201,7 +216,6 @@ export default function Chat() {
             break;
           }
 
-          // Also catch plain "Error: " prefix at start of stream (legacy fallback)
           if (!assistantMessage && chunk.startsWith('Error:')) {
             hasError = true;
             assistantMessage = `⚠️ ${chunk}`;
@@ -226,7 +240,6 @@ export default function Chat() {
           });
         }
       } else {
-        // Handle JSON response (non-streaming fallback)
         const json = await response.json();
         const reply = json.reply || json.message || '(empty response)';
         setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
@@ -255,109 +268,111 @@ export default function Chat() {
     { key: 'review' as const, icon: LayoutDashboard, label: 'Review' },
   ];
 
-  return (
-    <div className="flex h-screen bg-[#0A0A0A] text-white">
-      {/* Sidebar */}
-      <div className="w-16 bg-[#0A0A0A] border-r border-white/[0.06] flex flex-col items-center py-5">
-        <button
-          onClick={() => courseId ? navigate(`/course/${courseId}`) : navigate('/dashboard')}
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/[0.04] mb-6 transition-all"
-        >
-          <ChevronLeft size={20} />
-        </button>
-
-        <div className="w-8 h-8 rounded-lg bg-[var(--accent-surface)] border border-[var(--accent-border)] flex items-center justify-center mb-8">
-          <span className="text-sm font-bold text-[var(--accent)]">C</span>
+  const chatPanel = (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.06] shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-white/80">Socratic Tutor</span>
+          <span className="text-[11px] text-white/30">| {mode} mode</span>
         </div>
-
-        <div className="flex flex-col gap-1.5 flex-1">
+        <div className="flex items-center gap-1">
           {modes.map(m => (
             <button
               key={m.key}
               onClick={() => setMode(m.key)}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 group relative ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 mode === m.key
                   ? 'bg-white/[0.08] text-white'
-                  : 'text-white/30 hover:text-white/60 hover:bg-white/[0.04]'
+                  : 'text-white/40 hover:text-white/60 hover:bg-white/[0.04]'
               }`}
             >
-              <m.icon size={18} />
-              <span className="absolute left-full ml-2 px-2 py-1 bg-white/10 backdrop-blur-md text-[11px] text-white rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">
-                {m.label}
-              </span>
+              <m.icon size={14} className="inline mr-1" />
+              {m.label}
             </button>
           ))}
         </div>
-
-        <button
-          onClick={() => { logout(); navigate('/'); }}
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-white/20 hover:text-white/50 hover:bg-white/[0.04] transition-all duration-200"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-        </button>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
-        <div className="h-14 border-b border-white/[0.06] flex items-center justify-center">
-          <span className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-semibold text-white/50 uppercase tracking-wide">
-            {mode} mode
-          </span>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
-            {messages.map((m, idx) => (
-              <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`w-full max-w-[90%] ${
-                  m.role === 'user'
-                    ? 'bg-white text-[#0A0A0A] rounded-2xl rounded-br-md p-4'
-                    : 'bg-white/[0.04] border border-white/[0.06] text-white/90 rounded-2xl rounded-bl-md p-5'
-                }`}>
-                  {m.role === 'user' ? (
-                    <p className="text-sm leading-relaxed">{m.content}</p>
-                  ) : (
-                    <MsgContent content={m.content} />
-                  )}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-6 py-6 space-y-5">
+          {messages.map((m, idx) => (
+            <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`w-full max-w-[90%] ${
+                m.role === 'user'
+                  ? 'bg-white text-[#0A0A0A] rounded-2xl rounded-br-md p-4'
+                  : 'bg-white/[0.04] border border-white/[0.06] text-white/90 rounded-2xl rounded-bl-md p-5'
+              }`}>
+                {m.role === 'user' ? (
+                  <p className="text-sm leading-relaxed">{m.content}</p>
+                ) : (
+                  <MsgContent content={m.content} />
+                )}
+              </div>
+            </div>
+          ))}
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-bl-md px-4 py-3">
+                <div className="flex gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:300ms]" />
                 </div>
               </div>
-            ))}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-bl-md px-4 py-3">
-                  <div className="flex gap-1.5">
-                    <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:0ms]" />
-                    <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:150ms]" />
-                    <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:300ms]" />
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
+            </div>
+          )}
+          <div ref={bottomRef} />
         </div>
+      </div>
 
-        <div className="border-t border-white/[0.06] p-4 bg-[#0A0A0A]">
-          <div className="max-w-2xl mx-auto">
-            <form onSubmit={handleSend} className="relative">
-              <input
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Message Cobble AI..."
-                className="w-full bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-white/20 rounded-xl pl-4 pr-12 py-3.5 focus:outline-none focus:border-white/[0.15] focus:bg-white/[0.06] transition-all duration-200"
-              />
-              <button
-                type="submit"
-                disabled={isTyping}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-white text-[#0A0A0A] rounded-lg hover:bg-white/90 active:scale-95 transition-all duration-150 disabled:opacity-30"
-              >
-                <Send size={14} />
-              </button>
-            </form>
-            <p className="text-center text-[10px] text-white/15 mt-3 font-medium">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
+      <div className="border-t border-white/[0.06] p-4 bg-[#0A0A0A]">
+        <div className="max-w-2xl mx-auto">
+          <form onSubmit={handleSend} className="relative">
+            <input
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder="Message Cobble AI..."
+              className="w-full bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-white/20 rounded-xl pl-4 pr-12 py-3.5 focus:outline-none focus:border-white/[0.15] focus:bg-white/[0.06] transition-all duration-200"
+            />
+            <button
+              type="submit"
+              disabled={isTyping}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-white text-[#0A0A0A] rounded-lg hover:bg-white/90 active:scale-95 transition-all duration-150 disabled:opacity-30"
+            >
+              <Send size={14} />
+            </button>
+          </form>
+          <p className="text-center text-[10px] text-white/15 mt-3 font-medium">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!courseId) {
+    return (
+      <div className="h-full bg-[#0A0A0A] text-white">
+        {chatPanel}
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full bg-[#0A0A0A] text-white flex overflow-hidden">
+      {/* Graph Panel */}
+      <div className="flex-1 border-r border-white/[0.06]">
+        <div className="h-full flex flex-col">
+          <div className="px-4 py-3 border-b border-white/[0.06] text-sm font-semibold text-white/70 shrink-0">
+            Knowledge Graph - {nodes.length} concepts
+          </div>
+          <div className="flex-1">
+            <KnowledgeGraph onNodeClick={handleNodeClick} />
           </div>
         </div>
+      </div>
+      {/* Chat Panel */}
+      <div className="w-[480px] flex flex-col">
+        {chatPanel}
       </div>
     </div>
   );

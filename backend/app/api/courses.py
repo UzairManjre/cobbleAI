@@ -163,7 +163,10 @@ async def join_course(
     if not invite:
         raise HTTPException(404, "Invalid invite code")
 
-    if invite.expires_at < datetime.now(timezone.utc):
+    expires_at = invite.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
         raise HTTPException(400, "Invite code expired")
 
     existing = await Enrolment.find_one(

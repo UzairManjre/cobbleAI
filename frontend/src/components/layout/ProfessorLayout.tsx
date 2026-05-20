@@ -1,10 +1,9 @@
-import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import './ProfessorLayout.css';
 
-const ProfessorLayout = () => {
+const AppLayout = () => {
   return (
     <div className="app-container">
       <Sidebar />
@@ -18,4 +17,4 @@ const ProfessorLayout = () => {
   );
 };
 
-export default ProfessorLayout;
+export default AppLayout;

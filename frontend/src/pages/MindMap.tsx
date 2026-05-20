@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph3D from 'react-force-graph-3d';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGraphStore } from '../store/graphStore';
@@ -10,6 +10,14 @@ export default function MindMap() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const graphRef = useRef<any>(null);
+  
+  const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => setDimensions({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   const { nodes, edges, fetchCourseGraph, isLoading } = useGraphStore();
 
@@ -56,9 +64,11 @@ export default function MindMap() {
     }, 1200);
   };
 
+  const fullScreen = "fixed inset-0 z-40";
+
   if (isLoading && nodes.length === 0) {
     return (
-      <div className="h-screen w-screen bg-[#0A0A0A] flex items-center justify-center">
+      <div className={`${fullScreen} bg-[#0A0A0A] flex items-center justify-center`}>
         <div className="text-white/20 animate-pulse font-mono tracking-widest uppercase text-xs">
           Synchronizing Neural Connections...
         </div>
@@ -68,7 +78,7 @@ export default function MindMap() {
 
   if (nodes.length === 0) {
     return (
-      <div className="h-screen w-screen bg-[#0A0A0A] flex flex-col items-center justify-center text-center p-8">
+      <div className={`${fullScreen} bg-[#0A0A0A] flex flex-col items-center justify-center text-center p-8`}>
         <div className="w-16 h-16 rounded-3xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mb-8">
           <div className="w-2 h-2 rounded-full bg-white/20 animate-ping" />
         </div>
@@ -88,7 +98,7 @@ export default function MindMap() {
   }
 
   return (
-    <div className="h-screen w-screen bg-[#0A0A0A] relative overflow-hidden">
+    <div className={`${fullScreen} bg-[#0A0A0A] overflow-hidden`}>
       <div className="absolute top-8 left-8 z-10 flex items-center gap-4">
         <button 
           onClick={() => navigate(`/course/${courseId}`)} 
@@ -107,6 +117,8 @@ export default function MindMap() {
         ref={graphRef}
         graphData={graphData}
         backgroundColor="#0A0A0A"
+        width={dimensions.width}
+        height={dimensions.height}
         
         // Custom node rendering for labels + spheres
         nodeThreeObject={(node: any) => {

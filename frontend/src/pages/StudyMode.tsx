@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useGraphStore } from '../store/graphStore';
+import { useAuthStore } from '../store/authStore';
 import KnowledgeGraph from '../components/graph/KnowledgeGraph';
 import TutorChat from '../components/graph/TutorChat';
 import NodeInfo from '../components/graph/NodeInfo';
@@ -10,6 +11,8 @@ export default function StudyMode() {
   const { courseId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { role } = useAuthStore();
+  const dashboardRoute = role === 'professor' ? '/professor/dashboard' : '/student/dashboard';
   const {
     nodes,
     edges,
@@ -19,7 +22,6 @@ export default function StudyMode() {
     navigateToNode,
     isLoading,
     error,
-    loadSession,
     autoIntroNodeId,
     startTopicIntro,
     fetchCourseGraph,
@@ -137,7 +139,7 @@ export default function StudyMode() {
       <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center p-8">
         <div className="max-w-lg w-full">
           <button
-            onClick={() => navigate(courseId ? `/course/${courseId}` : '/dashboard')}
+            onClick={() => navigate(courseId ? `/course/${courseId}` : dashboardRoute)}
             className="flex items-center gap-2 text-white/40 hover:text-white/70 mb-12 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -224,7 +226,7 @@ export default function StudyMode() {
       <header className="h-14 border-b border-white/[0.06] flex items-center justify-between px-6 shrink-0">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate(courseId ? `/course/${courseId}` : '/dashboard')}
+            onClick={() => navigate(courseId ? `/course/${courseId}` : dashboardRoute)}
             className="p-1.5 hover:bg-white/5 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-4 h-4 text-white/60" />

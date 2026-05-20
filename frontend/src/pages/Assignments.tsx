@@ -43,28 +43,30 @@ export default function Assignments() {
     if (!token) return;
     setIsLoading(true);
 
+    // Load courses first
     try {
-      // Fetch courses & tests
-      const [coursesRes, testsRes] = await Promise.all([
-        coursesApi.list(),
-        testsApi.listAllProfessorTests()
-      ]);
+      const coursesRes = await coursesApi.list();
+      const coursesList = coursesRes.data || [];
+      setCourses(coursesList);
+      if (coursesList.length > 0) {
+        setCourseId(coursesList[0].id);
+      }
+    } catch (err) {
+      console.error('Error loading courses:', err);
+    }
 
-      setCourses(coursesRes.data || []);
-      
-      // Filter by assignments test_type
+    // Load tests separately so a failure doesn't block the page
+    try {
+      const testsRes = await testsApi.listAllProfessorTests();
       const allTests = testsRes.data?.tests || [];
       const filteredAssignments = allTests.filter((t: any) => t.test_type === 'assignment');
       setAssignments(filteredAssignments);
-      
-      if (coursesRes.data && coursesRes.data.length > 0) {
-        setCourseId(coursesRes.data[0].id);
-      }
     } catch (err) {
-      console.error('Error loading assignments data:', err);
-    } finally {
-      setIsLoading(false);
+      console.error('Error loading tests:', err);
+      setAssignments([]);
     }
+
+    setIsLoading(false);
   };
 
   const handleCreateAssignment = async (e: React.FormEvent) => {

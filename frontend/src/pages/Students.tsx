@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Mail, Flag } from 'lucide-react';
 import { coursesApi } from '../api';
 import './Students.css';

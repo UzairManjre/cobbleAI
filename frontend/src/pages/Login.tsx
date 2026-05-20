@@ -46,7 +46,7 @@ export default function Login({ role }: LoginProps) {
       if (!userRes.data.has_onboarded) {
         navigate(`/onboarding/${role}`);
       } else {
-        navigate(role === 'professor' ? '/professor/dashboard' : '/chat');
+        navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard');
       }
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Invalid email or password.');

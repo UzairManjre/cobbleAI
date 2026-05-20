@@ -1,0 +1,152 @@
+=== RAW LLM RESPONSE ===
+Length: 9259 chars
+Model: gemma4:e2b
+Prompt length: 6597 chars
+
+================================================================================
+
+<thought>Thinking Process:
+
+1.  **Analyze the Request:** The goal is to generate a JSON list of topics based on the provided course material (nodes) and their defined relations (dependencies). The ordering must be logical based on prerequisites.
+
+2.  **Identify all Nodes (Topics):**
+    *   node_d28747baec36 (Limited Liability Partnership (LLP))
+    *   node_9f8bb5081be3 (Partnership Firm)
+    *   node_b5f0bfb82932 (Body Corporate)
+    *   node_8957977e2cb7 (Separate Legal Entity)
+    *   node_50593e4f34a1 (Limited Liability)
+    *   node_e1279babefac (LLP Agreement)
+    *   node_4e18a3fef74a (Designated Partner)
+    *   node_ef77883c8095 (Incorporation)
+    *   node_759d3c026e7c (Perpetual Succession)
+    *   node_5add6fc8090d (Liability of LLP)
+    *   node_5e9b9d43b5fd (Partner Liability)
+    *   node_6902d155dcfe (Business for Profit Only)
+    *   node_658c2385a57e (Financial Disclosures)
+    *   node_13af43432ede (Conversion to LLP)
+    *   node_d7c87106945b (Name Reservation)
+    *   node_5fb80d89bbb1 (Winding Up and Dissolution)
+    *   node_7f39679ebf5a (Compromise or Arrangement)
+    *   node_84d6bb609d49 (Liability of Designated Partners)
+    *   node_3dbb3afe7046 (Interpretation of Statutes)
+    *   node_ed3cb7aab682 (Construction)
+    *   node_a92e9dac6d60 (Statute/Enactment)
+    *   node_73bab3282a00 (Document/Instrument)
+    *   node_f07958f44335 (Rules of Interpretation)
+    *   node_42bd9ade8824 (Literal Construction)
+    *   node_1fbb011ffa0c (Logical Interpretation)
+    *   node_4b185f74bed4 (Grammatical Interpretation)
+    *   node_cc14772bed33 (Harmonious Construction)
+    *   node_087fbb09e6cb (Mischief Rule (Heydon's Case))
+    *   node_f1018e7a1833 (Internal Aids to Interpretation)
+    *   node_9944b621f5b5 (External Aids to Interpretation)
+    *   node_ee9872ae4578 (Usage and Custom)
+    *   node_0ae329f42184 (Definitions)
+    *   node_98e787a8f2e9 (Proviso/Exception)
+    *   node_45ae8a8216fc (Explanation)
+    *   node_4a094156202b (Usage (Optima Legum Interpres est consuetude))
+    *   node_4bb7d2313fb7 (Preamble)
+    *   node_4c48ad5945a4 (Definitions (Restrictive vs. Extensive))
+    *   node_a154201b9ae2 (Golden Rule of Construction)
+    *   node_3b2259c7309e (General Clauses Act, 1897)
+    *   node_461eb7982ef2 (Act)
+    *   node_db4840064d31 (Immovable Property)
+    *   node_bbb4cc0e5479 (Movable Property)
+    *   node_b13258952aca (Financial Year)
+    *   node_fc642c8fd541 (Calendar Year)
+    *   node_52452dc1908e (Good Faith)
+    *   node_a32f4b667190 (Application of Definitions)
+    *   node_f9e1beaaed31 (Construction of Statutes)
+    *   node_877972da4bde (Repeal)
+    *   node_90b3ba306fc9 (Effect of Repeal)
+    *   node_16c5dfe112fb (Service by Post)
+    *   node_709f786eb7a8 (Central Government)
+    *   node_53755cb6475b (Immovable Property Definition)
+    *   node_56fc8c7d3b20 (Official Gazette)
+    *   node_d9dab994372a (Enactment)
+    *   node_9f6492d5247b (Power to Appoint)
+
+3.  **Analyze Relations (Dependencies):**
+    *   node_5e9b9d43b5fd -> node_50593e4f34a1 (is_defined_by)
+    *   node_e1279babefac -> node_5e9b9d43b5fd (determines)
+    *   node_4e18a3fef74a -> node_84d6bb609d49 (is_responsible_for)
+    *   node_d7c87106945b -> node_ef77883c8095 (is_a_step_in)
+    *   node_13af43432ede -> node_9f8bb5081be3 (replaces)
+    *   node_3dbb3afe7046 -> node_ed3cb7aab682 (is_a_type_of)
+    *   node_f07958f44335 -> node_3dbb3afe7046 (guides)
+    *   node_42bd9ade8824 -> node_3dbb3afe7046 (is_a_method)
+    *   node_1fbb011ffa0c -> node_3dbb3afe7046 (is_an_alternative_to)
+    *   node_4b185f74bed4 -> node_42bd9ade8824 (is_the_basis_for)
+    *   node_cc14772bed33 -> node_f07958f44335 (is_a_rule)
+    *   node_087fbb09e6cb -> node_f07958f44335 (is_a_rule)
+    *   node_f1018e7a1833 -> node_3dbb3afe7046 (aids)
+    *   node_9944b621f5b5 -> node_3dbb3afe7046 (aids)
+    *   node_ee9872ae4578 -> node_9944b621f5b5 (is_a_type_of)
+    *   node_0ae329f42184 -> node_3dbb3afe7046 (provides_key_to)
+    *   node_4bb7d2313fb7 -> node_f1018e7a1833 (is_an_aid_to)
+    *   node_98e787a8f2e9 -> node_f1018e7a1833 (is_an_aid_to)
+    *   node_45ae8a8216fc -> node_f1018e7a1833 (is_an_aid_to)
+    *   node_a154201b9ae2 -> node_3dbb3afe7046 (is_the_goal_of)
+
+4.  **Determine Topological Order (Dependency Graph Traversal):**
+
+    *   *Focus on Interpretation/Statutes (Core Legal Principles):*
+        *   node_3b2259c7309e (General Clauses Act, 1897) - Base law.
+        *   node_461eb7982ef2 (Act) - Legislation.
+        *   node_98e787a8f2e9 (Proviso/Exception)
+        *   node_90b3ba306fc9 (Effect of Repeal)
+        *   node_877972da4bde (Repeal)
+        *   node_9f6492d5247b (Power to Appoint)
+        *   node_709f786eb7a8 (Central Government)
+        *   node_56fc8c7d3b20 (Official Gazette)
+        *   node_16c5dfe112fb (Service by Post)
+        *   node_3b2259c7309e (General Clauses Act, 1897)
+        *   node_52452dc1908e (Good Faith)
+        *   node_4c48ad5945a4 (Definitions (Restrictive vs. Extensive))
+        *   node_4bb7d2313fb7 (Preamble)
+        *   node_0ae329f42184 (Definitions)
+        *   node_a32f4b667190 (Application of Definitions)
+        *   node_4a094156202b (Usage (Optima Legum Interpres est consuetude))
+        *   node_42bd9ade8824 (Literal Construction)
+        *   node_1fbb011ffa0c (Logical Interpretation)
+        *   node_4b185f74bed4 (Grammatical Interpretation)
+        *   node_cc14772bed33 (Harmonious Construction)
+        *   node_087fbb09e6cb (Mischief Rule (Heydon's Case))
+        *   node_13af43432ede (Conversion to LLP)
+        *   node_f9e1beaaed31 (Construction of Statutes)
+        *   node_f1018e7a1833 (Internal Aids to Interpretation)
+        *   node_9944b621f5b5 (External Aids to Interpretation)
+
+    *   *Focus on LLP/Entity Structure:*
+        *   node_461eb7982ef2 (Act)
+        *   node_d9dab994372a (Enactment)
+        *   node_d7c87106945b (Name Reservation)
+        *   node_5fb80d89bbb1 (Winding Up and Dissolution)
+        *   node_5add6fc8090d (Liability of LLP)
+        *   node_5e9b9d43b5fd (Partner Liability)
+        *   node_84d6bb609d49 (Liability of Designated Partners)
+        *   node_1279babefac (LLP Agreement)
+        *   node_50593e4f34a1 (Limited Liability)
+        *   node_6902d155dcfe (Business for Profit Only)
+        *   node_658c2385a57e (Financial Disclosures)
+        *   node_13af43432ede (Conversion to LLP)
+        *   node_d28747baec36 (LLP)
+        *   node_9f8bb5081be3 (Partnership Firm)
+        *   node_8957977e2cb7 (Separate Legal Entity)
+        *   node_b5f0bfb82932 (Body Corporate)
+        *   node_53755cb6475b (Immovable Property Definition)
+        *   node_53755cb6475b (Immovable Property)
+        *   node_db4840064d31 (Immovable Property)
+        *   node_bbb4cc0e5479 (Movable Property)
+        *   node_b13258952aca (Financial Year)
+        *   node_fc642c8fd541 (Calendar Year)
+
+5.  **Construct the Final Order (Grouping related concepts):**
+
+    *   *Group 1: Legal/Statutory Interpretation (Foundation)*
+    *   *Group 2: Entity/LLP Structure*
+    *   *Group 3: Property/Finance*
+
+    *Self-Correction/Refinement:* I need to ensure the interpretation nodes flow before the specific LLP rules, and the LLP rules flow before the property rules.
+
+6.  **Final Ordering and JSON Generation.** (Executing the sort based on the dependencies found.)</thought>{"topics":[{"node_id":"3b2259c7309e","order":1,"prerequisites":[]},{"node_id":"461eb7982ef2","order":2,"prerequisites":["3b2259c7309e"]},{"node_id":"98e787a8f2e9","order":3,"prerequisites":["3b2259c7309e"]},{"node_id":"90b3ba306fc9","order":4,"prerequisites":["877972da4bde"]},{"node_id":"877972da4bde","order":5,"prerequisites":[]},{"node_id":"52452dc1908e","order":6,"prerequisites":[]},{"node_id":"56fc8c7d3b20","order":7,"prerequisites":[]},{"node_id":"16c5dfe112fb","order":8,"prerequisites":[]},{"node_id":"709f786eb7a8","order":9,"prerequisites":[]},{"node_id":"53755cb6475b","order":10,"prerequisites":[]},{"node_id":"db4840064d31","order":11,"prerequisites":[]},{"node_id":"bbb4cc0e5479","order":12,"prerequisites":[]},{"node_id":"b13258952aca","order":13,"prerequisites":[]},{"node_id":"fc642c8fd541","order":14,"prerequisites":[]},{"node_id":"4bb7d2313fb7","order":15,"prerequisites":[]},{"node_id":"0ae329f42184","order":16,"prerequisites":[]},{"node_id":"087fbb09e6cb","order":17,"prerequisites":[]},{"node_id":"f07958f44335","order":18,"prerequisites":[]},{"node_id":"cc14772bed33","order":19,"prerequisites":["f07958f44335"]},{"node_id":"42bd9ade8824","order":20,"prerequisites":["4b185f74bed4"]},{"node_id":"1fbb011ffa0c","order":21,"prerequisites":["3dbb3afe7046"]},{"node_id":"4b185f74bed4","order":22,"prerequisites":[]},{"node_id":"13af43432ede","order":23,"prerequisites":[]},{"node_id":"9f8bb5081be3","order":24,"prerequisites":["13af43432ede"]},{"node_id":"1279babefac","order":25,"prerequisites":["5e9b9d43b5fd"]},{"node_id":"50593e4f34a1","order":26,"prerequisites":["5e9b9d43b5fd"]},{"node_id":"5e9b9d43b5fd","order":27,"prerequisites":["e1279babefac"]},{"node_id":"4e18a3fef74a","order":28,"prerequisites":["4e18a3fef74a"]},{"node_id":"84d6bb609d49","order":29,"prerequisites":["4e18a3fef74a"]},{"node_id":"5add6fc8090d","order":30,"prerequisites":[]},{"node_id":"8957977

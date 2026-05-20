@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import {
   BookOpen, CheckCircle, Clock, Target, Brain, Code, MessageSquare,
   Lightbulb, FileText, ChevronRight, ChevronDown, Play, Award,
-  TrendingUp, RefreshCw, AlertCircle, Sparkles, X
+  RefreshCw, AlertCircle, Sparkles, X
 } from 'lucide-react';
 import { studyPlansApi, coursesApi } from '../api';
 import ReactMarkdown from 'react-markdown';
@@ -197,6 +197,7 @@ export default function StudyPlanView() {
     if (!token || !courseId) return;
 
     try {
+      setTopicPlanNodeId(nodeId);
       setIsGeneratingTopicPlan(true);
       const res = await studyPlansApi.generateTopic(nodeId, courseId);
       setTopicPlan(res.data.topic_plan);
@@ -205,6 +206,7 @@ export default function StudyPlanView() {
       console.error('Failed to generate topic plan:', err);
     } finally {
       setIsGeneratingTopicPlan(false);
+      setTopicPlanNodeId(null);
     }
   };
 
@@ -212,15 +214,18 @@ export default function StudyPlanView() {
     if (!token || !courseId) return;
 
     try {
+      setTopicPlanNodeId(nodeId);
       const res = await studyPlansApi.getTopic(nodeId, courseId);
       if (res.data.topic_plan) {
         setTopicPlan(res.data.topic_plan);
         setShowTopicPlanModal(true);
       } else {
-        handleGenerateTopicPlan(nodeId);
+        await handleGenerateTopicPlan(nodeId);
       }
     } catch (err) {
-      handleGenerateTopicPlan(nodeId);
+      await handleGenerateTopicPlan(nodeId);
+    } finally {
+      setTopicPlanNodeId(null);
     }
   };
 

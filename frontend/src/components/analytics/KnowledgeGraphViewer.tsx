@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { forceCollide } from 'd3-force';
 
@@ -38,7 +38,7 @@ const GROUP_LABELS: Record<number, string> = {
 };
 
 export default function KnowledgeGraphViewer({ data }: Props) {
-  const fgRef = useRef<any>();
+  const fgRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 

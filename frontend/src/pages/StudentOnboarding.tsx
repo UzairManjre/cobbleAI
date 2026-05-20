@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authApi, coursesApi } from '../api';
@@ -32,7 +32,7 @@ export default function StudentOnboarding() {
 
       // 3. Update local state
       setAuth(token!, role!, true);
-      navigate('/chat');
+      navigate('/student/dashboard');
     } catch (err) {
       console.error('Onboarding failed', err);
     } finally {

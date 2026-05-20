@@ -1,4 +1,3 @@
-import React from 'react';
 import { ResponsiveHeatMap } from '@nivo/heatmap';
 
 interface Props {
@@ -56,7 +55,7 @@ export default function StudyHeatmap({ data }: Props) {
               border: '1px solid rgba(255,255,255,0.2)'
             }
           }
-        }}
+        } as any}
       />
     </div>
   );

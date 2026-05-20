@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -117,8 +117,8 @@ interface KnowledgeGraphProps {
   onNodeClick?: (nodeId: string) => void;
 }
 
-const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({ onNodeClick }) => {
-  const { nodes: graphNodes, edges: graphEdges, currentNodeId } = useGraphStore();
+const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
+  const { nodes: graphNodes, edges: graphEdges } = useGraphStore();
 
   const { nodes, edges } = useMemo(() => {
     if (graphNodes.length === 0) return { nodes: [], edges: [] };

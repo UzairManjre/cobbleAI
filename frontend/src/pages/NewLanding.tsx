@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, GraduationCap, Cloud, Bell, X } from 'lucide-react';
@@ -9,7 +8,7 @@ export default function NewLanding() {
   const handleStart = () => navigate('/role-select');
 
   // Animation variants
-  const drawPath = {
+  const drawPath: any = {
     hidden: { pathLength: 0, opacity: 0 },
     visible: { 
       pathLength: 1, 
@@ -18,12 +17,12 @@ export default function NewLanding() {
     }
   };
 
-  const fadeUp = {
+  const fadeUp: any = {
     hidden: { opacity: 0, y: 50 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }
   };
 
-  const staggerContainer = {
+  const staggerContainer: any = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,

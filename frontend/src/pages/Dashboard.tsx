@@ -80,14 +80,14 @@ export default function Dashboard() {
               <div className="class-card-actions">
                 <div 
                   className="action-row designer-flex designer-justify-between designer-items-center"
-                  onClick={() => navigate(`/professor/courses/${cls.id}`)}
+                  onClick={() => navigate(role === 'professor' ? `/professor/courses/${cls.id}` : `/student/courses/${cls.id}`)}
                 >
-                  <span>View/Edit</span>
+                  <span>{role === 'professor' ? 'View/Edit' : 'View Course'}</span>
                   <ChevronRight size={16} />
                 </div>
                 <div 
                   className="action-row designer-flex designer-justify-between designer-items-center"
-                  onClick={() => navigate(`/professor/courses/${cls.id}/study`)}
+                  onClick={() => navigate(role === 'professor' ? `/professor/courses/${cls.id}/study` : `/student/courses/${cls.id}/study`)}
                 >
                   <span>Enter Study Mode</span>
                   <ChevronRight size={16} />
@@ -100,8 +100,8 @@ export default function Dashboard() {
             className="designer-card create-class-card designer-flex designer-flex-col designer-justify-center designer-items-center"
             onClick={() => setShowModal(true)}
           >
-            <h3>Create new class</h3>
-            <p className="desc">Set up a new class</p>
+            <h3>{role === 'professor' ? 'Create new class' : 'Join a class'}</h3>
+            <p className="desc">{role === 'professor' ? 'Set up a new class' : 'Enroll in a new course'}</p>
           </div>
         </div>
       )}

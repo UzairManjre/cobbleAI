@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 // @ts-ignore
 import Plotly from 'plotly.js/dist/plotly';
 // @ts-ignore

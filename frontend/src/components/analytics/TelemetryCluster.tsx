@@ -1,7 +1,6 @@
-import React from 'react';
 import { 
   LineChart, Line, AreaChart, Area, ScatterChart, Scatter, 
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
 
 interface Props {

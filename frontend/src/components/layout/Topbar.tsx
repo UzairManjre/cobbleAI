@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, Bell, ChevronDown } from 'lucide-react';
 import './Topbar.css';
 import { useAuthStore } from '../../store/authStore';

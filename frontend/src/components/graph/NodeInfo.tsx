@@ -1,4 +1,3 @@
-import React from 'react';
 import { useGraphStore } from '../../store/graphStore';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 
@@ -7,8 +6,8 @@ interface NodeInfoProps {
   onNavigate: (nodeId: string) => void;
 }
 
-const NodeInfo: React.FC<NodeInfoProps> = ({ nodeId, onNavigate }) => {
-  const { nodes, edges, navigateToNode, isLoading } = useGraphStore();
+const NodeInfo = ({ nodeId, onNavigate }: NodeInfoProps) => {
+  const { nodes, edges, isLoading } = useGraphStore();
 
   const currentNode = nodes.find((n) => n.id === nodeId);
   

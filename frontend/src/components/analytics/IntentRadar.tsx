@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, Tooltip,

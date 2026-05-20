@@ -141,7 +141,7 @@ window.addEventListener('beforeunload', () => {
 
 // ── React Hooks ──────────────────────────────────────────────────────────
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
  * Hook: track node dwell time.

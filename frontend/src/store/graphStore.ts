@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { graphsApi, sessionsApi, api } from '../api';
+import { graphsApi, sessionsApi } from '../api';
 import { analytics } from '../utils/analytics';
 
 interface ChatMessage {

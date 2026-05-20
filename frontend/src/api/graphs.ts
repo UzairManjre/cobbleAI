@@ -1,5 +1,4 @@
 import api from './client';
-import { useAuthStore } from '../store/authStore';
 
 // Get base URL for SSE connections (EventSource doesn't support custom headers)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';

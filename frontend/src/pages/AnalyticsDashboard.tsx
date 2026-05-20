@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { ResponsiveContainer } from 'recharts';
+import { useEffect, useState } from 'react';
 import { analyticsApi, coursesApi } from '../api';
 import KnowledgeGraphViewer from '../components/analytics/KnowledgeGraphViewer';
 import TelemetryCluster from '../components/analytics/TelemetryCluster';

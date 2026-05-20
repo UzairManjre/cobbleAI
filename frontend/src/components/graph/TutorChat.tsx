@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import type { FormEvent } from 'react';
 import { useGraphStore } from '../../store/graphStore';
 import { Send, BookOpen, Brain, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -78,9 +79,9 @@ const MessageContent = ({ content }: { content: string }) => {
   );
 };
 
-const TutorChat: React.FC<TutorChatProps> = ({ nodeId }) => {
+const TutorChat = ({ nodeId }: TutorChatProps) => {
   const [input, setInput] = useState('');
-  const { chatHistory, askQuestion, isLoading, currentNodeId } = useGraphStore();
+  const { chatHistory, askQuestion, isLoading } = useGraphStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -96,7 +97,7 @@ const TutorChat: React.FC<TutorChatProps> = ({ nodeId }) => {
     setInput('');
   }, [nodeId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+
 import {
-  Clock, CheckCircle, AlertCircle, Send, Save, ArrowLeft,
+  Clock, Send, ArrowLeft,
   AlertTriangle, Sparkles
 } from 'lucide-react';
 import { testsApi } from '../api';
@@ -10,11 +10,10 @@ import { testsApi } from '../api';
 export default function TakeTest() {
   const navigate = useNavigate();
   const { testId } = useParams();
-  const { token } = useAuthStore();
 
-  const [test, setTest] = useState(null);
-  const [attempt, setAttempt] = useState(null);
-  const [answers, setAnswers] = useState({});
+  const [test, setTest] = useState<any>(null);
+  const [attempt, setAttempt] = useState<any>(null);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -65,7 +64,7 @@ export default function TakeTest() {
     }
   };
 
-  const handleAnswer = (questionId, value, type = 'text') => {
+  const handleAnswer = (questionId: string, value: any, type: string = 'text') => {
     setAnswers(prev => ({
       ...prev,
       [questionId]: { value, type, time_spent: 0 }
@@ -78,10 +77,11 @@ export default function TakeTest() {
   };
 
   const handleSubmitTest = async () => {
+    if (!attempt) return;
     setIsSubmitting(true);
 
     try {
-      const formattedAnswers = Object.entries(answers).map(([questionId, ans]) => ({
+      const formattedAnswers = Object.entries(answers).map(([questionId, ans]: [string, any]) => ({
         question_id: questionId,
         answer_type: ans.type,
         answer_text: ans.type === 'text' ? ans.value : null,
@@ -89,7 +89,7 @@ export default function TakeTest() {
         time_spent_seconds: ans.time_spent || 0
       }));
 
-      const res = await testsApi.submit(attempt.id, formattedAnswers);
+      await testsApi.submit(attempt.id, formattedAnswers);
 
       // Show results
       navigate(`/tests/${testId}/result/${attempt.id}`);
@@ -100,7 +100,7 @@ export default function TakeTest() {
     }
   };
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -187,7 +187,7 @@ export default function TakeTest() {
               <div className="mt-8">
                 {currentQuestion.type === 'mcq' && (
                   <div className="space-y-3">
-                    {currentQuestion.options?.map((option) => {
+                    {currentQuestion.options?.map((option: any) => {
                       const isSelected = answers[currentQuestion.id]?.value === option.id;
                       return (
                         <button
@@ -274,7 +274,7 @@ export default function TakeTest() {
                     Hints
                   </div>
                   <ul className="space-y-1">
-                    {currentQuestion.hints.map((hint, idx) => (
+                    {currentQuestion.hints.map((hint: any, idx: number) => (
                       <li key={idx} className="text-xs text-yellow-300/70">• {hint}</li>
                     ))}
                   </ul>
@@ -299,7 +299,7 @@ export default function TakeTest() {
 
             {/* Question Navigator */}
             <div className="flex gap-2">
-              {test.questions?.map((_, idx) => (
+              {test.questions?.map((_: any, idx: number) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentQuestionIdx(idx)}

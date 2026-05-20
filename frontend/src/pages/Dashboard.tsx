@@ -188,40 +188,48 @@ export default function Dashboard() {
   return (
     <div className="professor-dashboard-grid animate-in fade-in duration-300">
       
-      {/* LEFT COLUMN: Main dashboard */}
-      <div className="dashboard-main">
-        <div className="dashboard-welcome-row designer-flex designer-justify-between designer-items-center mb-6">
-          <div>
-            <h1 className="welcome-title">Overview Dashboard</h1>
-          </div>
-          <button onClick={() => setShowModal(true)} className="designer-btn designer-btn-primary add-class-btn shadow-sm">
-            <Plus size={18} />
-            <span>New Class</span>
-          </button>
-        </div>
-
-        {/* Welcome Banner Card */}
-        <div className="welcome-banner-card mb-6">
-          <div className="banner-text">
-            <h2>Welcome back, {professorName}!</h2>
-            <p>You have {stats.classesCount} active classes and {stats.totalDocumentsCount} study materials uploaded for your AI to learn.</p>
-            <button 
-              onClick={() => navigate('/professor/classes')} 
-              className="banner-cta"
-            >
-              <span>Manage Classes & Materials</span>
-              <ArrowRight size={16} />
-            </button>
-          </div>
-          <div className="banner-illustration">
-            <div className="illustration-wrapper">
-              {/* Premium abstract 3D elements */}
-              <div className="blob blob-1"></div>
-              <div className="blob blob-2"></div>
-              <Sparkles className="banner-sparkle" size={32} />
+      {isLoading ? (
+        <div style={{ color: 'var(--designer-text-secondary)' }}>Loading classes...</div>
+      ) : (
+        <div className="classes-grid">
+          {courses.map((cls) => (
+            <div key={cls.id} className="designer-card class-card">
+              <div className="class-card-header designer-flex designer-justify-between">
+                <h3>{cls.title}</h3>
+                <MoreVertical size={18} className="text-secondary" style={{cursor: 'pointer'}} />
+              </div>
+              
+              <p className="class-desc">{cls.description || 'No description provided'}</p>
+              <span className="class-student-count">{cls.students_count || 0} students</span>
+              
+              <div className="class-card-actions">
+                <div 
+                  className="action-row designer-flex designer-justify-between designer-items-center"
+                  onClick={() => navigate(role === 'professor' ? `/professor/courses/${cls.id}` : `/student/courses/${cls.id}`)}
+                >
+                  <span>{role === 'professor' ? 'View/Edit' : 'View Course'}</span>
+                  <ChevronRight size={16} />
+                </div>
+                <div 
+                  className="action-row designer-flex designer-justify-between designer-items-center"
+                  onClick={() => navigate(role === 'professor' ? `/professor/courses/${cls.id}/study` : `/student/courses/${cls.id}/study`)}
+                >
+                  <span>Enter Study Mode</span>
+                  <ChevronRight size={16} />
+                </div>
+              </div>
             </div>
+          ))}
+          
+          <div 
+            className="designer-card create-class-card designer-flex designer-flex-col designer-justify-center designer-items-center"
+            onClick={() => setShowModal(true)}
+          >
+            <h3>{role === 'professor' ? 'Create new class' : 'Join a class'}</h3>
+            <p className="desc">{role === 'professor' ? 'Set up a new class' : 'Enroll in a new course'}</p>
           </div>
         </div>
+      )}
 
         {/* Stats Grid */}
         <div className="dashboard-stats-grid mb-6">

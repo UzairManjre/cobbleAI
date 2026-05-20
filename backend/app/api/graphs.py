@@ -54,6 +54,11 @@ async def generate_graph(
     user: User = Depends(current_active_user)
 ):
     """Generate a knowledge graph from a topic."""
+    if user.role != "professor":
+        raise HTTPException(
+            status_code=403,
+            detail="Only professors are allowed to generate knowledge graphs."
+        )
     start_time = time.time()
     generator = GraphGenerator()
 
@@ -140,6 +145,11 @@ async def generate_graph_from_docs(
 
     If documents are still pending, this will trigger processing and wait for them.
     """
+    if user.role != "professor":
+        raise HTTPException(
+            status_code=403,
+            detail="Only professors are allowed to generate knowledge graphs."
+        )
     start_time = time.time()
     print(f"  Generating interconnected graph for course {req.course_id}...")
 
@@ -277,6 +287,11 @@ async def generate_graph_from_docs_stream(
             pass
     if not user:
         raise HTTPException(status_code=400, detail="Valid user_id query parameter required")
+    if user.role != "professor":
+        raise HTTPException(
+            status_code=403,
+            detail="Only professors are allowed to generate knowledge graphs."
+        )
 
     async def event_stream():
         start_time = time.time()

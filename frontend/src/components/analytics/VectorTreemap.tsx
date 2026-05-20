@@ -1,4 +1,3 @@
-import React from 'react';
 import { ResponsiveTreeMap } from '@nivo/treemap';
 
 interface Props {
@@ -67,7 +66,7 @@ export default function VectorTreemap({ data }: Props) {
               padding: '12px',
             }
           }
-        }}
+        } as any}
       />
     </div>
   );

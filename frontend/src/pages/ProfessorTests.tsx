@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import {
-  FileText, Plus, Sparkles, Clock, CheckCircle, AlertCircle,
-  Eye, Trash2, Play, BarChart3, ChevronRight, ChevronLeft,
+  FileText, Plus, Sparkles, Clock, CheckCircle,
+  Eye, Play, BarChart3, ChevronRight, ChevronLeft,
   BookOpen, Brain, Target, X
 } from 'lucide-react';
 import { testsApi, documentsApi, graphsApi } from '../api';
@@ -11,20 +11,20 @@ import { testsApi, documentsApi, graphsApi } from '../api';
 export default function ProfessorTests() {
   const navigate = useNavigate();
   const { courseId } = useParams();
-  const { token } = useAuthStore();
+  const { token, role } = useAuthStore();
 
-  const [tests, setTests] = useState([]);
+  const [tests, setTests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [previewTest, setPreviewTest] = useState(null);
+  const [previewTest, setPreviewTest] = useState<any>(null);
   const [createStep, setCreateStep] = useState(1); // 1: details, 2: select content, 3: generate
-  const [documents, setDocuments] = useState([]);
-  const [graphNodes, setGraphNodes] = useState([]);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [graphNodes, setGraphNodes] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedTestId, setGeneratedTestId] = useState(null);
+  const [generatedTestId, setGeneratedTestId] = useState<any>(null);
 
-  const [newTest, setNewTest] = useState({
+  const [newTest, setNewTest] = useState<any>({
     title: '',
     description: '',
     duration_minutes: 60,
@@ -32,8 +32,8 @@ export default function ProfessorTests() {
     test_type: 'assignment',
     question_count: 10,
     question_types: ['mcq', 'true_false', 'short_answer'],
-    selected_documents: [],
-    selected_topics: []
+    selected_documents: [] as any[],
+    selected_topics: [] as any[]
   });
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function ProfessorTests() {
     } else if (!token) {
       // Token not available - redirect to login
       console.warn('No token available, redirecting to login');
-      navigate('/login/professor');
+      navigate(role === 'student' ? '/login/student' : '/login/professor');
     }
   }, [courseId, token]);
 
@@ -59,7 +59,7 @@ export default function ProfessorTests() {
       if (err.response?.status === 401) {
         console.warn('Token expired, clearing auth');
         useAuthStore.getState().logout();
-        navigate('/login/professor');
+        navigate(role === 'student' ? '/login/student' : '/login/professor');
       }
     } finally {
       setIsLoading(false);
@@ -86,7 +86,7 @@ export default function ProfessorTests() {
       if (err.response?.status === 401) {
         console.warn('Token expired, clearing auth');
         useAuthStore.getState().logout();
-        navigate('/login/professor');
+        navigate(role === 'student' ? '/login/student' : '/login/professor');
       }
     }
   };
@@ -108,29 +108,29 @@ export default function ProfessorTests() {
     });
   };
 
-  const toggleDocument = (docId) => {
-    setNewTest(prev => ({
+  const toggleDocument = (docId: string) => {
+    setNewTest((prev: any) => ({
       ...prev,
       selected_documents: prev.selected_documents.includes(docId)
-        ? prev.selected_documents.filter(id => id !== docId)
+        ? prev.selected_documents.filter((id: string) => id !== docId)
         : [...prev.selected_documents, docId]
     }));
   };
 
-  const toggleTopic = (topicId) => {
-    setNewTest(prev => ({
+  const toggleTopic = (topicId: string) => {
+    setNewTest((prev: any) => ({
       ...prev,
       selected_topics: prev.selected_topics.includes(topicId)
-        ? prev.selected_topics.filter(id => id !== topicId)
+        ? prev.selected_topics.filter((id: string) => id !== topicId)
         : [...prev.selected_topics, topicId]
     }));
   };
 
-  const toggleQuestionType = (type) => {
-    setNewTest(prev => ({
+  const toggleQuestionType = (type: string) => {
+    setNewTest((prev: any) => ({
       ...prev,
       question_types: prev.question_types.includes(type)
-        ? prev.question_types.filter(t => t !== type)
+        ? prev.question_types.filter((t: string) => t !== type)
         : [...prev.question_types, type]
     }));
   };
@@ -167,14 +167,15 @@ export default function ProfessorTests() {
 
       if (err.response?.status === 401) {
         useAuthStore.getState().logout();
-        navigate('/login/professor');
+        navigate(role === 'student' ? '/login/student' : '/login/professor');
       }
     }
   };
 
-  const handleGenerateQuestions = async () => {
-    if (!token || !generatedTestId) {
-      console.error('Missing token or test ID:', { token: !!token, generatedTestId });
+  const handleGenerateQuestions = async (testId?: string) => {
+    const idToGenerate = testId || generatedTestId;
+    if (!token || !idToGenerate) {
+      console.error('Missing token or test ID:', { token: !!token, idToGenerate });
       alert('Test ID is missing. Please create the test again.');
       return;
     }
@@ -194,9 +195,9 @@ export default function ProfessorTests() {
         ? selectedTopics.map(t => t.label)
         : graphNodes.map(n => n.label);
 
-      console.log('Generating questions for test:', generatedTestId);
+      console.log('Generating questions for test:', idToGenerate);
 
-      await testsApi.generateQuestions(generatedTestId, {
+      await testsApi.generateQuestions(idToGenerate, {
         course_id: courseId,
         question_count: newTest.question_count,
         question_types: newTest.question_types,
@@ -213,14 +214,14 @@ export default function ProfessorTests() {
 
       if (err.response?.status === 401) {
         useAuthStore.getState().logout();
-        navigate('/login/professor');
+        navigate(role === 'student' ? '/login/student' : '/login/professor');
       }
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handlePreviewTest = async (testId) => {
+  const handlePreviewTest = async (testId: string) => {
     try {
       console.log('🔍 Previewing test:', testId);
 
@@ -242,7 +243,7 @@ export default function ProfessorTests() {
     }
   };
 
-  const handlePublishTest = async (testId) => {
+  const handlePublishTest = async (testId: string) => {
     try {
       await testsApi.publish(testId);
       loadTests();
@@ -251,7 +252,7 @@ export default function ProfessorTests() {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft': return 'bg-yellow-500/20 text-yellow-400';
       case 'published': return 'bg-green-500/20 text-green-400';
@@ -268,13 +269,15 @@ export default function ProfessorTests() {
     );
   }
 
+  const displayedTests = role === 'professor' ? tests : tests.filter((t: any) => t.status === 'published');
+
   return (
     <div className="min-h-screen bg-[#0A0A0A]">
       {/* Header */}
       <div className="border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 py-6">
           <button
-            onClick={() => navigate(`/course/${courseId}`)}
+            onClick={() => navigate(role === 'professor' ? `/professor/courses/${courseId}` : `/student/courses/${courseId}`)}
             className="text-white/30 hover:text-white/60 text-sm mb-4 transition-colors"
           >
             ← Back to Course
@@ -283,37 +286,45 @@ export default function ProfessorTests() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-white mb-2">Tests & Assessments</h1>
-              <p className="text-white/40 text-sm">Create, manage, and grade tests for your students</p>
+              <p className="text-white/40 text-sm">
+                {role === 'professor' ? 'Create, manage, and grade tests for your students' : 'View and complete tests assigned by your professor'}
+              </p>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-6 py-3 rounded-xl font-semibold transition-all"
-            >
-              <Plus className="w-5 h-5" />
-              Create Test
-            </button>
+            {role === 'professor' && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-6 py-3 rounded-xl font-semibold transition-all"
+              >
+                <Plus className="w-5 h-5" />
+                Create Test
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Tests List */}
       <div className="max-w-6xl mx-auto px-6 py-8">
-        {tests.length === 0 ? (
+        {displayedTests.length === 0 ? (
           <div className="text-center py-16">
             <FileText className="w-16 h-16 text-white/10 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white/60 mb-2">No Tests Yet</h3>
-            <p className="text-white/30 mb-6">Create your first test with AI-assisted question generation</p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-6 py-3 rounded-xl font-semibold transition-all"
-            >
-              <Sparkles className="w-5 h-5" />
-              Create Your First Test
-            </button>
+            <h3 className="text-xl font-semibold text-white/60 mb-2">No Tests Available</h3>
+            <p className="text-white/30 mb-6">
+              {role === 'professor' ? 'Create your first test with AI-assisted question generation' : 'No tests have been published for this course yet.'}
+            </p>
+            {role === 'professor' && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-6 py-3 rounded-xl font-semibold transition-all"
+              >
+                <Sparkles className="w-5 h-5" />
+                Create Your First Test
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
-            {tests.map((test) => (
+            {displayedTests.map((test) => (
               <div
                 key={test.id}
                 className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6 hover:bg-white/[0.04] transition-all"
@@ -349,39 +360,51 @@ export default function ProfessorTests() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => {
-                      console.log('🔍 Preview button clicked, test:', test);
-                      handlePreviewTest(test.id);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm transition-all"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Preview
-                  </button>
-
-                  {test.status === 'draft' && (test.question_count || test.questions?.length || 0) === 0 && (
+                  {role === 'student' ? (
                     <button
-                      onClick={() => {
-                        console.log(' Generate questions clicked, test.id:', test.id);
-                        handleGenerateQuestions(test.id);
-                      }}
-                      disabled={isGenerating}
-                      className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg text-sm transition-all disabled:opacity-50"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      AI Generate Questions
-                    </button>
-                  )}
-
-                  {test.status === 'draft' && (test.question_count || test.questions?.length || 0) > 0 && (
-                    <button
-                      onClick={() => handlePublishTest(test.id)}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-300 rounded-lg text-sm transition-all"
+                      onClick={() => navigate(`/tests/${test.id}`)}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-lg text-sm font-semibold transition-all"
                     >
                       <Play className="w-4 h-4" />
-                      Publish Test
+                      Start Test
                     </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          console.log('🔍 Preview button clicked, test:', test);
+                          handlePreviewTest(test.id);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm transition-all"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Preview
+                      </button>
+
+                      {test.status === 'draft' && (test.question_count || test.questions?.length || 0) === 0 && (
+                        <button
+                          onClick={() => {
+                            console.log(' Generate questions clicked, test.id:', test.id);
+                            handleGenerateQuestions(test.id);
+                          }}
+                          disabled={isGenerating}
+                          className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg text-sm transition-all disabled:opacity-50"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          AI Generate Questions
+                        </button>
+                      )}
+
+                      {test.status === 'draft' && (test.question_count || test.questions?.length || 0) > 0 && (
+                        <button
+                          onClick={() => handlePublishTest(test.id)}
+                          className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-300 rounded-lg text-sm transition-all"
+                        >
+                          <Play className="w-4 h-4" />
+                          Publish Test
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -429,7 +452,7 @@ export default function ProfessorTests() {
                   <p className="text-white/30 text-center py-8">No questions generated yet</p>
                 ) : (
                   <div className="space-y-4">
-                    {previewTest.questions?.map((q, idx) => (
+                    {previewTest.questions?.map((q: any, idx: number) => (
                       <div key={q.id} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
                         <div className="flex items-start gap-3 mb-3">
                           <span className="flex-shrink-0 w-8 h-8 bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center text-sm font-bold">
@@ -449,7 +472,7 @@ export default function ProfessorTests() {
                         {/* MCQ Options */}
                         {q.type === 'mcq' && q.options && (
                           <div className="mt-3 space-y-2 ml-11">
-                            {q.options.map(opt => (
+                            {q.options.map((opt: any) => (
                               <div key={opt.id} className={`flex items-center gap-3 px-4 py-2 rounded-lg ${opt.is_correct ? 'bg-green-500/10 border border-green-500/30' : 'bg-white/[0.02]'}`}>
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${opt.is_correct ? 'border-green-400 bg-green-400' : 'border-white/20'}`}>
                                   {opt.is_correct && <CheckCircle className="w-3 h-3 text-white" />}
@@ -722,7 +745,7 @@ export default function ProfessorTests() {
                     Back
                   </button>
                   <button
-                    onClick={handleGenerateQuestions}
+                    onClick={() => handleGenerateQuestions()}
                     disabled={isGenerating}
                     className="flex-1 py-3 bg-purple-500 hover:bg-purple-600 disabled:opacity-50 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
                   >

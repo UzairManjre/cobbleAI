@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Bell, ChevronDown } from 'lucide-react';
+import { Search, Bell, ChevronDown } from 'lucide-react';
 import './Topbar.css';
 import { useAuthStore } from '../../store/authStore';
 import { authApi } from '../../api';

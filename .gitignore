@@ -53,3 +53,12 @@ designer_frontend/.env.local
 
 # Docker / Deployment
 docker-compose.override.yml
+
+# Cache & Generators
+.graphify_chunk_*.txt
+.graphify_python
+graphify-out/
+
+# LLM & IDE Settings
+.claude/
+backend/llm_outputs/

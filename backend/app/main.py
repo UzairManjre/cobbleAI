@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
 from contextlib import asynccontextmanager
 from app.core.db import connect_to_mongo, close_mongo_connection
 from app.core.storage import ensure_bucket_exists
@@ -53,33 +52,32 @@ setup_analytics_middleware(app)
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Import and register all routers
-from app.api import auth, courses, documents, chat, graphs, sessions, analytics, study_plans, tests
+from app.api import auth
+from app.api.professor import courses as professor_courses, documents as professor_documents, graphs as professor_graphs, tests as professor_tests
+from app.api.student import courses as student_courses, sessions as student_sessions, study_plans as student_study_plans, tests as student_tests
+from app.api.common import chat as common_chat, analytics as common_analytics
 
 # Auth routes
 app.include_router(auth.auth_router, prefix="/auth/jwt", tags=["auth"])
 app.include_router(auth.register_router, prefix="/auth", tags=["auth"])
 app.include_router(auth.users_router, prefix="/users", tags=["users"])
 
-app.include_router(courses.router)
-app.include_router(documents.router)
-app.include_router(chat.router)
-app.include_router(graphs.router)
-app.include_router(sessions.router)
-app.include_router(analytics.router)
-app.include_router(study_plans.router)
-app.include_router(tests.router)
+# Professor routes
+app.include_router(professor_courses.router, prefix="/api/professor")
+app.include_router(professor_documents.router, prefix="/api/professor")
+app.include_router(professor_graphs.router, prefix="/api/professor")
+app.include_router(professor_tests.router, prefix="/api/professor")
 
+# Student routes
+app.include_router(student_courses.router, prefix="/api/student")
+app.include_router(student_sessions.router, prefix="/api/student")
+app.include_router(student_study_plans.router, prefix="/api/student")
+app.include_router(student_tests.router, prefix="/api/student")
 
-#   Backwards-compat redirect for old double-prefix URLs  
-# Any client hitting /api/api/study-plans/... gets a 307 redirect to /api/study-plans/...
-@app.middleware("http")
-async def redirect_legacy_api_prefix(request: Request, call_next):
-    if request.url.path.startswith("/api/api/"):
-        new_path = request.url.path.replace("/api/api/", "/api/", 1)
-        if request.url.query:
-            new_path = f"{new_path}?{request.url.query}"
-        return RedirectResponse(url=new_path, status_code=307)
-    return await call_next(request)
+# Common routes
+app.include_router(common_chat.router, prefix="/api")
+app.include_router(common_analytics.router, prefix="/api")
+
 
 @app.get("/health")
 async def health_check():

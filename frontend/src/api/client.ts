@@ -13,13 +13,26 @@ const api = axios.create({
 // Export API URL for components that need it
 export const API_URL = API_BASE_URL;
 
-// Request interceptor - add auth token to all requests
+// Request interceptor - add auth token and role prefix to all requests
 api.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().token;
+    const state = useAuthStore.getState();
+    const token = state.token;
+    const role = state.role;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Auto-prefix routes that are role-segregated on the backend
+    if (role && config.url) {
+      let path = config.url.startsWith('/api/') ? config.url.substring(4) : config.url;
+      const prefixesToRewrite = ['/courses', '/documents', '/graphs', '/tests', '/sessions', '/study-plans'];
+      const shouldRewrite = prefixesToRewrite.some(p => path.startsWith(p));
+      if (shouldRewrite) {
+        config.url = `/api/${role}${path}`;
+      }
+    }
+    
     return config;
   },
   (error) => {

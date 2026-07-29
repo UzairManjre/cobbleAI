@@ -26,7 +26,7 @@ api.interceptors.request.use(
     // Auto-prefix routes that are role-segregated on the backend
     if (role && config.url) {
       let path = config.url.startsWith('/api/') ? config.url.substring(4) : config.url;
-      const prefixesToRewrite = ['/courses', '/documents', '/graphs', '/tests', '/sessions', '/study-plans'];
+      const prefixesToRewrite = ['/courses', '/documents', '/graphs', '/graph', '/tests', '/sessions', '/study-plans'];
       const shouldRewrite = prefixesToRewrite.some(p => path.startsWith(p));
       if (shouldRewrite) {
         config.url = `/api/${role}${path}`;

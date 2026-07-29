@@ -21,7 +21,7 @@ export const graphsApi = {
    *   - "error" events: { message }
    */
   generateFromDocsStream: (courseId: string, userId: string): EventSource => {
-    const url = `${API_BASE_URL}/graph/generate-from-docs-stream/${courseId}?user_id=${encodeURIComponent(userId)}`;
+    const url = `${API_BASE_URL}/api/professor/graph/generate-from-docs-stream/${courseId}?user_id=${encodeURIComponent(userId)}`;
     return new EventSource(url);
   },
   

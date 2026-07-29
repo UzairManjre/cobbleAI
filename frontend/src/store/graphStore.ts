@@ -248,9 +248,11 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     try {
       const { useAuthStore } = await import('./authStore');
       const { API_URL } = await import('../api/client');
-      const token = useAuthStore.getState().token;
+      const authState = useAuthStore.getState();
+      const token = authState.token;
+      const role = authState.role || 'student';
 
-      const response = await fetch(`${API_URL}/sessions/${sessionId}/ask`, {
+      const response = await fetch(`${API_URL}/api/${role}/sessions/${sessionId}/ask`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

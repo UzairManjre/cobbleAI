@@ -41,6 +41,14 @@ async def generate_graph_from_docs(
         )
     return await GraphService.generate_graph_from_docs(req.course_id, user)
 
+@router.get("/generate-from-docs-stream/{course_id}")
+async def generate_graph_from_docs_stream(
+    course_id: uuid.UUID,
+    user_id: uuid.UUID
+):
+    """Stream graph generation progress via Server-Sent Events."""
+    return await GraphService.generate_graph_from_docs_stream(course_id, user_id)
+
 @router.get("/{graph_id}")
 async def get_graph(
     graph_id: uuid.UUID,

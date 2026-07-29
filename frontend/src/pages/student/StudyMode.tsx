@@ -219,7 +219,9 @@ export default function StudyMode() {
     );
   }
 
-  if (!currentNodeId) {
+  const activeNodeId = currentNodeId || (nodes.length > 0 ? nodes[0].id : null);
+
+  if (!activeNodeId) {
     return (
       <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] flex items-center justify-center">
         <div className="text-xl font-black uppercase tracking-widest text-[#0A0A0A]/40">No active session</div>
@@ -274,10 +276,10 @@ export default function StudyMode() {
           // Collapsed Mode: Dual Column Layout (40% Node Info / 60% Massive Chat)
           <div className="w-full h-full flex overflow-hidden bg-white">
             <div className="flex-[4] overflow-y-auto border-r-[3px] border-[#0A0A0A] relative bg-white">
-              <NodeInfo nodeId={currentNodeId} onNavigate={handleNodeClick} />
+              <NodeInfo nodeId={activeNodeId} onNavigate={handleNodeClick} />
             </div>
             <div className="flex-[6] overflow-hidden relative bg-gray-50/50">
-              <TutorChat key={currentNodeId} nodeId={currentNodeId} isMassive={true} />
+              <TutorChat key={activeNodeId} nodeId={activeNodeId} isMassive={true} />
             </div>
           </div>
         ) : (
@@ -285,12 +287,12 @@ export default function StudyMode() {
           <div className="w-[450px] flex flex-col overflow-hidden bg-white shrink-0">
             {/* Node Info */}
             <div className="flex-1 overflow-y-auto border-b-[3px] border-[#0A0A0A]">
-              <NodeInfo nodeId={currentNodeId} onNavigate={handleNodeClick} />
+              <NodeInfo nodeId={activeNodeId} onNavigate={handleNodeClick} />
             </div>
 
             {/* Chat */}
             <div className="h-[450px] bg-gray-50/50 shrink-0">
-              <TutorChat key={currentNodeId} nodeId={currentNodeId} />
+              <TutorChat key={activeNodeId} nodeId={activeNodeId} />
             </div>
           </div>
         )}

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { coursesApi, documentsApi, graphsApi } from '../../api';
 import { useGraphStore } from '../../store/graphStore';
-import { ArrowLeft, Upload, Sparkles, FileText } from 'lucide-react';
+import { ArrowLeft, Upload, Sparkles, FileText, Trash2 } from 'lucide-react';
 import './CourseDetail.css';
 
 interface GenerationProgress {
@@ -59,6 +59,18 @@ export default function CourseDetail() {
     }
   }, [courseId, token]);
 
+  // Poll for document status updates if any are pending or processing
+  useEffect(() => {
+    const hasPendingDocs = documents.some(doc => doc.status === 'pending' || doc.status === 'processing');
+    if (!hasPendingDocs || !courseId || !token) return;
+
+    const interval = setInterval(() => {
+      fetchDocuments();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [documents, courseId, token]);
+
   // Cleanup EventSource on unmount
   useEffect(() => {
     return () => {
@@ -110,6 +122,17 @@ export default function CourseDetail() {
     }
   };
 
+  const handleDeleteDocument = async (docId: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+    try {
+      await documentsApi.delete(docId);
+      fetchDocuments();
+    } catch (err) {
+      console.error('Failed to delete document', err);
+      alert('Failed to delete document');
+    }
+  };
+
   const generateInvite = async () => {
     try {
       const res = await coursesApi.createInvite(courseId || '');
@@ -145,6 +168,8 @@ export default function CourseDetail() {
 
     const es = graphsApi.generateFromDocsStream(courseId, userId);
     eventSourceRef.current = es;
+    
+    let isComplete = false;
 
     es.addEventListener('progress', (e: MessageEvent) => {
       try {
@@ -156,6 +181,7 @@ export default function CourseDetail() {
     });
 
     es.addEventListener('complete', async (e: MessageEvent) => {
+      isComplete = true;
       try {
         const data = JSON.parse(e.data);
         setGenResult({
@@ -173,6 +199,8 @@ export default function CourseDetail() {
     });
 
     es.addEventListener('error', (e: any) => {
+      if (isComplete) return; // Ignore disconnect errors if we already completed
+      
       // Check if this is a custom error event from the server
       if (e.data) {
         try {
@@ -488,7 +516,7 @@ export default function CourseDetail() {
             
             <div className="space-y-4">
               {documents.map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between p-4 border-[3px] border-[#0A0A0A] rounded-2xl bg-[#FCFCFC] shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 transition-all">
+                <div key={doc.id || doc._id} className="flex items-center justify-between p-4 border-[3px] border-[#0A0A0A] rounded-2xl bg-[#FCFCFC] shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 transition-all">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center font-black uppercase text-xs text-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A]">
                       {doc.filename.split('.').pop()?.toUpperCase() || 'DOC'}
@@ -499,15 +527,26 @@ export default function CourseDetail() {
                     </div>
                   </div>
                   
-                  <span className={`px-3 py-1 text-xs font-black uppercase border-[3px] border-[#0A0A0A] rounded-xl shadow-[2px_2px_0_#0A0A0A] ${
-                    doc.status === 'processed' || doc.status === 'completed'
-                      ? 'bg-[#06D6A0] text-[#0A0A0A]' 
-                      : doc.status === 'processing'
-                      ? 'bg-[#FFD166] text-[#0A0A0A] animate-pulse'
-                      : 'bg-[#EF476F] text-white'
-                  }`}>
-                    {doc.status}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-3 py-1 text-xs font-black uppercase border-[3px] border-[#0A0A0A] rounded-xl shadow-[2px_2px_0_#0A0A0A] ${
+                      doc.status === 'processed' || doc.status === 'completed'
+                        ? 'bg-[#06D6A0] text-[#0A0A0A]' 
+                        : doc.status === 'processing'
+                        ? 'bg-[#FFD166] text-[#0A0A0A] animate-pulse'
+                        : 'bg-[#EF476F] text-white'
+                    }`}>
+                      {doc.status}
+                    </span>
+                    {role === 'professor' && (
+                      <button 
+                        onClick={() => handleDeleteDocument(doc.id || doc._id)}
+                        className="p-2 border-[3px] border-[#0A0A0A] bg-white rounded-xl shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0A0A0A] hover:bg-[#EF476F] hover:text-white transition-all"
+                        title="Delete document"
+                      >
+                        <Trash2 size={14} className="stroke-[3px]" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
               

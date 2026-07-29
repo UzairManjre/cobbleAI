@@ -9,14 +9,11 @@ from app.services.chunking import split_into_chunks, embed_and_store
 from app.core.storage import get_s3_client, S3_BUCKET
 from app.core.config import settings
 
-# Shared Motor Client for the worker process
-_client = None
-
 def get_db():
-    global _client
-    if _client is None:
-        _client = AsyncIOMotorClient(settings.MONGO_URI, uuidRepresentation="standard")
-    return _client.get_default_database()
+    loop = asyncio.get_running_loop()
+    if not hasattr(loop, "_motor_client"):
+        loop._motor_client = AsyncIOMotorClient(settings.MONGO_URI, uuidRepresentation="standard")
+    return loop._motor_client.get_default_database()
 
 async def update_doc_status(doc_id: uuid.UUID, status: str, error: str = None, chunks: int = None):
     db = get_db()

@@ -67,6 +67,7 @@ app.include_router(professor_courses.router, prefix="/api/professor")
 app.include_router(professor_documents.router, prefix="/api/professor")
 app.include_router(professor_graphs.router, prefix="/api/professor")
 app.include_router(professor_tests.router, prefix="/api/professor")
+app.include_router(student_sessions.router, prefix="/api/professor")
 
 # Student routes
 app.include_router(student_courses.router, prefix="/api/student")

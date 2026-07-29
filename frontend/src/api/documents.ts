@@ -14,7 +14,11 @@ export const documentsApi = {
   },
   
   list: (courseId: string) => {
-    return api.get('/documents/', { params: { course_id: courseId } });
+    return api.get(`/documents/list/${courseId}`);
+  },
+  
+  delete: (docId: string) => {
+    return api.delete(`/documents/${docId}`);
   },
   
   processAllPending: () => {

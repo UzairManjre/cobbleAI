@@ -2,16 +2,17 @@ import os
 import json
 import asyncio
 import httpx
+from app.core.config import settings
 from typing import AsyncGenerator
 
 class LLMAdapter:
     def __init__(self, base_url: str = None, model: str = None, timeout: int = 120):
         # Ollama native API is at /api/chat
-        raw_url = base_url or os.getenv("LLM_BASE_URL", "http://localhost:11434")
+        raw_url = base_url or settings.LLM_BASE_URL
         
         # Clean URL: strip trailing slash and /v1 suffix if present
         self.base_url = raw_url.rstrip("/").removesuffix("/v1")
-        self.model = model or os.getenv("LLM_MODEL", "gemma4:e2b")
+        self.model = model or settings.LLM_MODEL
         self.timeout = 600 # 10 minute timeout for large model loading
         print(f"LLM Adapter Config: URL={self.base_url}, Model={self.model}, Timeout={self.timeout}s")
 
@@ -42,10 +43,13 @@ class LLMAdapter:
                         return
 
                     async for line in response.aiter_lines():
-                        if not line:
-                            continue
+                        if not line: continue
                         try:
                             data = json.loads(line)
+                            if "error" in data:
+                                yield f"Error: {data['error']}"
+                                break
+                            
                             if "message" in data:
                                 msg = data["message"]
                                 
@@ -88,6 +92,7 @@ class LLMAdapter:
             async for chunk in self.generate_response(system, messages, max_tokens, stream=True):
                 if chunk.startswith("Error:"):
                     error_occurred = True
+                    response_text = chunk  # Capture the error message
                     print(f"\n   LLM error (attempt {attempt + 1}): {chunk[:100]}")
                     if attempt < 1:
                         await asyncio.sleep(2)  # Wait before retry
@@ -101,5 +106,7 @@ class LLMAdapter:
             
             if not error_occurred and response_text:
                 return response_text
+            elif not response_text:
+                response_text = "Error: Empty response from LLM. Context may be too large or model refused to answer."
         
         raise Exception(f"LLM request failed after retries: {response_text[:200]}")

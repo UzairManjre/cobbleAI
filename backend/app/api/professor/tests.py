@@ -54,6 +54,35 @@ async def get_all_professor_tests(user: User = Depends(current_active_user)):
         })
     return {"tests": serialized}
 
+@router.get("/course/{course_id}")
+async def get_course_tests(course_id: str, user: User = Depends(current_active_user)):
+    tests = await TestService.get_course_tests(user, course_id)
+    return jsonable_encoder([{
+        "id": str(t.id),
+        "title": t.title,
+        "description": t.description,
+        "duration_minutes": t.duration_minutes,
+        "passing_percentage": t.passing_percentage,
+        "test_type": t.test_type,
+        "status": t.status,
+        "question_count": len(t.questions) if t.questions else 0,
+        "total_marks": t.total_marks,
+    } for t in tests])
+
+@router.get("/analytics/{test_id}")
+async def get_test_analytics(test_id: str, user: User = Depends(current_active_user)):
+    from app.models.test import TestAnalytics
+    import uuid
+    try:
+        test_uuid = uuid.UUID(test_id)
+    except ValueError:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Invalid UUID")
+    analytics = await TestAnalytics.find_one(TestAnalytics.test_id == test_uuid)
+    if not analytics:
+        return jsonable_encoder({"total_attempts": 0, "average_score": 0, "highest_score": 0, "lowest_score": 0, "median_score": 0})
+    return jsonable_encoder(analytics)
+
 @router.get("/{test_id}")
 async def get_test(test_id: str, user: User = Depends(current_active_user)):
     test = await TestService.get_test(user, test_id)

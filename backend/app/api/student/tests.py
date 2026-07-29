@@ -53,3 +53,38 @@ async def get_my_attempts(user: User = Depends(current_active_user)):
         raise HTTPException(status_code=403, detail="Only for students")
     attempts = await TestAttempt.find(TestAttempt.student_id == user.id).sort(-TestAttempt.started_at).to_list()
     return {"attempts": jsonable_encoder(attempts)}
+
+@router.get("/course/{course_id}")
+async def get_course_tests(course_id: str, user: User = Depends(current_active_user)):
+    tests = await TestService.get_course_tests(user, course_id)
+    return jsonable_encoder([{
+        "id": str(t.id),
+        "title": t.title,
+        "description": t.description,
+        "duration_minutes": t.duration_minutes,
+        "passing_percentage": t.passing_percentage,
+        "test_type": t.test_type,
+        "status": t.status,
+        "question_count": len(t.questions) if t.questions else 0,
+        "total_marks": t.total_marks,
+    } for t in tests])
+
+@router.get("/{test_id}")
+async def get_test(test_id: str, user: User = Depends(current_active_user)):
+    test = await TestService.get_test(user, test_id)
+    res = {
+        "test": {
+            "id": str(test.id),
+            "title": test.title,
+            "description": test.description,
+            "instructions": test.instructions,
+            "duration_minutes": test.duration_minutes,
+            "passing_percentage": test.passing_percentage,
+            "test_type": test.test_type,
+            "status": test.status,
+            "total_marks": test.total_marks,
+            "allow_retakes": test.allow_retakes,
+            "max_attempts": test.max_attempts,
+        }
+    }
+    return jsonable_encoder(res)

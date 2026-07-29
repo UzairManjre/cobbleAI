@@ -224,6 +224,83 @@ class GraphService:
             raise HTTPException(status_code=500, detail=f"Graph generation failed: {str(e)}")
 
     @staticmethod
+    async def generate_graph_from_docs_stream(course_id: uuid.UUID, user_id: uuid.UUID):
+        from fastapi.responses import StreamingResponse
+        import json
+        
+        async def event_generator():
+            q = asyncio.Queue()
+            
+            async def progress_callback(step: int, total_steps: int, message: str, detail: str = ""):
+                await q.put({
+                    "type": "progress",
+                    "step": step,
+                    "totalSteps": total_steps,
+                    "message": message,
+                    "detail": detail,
+                    "elapsed": 0
+                })
+
+            async def run_generator():
+                try:
+                    user = await User.get(user_id)
+                    if not user:
+                        await q.put({"type": "error", "message": "User not found"})
+                        return
+                    course = await Course.get(course_id)
+                    if not course or (user.role == "professor" and course.professor_id != user.id):
+                        await q.put({"type": "error", "message": "Not your course"})
+                        return
+                    
+                    adv_generator = AdvancedGraphGenerator()
+                    graph_data = await adv_generator.generate_from_course(str(course_id), progress_callback=progress_callback)
+                    
+                    graph = KnowledgeGraph(
+                        topic=f"Course Knowledge Graph (from {len(graph_data.get('_source_docs', []))} documents)",
+                        course_id=course_id,
+                        nodes=graph_data["nodes"],
+                        edges=graph_data["edges"],
+                        created_by=user_id
+                    )
+                    await graph.insert()
+                    
+                    session = StudySession(
+                        graph_id=graph.id,
+                        student_id=user_id,
+                        current_node_id=graph_data["nodes"][0]["id"] if graph_data["nodes"] else None,
+                        visited_nodes=[graph_data["nodes"][0]["id"]] if graph_data["nodes"] else []
+                    )
+                    await session.insert()
+                    
+                    await q.put({
+                        "type": "complete",
+                        "graph_id": str(graph.id),
+                        "session_id": str(session.id),
+                        "nodes_count": len(graph_data["nodes"]),
+                        "edges_count": len(graph_data["edges"]),
+                        "elapsed": 0
+                    })
+                except Exception as e:
+                    await q.put({"type": "error", "message": str(e)})
+                finally:
+                    await q.put(None)
+
+            task = asyncio.create_task(run_generator())
+            
+            while True:
+                event = await q.get()
+                if event is None:
+                    break
+                
+                # Format as Server-Sent Event with event type
+                event_type = event.get("type", "message")
+                yield f"event: {event_type}\ndata: {json.dumps(event)}\n\n"
+                
+            await task
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+    @staticmethod
     async def get_graph(graph_id: uuid.UUID, user: User) -> Dict[str, Any]:
         graph = await KnowledgeGraph.get(graph_id)
         if not graph:

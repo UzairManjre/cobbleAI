@@ -88,8 +88,8 @@ class DocumentService:
             )
 
             # Trigger async processing using celery
-            from app.core.celery_app import process_document_task
-            process_document_task.delay(str(doc_id))
+            from app.worker import process_document
+            process_document.delay(str(doc_id))
 
         return {
             "message": f"Successfully uploaded {len(uploaded_docs)} documents",

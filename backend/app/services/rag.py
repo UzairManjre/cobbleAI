@@ -35,7 +35,7 @@ async def retrieve_context(query: str, course_id: str, top_k: int = 5, use_reran
             expansion_resp = await llm_adapter.generate_full_response(
                 system=EXPANSION_PROMPT.format(query=query),
                 messages=[{"role": "user", "content": "Generate queries."}],
-                max_tokens=200
+                max_tokens=1024
             )
             # Clean possible markdown or thinking tags
             cleaned_resp = expansion_resp

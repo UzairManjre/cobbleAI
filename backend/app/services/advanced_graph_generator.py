@@ -176,8 +176,8 @@ class AdvancedGraphGenerator:
             # ── Step 3: Recursive Chunk-and-Extract Pipeline ──
             print("\n  Step 3: Recursive chunk-and-extract pipeline...")
             
-            # Target ~20k chars per chunk (leaves ~12k for prompt + output in 32k ctx)
-            CHUNK_SIZE = 20000
+            # Target ~10k chars per chunk (leaves plenty of room for prompt + output in smaller context windows)
+            CHUNK_SIZE = 10000
             chunks = self._build_chunks(doc_texts, CHUNK_SIZE)
             
             print(f"   Split into {len(chunks)} processing chunks")
@@ -266,11 +266,15 @@ class AdvancedGraphGenerator:
                 sub_chunk = header
                 
                 for para in paragraphs:
-                    if len(sub_chunk) + len(para) + 2 > chunk_size:
-                        if sub_chunk.strip() and len(sub_chunk) > len(header) + 10:
-                            chunks.append(sub_chunk)
-                        sub_chunk = f"\n\n--- Document: {filename} (continued) ---\n\n"
-                    sub_chunk += para + "\n\n"
+                    # If paragraph itself is huge, slice it into smaller pieces
+                    pieces = [para[i:i+chunk_size] for i in range(0, len(para), chunk_size)] if len(para) > chunk_size else [para]
+                    
+                    for piece in pieces:
+                        if len(sub_chunk) + len(piece) + 2 > chunk_size:
+                            if sub_chunk.strip() and len(sub_chunk) > len(header) + 10:
+                                chunks.append(sub_chunk)
+                            sub_chunk = f"\n\n--- Document: {filename} (continued) ---\n\n"
+                        sub_chunk += piece + "\n\n"
                 
                 if sub_chunk.strip() and len(sub_chunk) > 50:
                     chunks.append(sub_chunk)
@@ -362,28 +366,29 @@ class AdvancedGraphGenerator:
         try:
             print(f"  Sending request to LLM (Model: {self.model})...")
             raw_output = await self.adapter.generate_full_response(
-                system="You are a knowledge graph expert. Output ONLY valid JSON using the requested schema. Do not include markdown or thought blocks.",
+                system=CONCEPT_EXTRACTION_PROMPT,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=8192
             )
+            
+            with open("llm_debug.log", "a") as f:
+                f.write("\n--- RAW OUTPUT ---\n")
+                f.write(raw_output)
+                
             data = self._clean_and_parse_json(raw_output)
             
             # Normalize keys for robustness
             concepts = data.get("concepts") or data.get("nodes") or []
-            rels = data.get("relationships") or data.get("edges") or []
-            return {"concepts": concepts, "relationships": rels}
+            relationships = data.get("relationships") or data.get("edges") or []
+            
+            return {
+                "concepts": concepts,
+                "relationships": relationships
+            }
         except Exception as e:
+            with open("llm_debug.log", "a") as f:
+                f.write(f"\n--- ERROR ---\n{e}\n")
             print(f"  Concept extraction error: {e}")
-            print(f"  Error Details: {str(e)}")
-            # Check if it's a connection error
-            if "404" in str(e):
-                print("  Hint: 404 usually means:")
-                print("   1. The model name is incorrect (e.g., 'gemma4:e2b' might not exist).")
-                print("   2. The LLM_BASE_URL is wrong.")
-                print("   3. Ollama is not running.")
-                print("   Please verify your model and Ollama status.")
-            elif "connection" in str(e).lower() or "refused" in str(e).lower():
-                print("  Hint: Connection refused. Is Ollama running on the specified URL?")
             return {"concepts": [], "relationships": []}
     
     async def _enrich_graph(self, graph: Dict, doc_titles: List[str]) -> Dict:
@@ -416,6 +421,9 @@ class AdvancedGraphGenerator:
 
         # 1. Remove thinking blocks <thought>...</thought> (if gemma/qwen reasoning is active)
         json_str = re.sub(r'<thought>.*?</thought>', '', json_str, flags=re.DOTALL)
+        # Also handle unclosed thought blocks
+        if '<thought>' in json_str and '</thought>' not in json_str:
+            json_str = re.sub(r'<thought>.*', '', json_str, flags=re.DOTALL)
 
         # 2. Remove markdown formatting artifacts that break JSON parsing
         #    Bold: **text** or __text__
@@ -447,6 +455,7 @@ class AdvancedGraphGenerator:
         except json.JSONDecodeError as e:
             print(f"  JSON parse error: {e}")
             print(f"Cleaned JSON string (first 100 chars): {json_str[:100]}")
+            return {}  # Return empty dict instead of None to prevent AttributeError
             # Final attempt: try to find the inner content if the structure is nested
             return {"concepts": [], "relationships": []}
     

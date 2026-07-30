@@ -61,8 +61,8 @@ export default function MindMap() {
 
     // Give visual feedback then navigate
     setTimeout(() => {
-       // Set the auto-intro flag in the store
-       useGraphStore.setState({ autoIntroNodeId: node.id, currentNodeId: node.id });
+       // Set the current node in the store
+       useGraphStore.setState({ currentNodeId: node.id });
        navigate(`/${role}/courses/${courseId}/study`);
     }, 1200);
   };

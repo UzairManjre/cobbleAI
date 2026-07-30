@@ -22,8 +22,6 @@ export default function StudyMode() {
     navigateToNode,
     isLoading,
     error,
-    autoIntroNodeId,
-    startTopicIntro,
     fetchCourseGraph,
     setCurrentNode
   } = useGraphStore();
@@ -33,13 +31,6 @@ export default function StudyMode() {
   const [mode, setMode] = useState<'topic' | 'docs'>('docs');
   const [isCheckingGraph, setIsCheckingGraph] = useState(false);
   const [isGraphCollapsed, setIsGraphCollapsed] = useState(false);
-
-  // Handle auto-intro from Mind Map
-  useEffect(() => {
-    if (autoIntroNodeId && autoIntroNodeId === currentNodeId && !isLoading) {
-      startTopicIntro(autoIntroNodeId);
-    }
-  }, [autoIntroNodeId, currentNodeId, isLoading, startTopicIntro]);
 
   // Handle node query parameter from StudyPlan
   useEffect(() => {

@@ -38,13 +38,11 @@ interface GraphState {
   chatHistory: ChatMessage[];
   isLoading: boolean;
   error: string | null;
-  autoIntroNodeId: string | null; // New: node ID to automatically intro
 
   // Actions
   generateGraph: (topic: string, courseId?: string) => Promise<void>;
   generateFromDocs: (courseId: string) => Promise<void>;
   fetchCourseGraph: (courseId: string) => Promise<void>;
-  startTopicIntro: (nodeId: string) => Promise<void>;
   navigateToNode: (nodeId: string) => Promise<void>;
   askQuestion: (nodeId: string, question: string) => Promise<void>;
   loadSession: (sessionId: string) => Promise<void>;
@@ -62,7 +60,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   chatHistory: [],
   isLoading: false,
   error: null,
-  autoIntroNodeId: null,
 
   generateGraph: async (topic: string, courseId?: string) => {
     set({ isLoading: true, error: null });
@@ -358,23 +355,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         return state;
       });
     }
-  },
-
-  startTopicIntro: async (nodeId: string) => {
-    const { sessionId } = get();
-    if (!sessionId) {
-      // If no session, generate one or wait? 
-      // For now, assume a session exists if we're in study mode
-      return; 
-    }
-
-    const introQuestion = "Please introduce this topic, explain what it is, and how it connects to the other concepts shown in the mind map based on our documents.";
-    
-    // Call askQuestion with the automated intro question
-    await get().askQuestion(nodeId, introQuestion);
-    
-    // Clear the flag after starting
-    set({ autoIntroNodeId: null });
   },
 
   setCurrentNode: (nodeId: string) => {

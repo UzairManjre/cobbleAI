@@ -34,10 +34,11 @@ export const testsApi = {
     return api.post(`/tests/${testId}/start`, {});
   },
   
-  submit: (attemptId: string, answers: any[]) => {
+  submit: (attemptId: string, answers: any[], isAutoSave = false) => {
     return api.post(`/tests/attempt/${attemptId}/submit`, {
       attempt_id: attemptId,
       answers,
+      is_auto_save: isAutoSave,
     });
   },
   

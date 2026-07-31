@@ -35,7 +35,9 @@ class DocumentService:
         uploaded_docs = []
         upload_start = time.time()
 
+        import re
         for file in files:
+            file.filename = re.sub(r'[^a-zA-Z0-9_\.-]', '_', file.filename or "unnamed")
             if file.content_type not in ALLOWED_TYPES:
                 raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename}. Allowed: PDF, DOCX, PPTX")
 

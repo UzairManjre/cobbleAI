@@ -35,6 +35,7 @@ interface GraphState {
   edges: GraphEdge[];
   currentNodeId: string | null;
   visitedNodes: string[];
+  masteredNodes: string[];
   chatHistory: ChatMessage[];
   isLoading: boolean;
   error: string | null;
@@ -47,6 +48,7 @@ interface GraphState {
   askQuestion: (nodeId: string, question: string) => Promise<void>;
   loadSession: (sessionId: string) => Promise<void>;
   setCurrentNode: (nodeId: string) => void;
+  toggleMastered: (nodeId: string) => void;
   clearGraph: () => void;
 }
 
@@ -57,6 +59,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   edges: [],
   currentNodeId: null,
   visitedNodes: [],
+  masteredNodes: [],
   chatHistory: [],
   isLoading: false,
   error: null,
@@ -361,6 +364,26 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     set({ currentNodeId: nodeId });
   },
 
+  toggleMastered: (nodeId: string) => {
+    const { masteredNodes, visitedNodes } = get();
+    const isMastered = masteredNodes.includes(nodeId);
+    const updatedMastered = isMastered
+      ? masteredNodes.filter(id => id !== nodeId)
+      : [...masteredNodes, nodeId];
+    
+    // Auto-visit node if mastered
+    const updatedVisited = visitedNodes.includes(nodeId)
+      ? visitedNodes
+      : [...visitedNodes, nodeId];
+
+    set({
+      masteredNodes: updatedMastered,
+      visitedNodes: updatedVisited
+    });
+
+    analytics.track(isMastered ? 'node_unmastered' : 'node_mastered', { nodeId });
+  },
+
   clearGraph: () => {
     set({
       graphId: null,
@@ -369,6 +392,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       edges: [],
       currentNodeId: null,
       visitedNodes: [],
+      masteredNodes: [],
       chatHistory: [],
       error: null
     });

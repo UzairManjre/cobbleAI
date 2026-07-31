@@ -20,8 +20,8 @@ export const graphsApi = {
    *   - "complete" events: { graph_id, session_id, nodes_count, edges_count, elapsed }
    *   - "error" events: { message }
    */
-  generateFromDocsStream: (courseId: string, userId: string): EventSource => {
-    const url = `${API_BASE_URL}/api/professor/graph/generate-from-docs-stream/${courseId}?user_id=${encodeURIComponent(userId)}`;
+  generateFromDocsStream: (courseId: string, userId: string, token: string): EventSource => {
+    const url = `${API_BASE_URL}/api/professor/graph/generate-from-docs-stream/${courseId}?user_id=${encodeURIComponent(userId)}&token=${encodeURIComponent(token)}`;
     return new EventSource(url);
   },
   

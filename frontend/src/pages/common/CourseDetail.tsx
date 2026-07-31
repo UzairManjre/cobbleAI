@@ -3,8 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { coursesApi, documentsApi, graphsApi } from '../../api';
 import { useGraphStore } from '../../store/graphStore';
-import { ArrowLeft, Upload, Sparkles, FileText, Trash2 } from 'lucide-react';
-import './CourseDetail.css';
+import { ArrowLeft, Upload, Sparkles, FileText, Trash2, Loader2, BookOpen, Users, Flag, Map, Calendar, Zap, LayoutDashboard } from 'lucide-react';
 
 interface GenerationProgress {
   step: number;
@@ -59,7 +58,6 @@ export default function CourseDetail() {
     }
   }, [courseId, token]);
 
-  // Poll for document status updates if any are pending or processing
   useEffect(() => {
     const hasPendingDocs = documents.some(doc => doc.status === 'pending' || doc.status === 'processing');
     if (!hasPendingDocs || !courseId || !token) return;
@@ -71,7 +69,6 @@ export default function CourseDetail() {
     return () => clearInterval(interval);
   }, [documents, courseId, token]);
 
-  // Cleanup EventSource on unmount
   useEffect(() => {
     return () => {
       if (eventSourceRef.current) {
@@ -145,7 +142,6 @@ export default function CourseDetail() {
   const generateGraph = () => {
     if (!courseId || !token) return;
 
-    // Extract user_id from JWT payload (base64 decode the middle segment)
     let userId = '';
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
@@ -155,18 +151,16 @@ export default function CourseDetail() {
       return;
     }
 
-    // Reset state
     setIsGenerating(true);
     setProgress(null);
     setGenError(null);
     setGenResult(null);
 
-    // Close any existing EventSource
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
 
-    const es = graphsApi.generateFromDocsStream(courseId, userId);
+    const es = graphsApi.generateFromDocsStream(courseId, userId, token);
     eventSourceRef.current = es;
     
     let isComplete = false;
@@ -189,7 +183,6 @@ export default function CourseDetail() {
           edges_count: data.edges_count,
           elapsed: data.elapsed,
         });
-        // Refresh graph data
         await fetchCourseGraph(courseId);
       } catch (err) {
         console.error('Failed to parse complete event:', err);
@@ -199,9 +192,8 @@ export default function CourseDetail() {
     });
 
     es.addEventListener('error', (e: any) => {
-      if (isComplete) return; // Ignore disconnect errors if we already completed
+      if (isComplete) return; 
       
-      // Check if this is a custom error event from the server
       if (e.data) {
         try {
           const data = JSON.parse(e.data);
@@ -210,7 +202,6 @@ export default function CourseDetail() {
           setGenError('Graph generation failed');
         }
       } else {
-        // EventSource connection error
         setGenError('Connection lost during graph generation. The graph may still be generating — please refresh in a minute.');
       }
       es.close();
@@ -228,7 +219,6 @@ export default function CourseDetail() {
 
   const cleanupDuplicates = async () => {
     if (!token) return;
-
     if (!confirm('This will remove duplicate documents. Continue?')) return;
 
     try {
@@ -241,7 +231,6 @@ export default function CourseDetail() {
     }
   };
 
-  // Helper: format elapsed time
   const formatElapsed = (seconds: number) => {
     if (seconds < 60) return `${Math.round(seconds)}s`;
     const min = Math.floor(seconds / 60);
@@ -251,19 +240,19 @@ export default function CourseDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-[4px] border-[#0A0A0A] border-t-transparent"></div>
+      <div className="flex items-center justify-center min-h-[50vh] bg-black">
+        <Loader2 className="w-8 h-8 animate-spin text-[#888888]" />
       </div>
     );
   }
 
   if (!course) {
     return (
-      <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] p-8 flex flex-col items-center justify-center space-y-6">
-        <h2 className="text-3xl font-black uppercase tracking-tight text-[#0A0A0A]">Course not found</h2>
+      <div className="min-h-screen bg-black text-white p-8 flex flex-col items-center justify-center space-y-6">
+        <h2 className="text-3xl font-outfit font-light tracking-tight text-white">Course not found</h2>
         <button 
           onClick={() => navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard')}
-          className="px-6 py-3 border-[3px] border-[#0A0A0A] bg-white rounded-xl font-black uppercase shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2"
+          className="px-6 py-3 border border-[#333333] hover:border-white hover:bg-white hover:text-black rounded-lg text-sm font-medium transition-all flex items-center gap-2"
         >
           <ArrowLeft size={16} />
           <span>Back to Dashboard</span>
@@ -272,30 +261,25 @@ export default function CourseDetail() {
     );
   }
 
-  // Compute progress percentage
-  const progressPct = progress
-    ? Math.round(((progress.step) / progress.totalSteps) * 100)
-    : 0;
+  const progressPct = progress ? Math.round(((progress.step) / progress.totalSteps) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] p-6 lg:p-8 space-y-8">
+    <div className="min-h-screen bg-black text-white p-8 lg:p-12 relative overflow-hidden">
+      
       {/* Graph Generation Progress Overlay */}
       {(isGenerating || genResult || genError) && (
         <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4">
-          <div className="absolute inset-0 bg-[#111827]/40 backdrop-blur-md" onClick={dismissOverlay} />
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={dismissOverlay} />
           
-          <div className="bg-white border-[4px] border-[#0A0A0A] rounded-3xl p-8 max-w-lg w-full relative z-10 shadow-[10px_10px_0_#0A0A0A] space-y-6">
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-8 max-w-lg w-full relative z-10 shadow-2xl space-y-6">
             
             {/* Header */}
             <div className="text-center space-y-2">
-              <div className="w-16 h-16 bg-[#FFD166] border-[3px] border-[#0A0A0A] rounded-2xl shadow-[4px_4px_0_#0A0A0A] flex items-center justify-center mx-auto text-3xl">
-                {genResult ? '🎉' : genError ? '❌' : '🧠'}
-              </div>
-              <h2 className="text-2xl font-black uppercase tracking-tight text-[#0A0A0A] pt-2">
-                {genResult ? 'Knowledge Graph Ready!' : genError ? 'Generation Failed' : 'Building Knowledge Graph'}
+              <h2 className="text-2xl font-outfit font-medium tracking-tight text-white">
+                {genResult ? 'Knowledge Graph Ready' : genError ? 'Generation Failed' : 'Building Knowledge Graph'}
               </h2>
               {!genResult && !genError && (
-                <p className="text-xs font-bold text-[#0A0A0A]/50 font-['Inter']">
+                <p className="text-sm text-[#888888]">
                   This may take a few minutes depending on document size.
                 </p>
               )}
@@ -304,12 +288,11 @@ export default function CourseDetail() {
             {/* Progress Content */}
             {!genResult && !genError && (
               <div className="space-y-6">
-                {/* Progress Bar */}
                 <div>
-                  <div className="h-6 bg-gray-100 border-[3px] border-[#0A0A0A] rounded-full overflow-hidden relative shadow-[2px_2px_0_#0A0A0A]">
-                    <div className="h-full bg-[#EF476F] transition-all duration-300" style={{ width: `${progressPct}%` }} />
+                  <div className="h-2 bg-[#1A1A1A] rounded-full overflow-hidden relative">
+                    <div className="h-full bg-white transition-all duration-300" style={{ width: `${progressPct}%` }} />
                   </div>
-                  <div className="flex justify-between items-center font-black text-xs uppercase tracking-widest mt-2 text-[#0A0A0A]">
+                  <div className="flex justify-between items-center text-xs mt-2 text-[#888888]">
                     <span>{progressPct}% Done</span>
                     {progress && (
                       <span className="flex items-center gap-1">
@@ -319,35 +302,33 @@ export default function CourseDetail() {
                   </div>
                 </div>
 
-                {/* Step List */}
-                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                   {STEP_LABELS.map((label, i) => {
                     const stepNum = i;
                     const currentStep = progress?.step ?? -1;
                     const isActive = currentStep === stepNum;
                     const isDone = currentStep > stepNum;
-                    const isPending = currentStep < stepNum;
 
                     return (
                       <div
                         key={i}
-                        className={`flex items-center justify-between p-3 border-2 border-[#0A0A0A] rounded-xl transition-all ${
-                          isActive ? 'bg-[#FFD166] shadow-[2px_2px_0_#0A0A0A]' : isDone ? 'bg-[#06D6A0]/10 opacity-70' : 'bg-gray-50 opacity-40'
+                        className={`flex items-center justify-between p-3 rounded-lg transition-all ${
+                          isActive ? 'bg-[#111111]' : isDone ? 'opacity-50' : 'opacity-30'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <span className="w-6 h-6 rounded-full border-2 border-[#0A0A0A] flex items-center justify-center text-xs font-black bg-white">
+                          <span className="text-sm">
                             {isDone ? '✓' : STEP_ICONS[i]}
                           </span>
-                          <div className="text-xs font-black uppercase">
+                          <div className="text-sm text-white">
                             <span>{label}</span>
                             {isActive && progress?.detail && (
-                              <p className="text-[10px] font-bold font-['Inter'] text-[#0A0A0A]/60 mt-0.5 normal-case">{progress.detail}</p>
+                              <p className="text-xs text-[#888888] mt-0.5">{progress.detail}</p>
                             )}
                           </div>
                         </div>
                         {isActive && (
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#0A0A0A] border-t-transparent" />
+                          <Loader2 className="w-4 h-4 animate-spin text-[#888888]" />
                         )}
                       </div>
                     );
@@ -360,17 +341,17 @@ export default function CourseDetail() {
             {genResult && (
               <div className="space-y-6">
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 border-2 border-[#0A0A0A] rounded-xl bg-gray-50 text-center">
-                    <span className="block text-2xl font-black text-[#0A0A0A]">{genResult.nodes_count}</span>
-                    <span className="text-[10px] font-black uppercase text-[#0A0A0A]/50">Concepts</span>
+                  <div className="p-4 border border-[#1A1A1A] rounded-xl bg-[#050505] text-center">
+                    <span className="block text-2xl font-light text-white mb-1">{genResult.nodes_count}</span>
+                    <span className="text-[10px] uppercase tracking-widest text-[#555555]">Concepts</span>
                   </div>
-                  <div className="p-3 border-2 border-[#0A0A0A] rounded-xl bg-gray-50 text-center">
-                    <span className="block text-2xl font-black text-[#0A0A0A]">{genResult.edges_count}</span>
-                    <span className="text-[10px] font-black uppercase text-[#0A0A0A]/50">Links</span>
+                  <div className="p-4 border border-[#1A1A1A] rounded-xl bg-[#050505] text-center">
+                    <span className="block text-2xl font-light text-white mb-1">{genResult.edges_count}</span>
+                    <span className="text-[10px] uppercase tracking-widest text-[#555555]">Links</span>
                   </div>
-                  <div className="p-3 border-2 border-[#0A0A0A] rounded-xl bg-gray-50 text-center">
-                    <span className="block text-2xl font-black text-[#0A0A0A]">{formatElapsed(genResult.elapsed)}</span>
-                    <span className="text-[10px] font-black uppercase text-[#0A0A0A]/50">Time</span>
+                  <div className="p-4 border border-[#1A1A1A] rounded-xl bg-[#050505] text-center">
+                    <span className="block text-2xl font-light text-white mb-1">{formatElapsed(genResult.elapsed)}</span>
+                    <span className="text-[10px] uppercase tracking-widest text-[#555555]">Time</span>
                   </div>
                 </div>
                 
@@ -379,7 +360,7 @@ export default function CourseDetail() {
                     dismissOverlay();
                     navigate(`/${role}/courses/${courseId}/map`);
                   }}
-                  className="w-full py-4 border-[3px] border-[#0A0A0A] bg-[#0A0A0A] text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[4px_4px_0_#06D6A0] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#06D6A0] active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-white text-black font-medium text-sm rounded-lg hover:bg-[#F0F0F0] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
                   <Sparkles size={16} />
                   <span>View Knowledge Graph</span>
@@ -390,12 +371,12 @@ export default function CourseDetail() {
             {/* Error */}
             {genError && (
               <div className="space-y-4">
-                <div className="p-4 border-[3px] border-[#0A0A0A] bg-[#EF476F]/10 text-[#EF476F] font-bold text-sm rounded-xl">
+                <div className="p-4 border border-[#331111] bg-[#1A0505] text-[#FF4444] text-sm rounded-lg">
                   {genError}
                 </div>
                 <button 
                   onClick={dismissOverlay}
-                  className="w-full py-3 border-[3px] border-[#0A0A0A] bg-[#0A0A0A] text-white font-black uppercase tracking-wider text-xs rounded-xl"
+                  className="w-full py-3 border border-[#333333] hover:bg-[#111111] text-white font-medium text-sm rounded-lg"
                 >
                   Dismiss
                 </button>
@@ -405,223 +386,227 @@ export default function CourseDetail() {
         </div>
       )}
 
-      {/* Header Back Button */}
-      <button 
-        onClick={() => navigate(role === 'professor' ? '/professor/classes' : '/student/dashboard')}
-        className="px-4 py-2 border-[3px] border-[#0A0A0A] bg-white rounded-xl font-black uppercase text-xs shadow-[3px_3px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-1.5 w-fit"
-      >
-        <ArrowLeft size={14} className="stroke-[3px]" />
-        <span>Back to {role === 'professor' ? 'Classes' : 'Dashboard'}</span>
-      </button>
+      <div className="max-w-6xl mx-auto space-y-12 relative z-10">
+        
+        {/* Navigation & Header */}
+        <div className="flex flex-col gap-6">
+          <button 
+            onClick={() => navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard')}
+            className="w-fit flex items-center gap-2 text-sm text-[#888888] hover:text-white transition-colors"
+          >
+            <ArrowLeft size={16} />
+            Back to Dashboard
+          </button>
 
-      {/* Header Banner */}
-      <div className="bg-[#118AB2] border-[3px] border-[#0A0A0A] rounded-3xl p-8 lg:p-10 shadow-[8px_8px_0_#0A0A0A] flex flex-col md:flex-row justify-between items-center relative overflow-hidden group">
-        <div className="relative z-10 flex items-center gap-6">
-          <div className="w-20 h-20 bg-white border-[3px] border-[#0A0A0A] rounded-2xl shadow-[4px_4px_0_#0A0A0A] flex items-center justify-center text-4xl">
-            📖
-          </div>
-          <div>
-            <h2 className="text-4xl font-black text-white uppercase tracking-tight">{course.title}</h2>
-            <div className="flex flex-wrap items-center gap-3 mt-3">
-              <span className="px-3 py-1 bg-[#0A0A0A] text-white text-xs font-black uppercase tracking-widest rounded-lg border-2 border-white/20">
-                {course.code}
-              </span>
-              <span className="px-3 py-1 bg-white text-[#0A0A0A] text-xs font-black uppercase tracking-widest rounded-lg border-2 border-[#0A0A0A]">
-                {role === 'professor' ? 'Professor View' : 'Student Study Center'}
-              </span>
+          <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <h1 className="text-4xl font-outfit font-light text-white tracking-tight">
+                {course.title}
+              </h1>
+              <div className="flex items-center gap-3 mt-3 text-sm font-medium">
+                <span className="text-blue-500 uppercase tracking-widest text-[10px]">
+                  {course.code}
+                </span>
+                <span className="text-[#333333]">•</span>
+                <span className="text-[#888888]">
+                  {role === 'professor' ? 'Professor Hub' : 'Student Study Center'}
+                </span>
+              </div>
             </div>
+
+            {role === 'professor' && (
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={cleanupDuplicates}
+                  className="px-4 py-2 border border-[#1A1A1A] hover:border-[#333333] bg-[#0A0A0A] text-white rounded-lg text-xs font-medium transition-all"
+                >
+                  Clean Duplicates
+                </button>
+                <button 
+                  onClick={generateGraph}
+                  disabled={isGenerating}
+                  className="px-4 py-2 bg-white text-black rounded-lg text-xs font-medium hover:bg-[#F0F0F0] active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Zap size={14} />
+                  {isGenerating ? 'Generating...' : 'Regenerate Graph'}
+                </button>
+              </div>
+            )}
+          </header>
+        </div>
+
+        {/* Feature Navigation Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {role === 'professor' && (
+            <div 
+              onClick={() => navigate(`/professor/courses/${courseId}/tests`)}
+              className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
+            >
+              <LayoutDashboard className="w-6 h-6 text-[#888888] group-hover:text-white mb-3 transition-colors" />
+              <span className="text-sm font-medium text-white">Manage Tests</span>
+            </div>
+          )}
+          
+          <div 
+            onClick={() => navigate(`/${role}/courses/${courseId}/map`)}
+            className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
+          >
+            <Map className="w-6 h-6 text-[#888888] group-hover:text-blue-500 mb-3 transition-colors" />
+            <span className="text-sm font-medium text-white">Visual Map</span>
+          </div>
+
+          <div 
+            onClick={() => navigate(`/${role}/courses/${courseId}/plan`)}
+            className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
+          >
+            <Calendar className="w-6 h-6 text-[#888888] group-hover:text-purple-500 mb-3 transition-colors" />
+            <span className="text-sm font-medium text-white">Study Plan</span>
+          </div>
+
+          <div 
+            onClick={() => navigate(`/${role}/courses/${courseId}/study`)}
+            className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-white rounded-2xl p-5 cursor-pointer transition-all group flex flex-col items-center text-center justify-center min-h-[120px] md:col-span-2 lg:col-span-1"
+          >
+            <BookOpen className="w-6 h-6 text-white group-hover:scale-110 mb-3 transition-transform" />
+            <span className="text-sm font-medium text-white">Enter Study Mode</span>
           </div>
         </div>
-      </div>
 
-      {/* Dynamic Navigation Action Bar */}
-      <div className="flex flex-wrap gap-4 items-center">
-        {role === 'professor' && (
-          <>
-            <button 
-              onClick={cleanupDuplicates}
-              className="px-5 py-3 border-[3px] border-[#0A0A0A] bg-[#FFD166] text-[#0A0A0A] rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2"
-            >
-              🧹 Clean Duplicates
-            </button>
-            <button 
-              onClick={generateGraph}
-              disabled={isGenerating}
-              className="px-5 py-3 border-[3px] border-[#0A0A0A] bg-[#EF476F] text-white rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2 disabled:opacity-50"
-            >
-              🧠 {isGenerating ? 'Generating...' : 'Re-Generate Graph'}
-            </button>
-            <button 
-              onClick={() => navigate(`/professor/courses/${courseId}/tests`)}
-              className="px-5 py-3 border-[3px] border-[#0A0A0A] bg-[#06D6A0] text-[#0A0A0A] rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2"
-            >
-              📝 Create & Manage Tests
-            </button>
-          </>
-        )}
-        
-        <button 
-          onClick={() => navigate(`/${role}/courses/${courseId}/map`)}
-          className="px-5 py-3 border-[3px] border-[#0A0A0A] bg-white text-[#0A0A0A] rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2"
-        >
-          🕸 Visual Mind Map
-        </button>
-        <button 
-          onClick={() => navigate(`/${role}/courses/${courseId}/plan`)}
-          className="px-5 py-3 border-[3px] border-[#0A0A0A] bg-white text-[#0A0A0A] rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2"
-        >
-          📅 Study Plan
-        </button>
-        <button 
-          onClick={() => navigate(`/${role}/courses/${courseId}/study`)}
-          className="px-6 py-3.5 border-[3px] border-[#0A0A0A] bg-[#0A0A0A] text-white rounded-xl font-black uppercase tracking-wider text-xs shadow-[4px_4px_0_#06D6A0] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#06D6A0] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2 md:ml-auto"
-        >
-          🚀 Enter Study Mode
-        </button>
-      </div>
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Column: Learning Materials */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A] space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b-[3px] border-[#0A0A0A]/10">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">📚</span>
-                <h3 className="text-xl font-black uppercase tracking-tight text-[#0A0A0A]">Learning Materials</h3>
+        {/* Main Split Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Left Column: Learning Materials */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6">
+              <div className="flex items-center justify-between pb-6 mb-6 border-b border-[#1A1A1A]">
+                <h3 className="text-lg font-outfit font-medium text-white">Learning Materials</h3>
+                
+                {role === 'professor' && (
+                  <>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleUpload}
+                      className="hidden"
+                      accept=".pdf,.docx,.pptx"
+                      multiple
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="px-4 py-2 border border-[#333333] hover:bg-[#111111] text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload size={14} />}
+                      <span>{isUploading ? 'Uploading...' : 'Upload Files'}</span>
+                    </button>
+                  </>
+                )}
               </div>
               
-              {role === 'professor' && (
-                <>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleUpload}
-                    className="hidden"
-                    accept=".pdf,.docx,.pptx"
-                    multiple
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="px-4 py-2 border-[3px] border-[#0A0A0A] bg-[#0A0A0A] text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-[3px_3px_0_#EF476F] hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#EF476F] active:translate-y-0 active:shadow-none transition-all flex items-center gap-1.5"
-                  >
-                    <Upload size={14} className="stroke-[3px]" />
-                    <span>{isUploading ? 'Uploading...' : 'Add Materials'}</span>
-                  </button>
-                </>
-              )}
-            </div>
-            
-            <div className="space-y-4">
-              {documents.map((doc) => (
-                <div key={doc.id || doc._id} className="flex items-center justify-between p-4 border-[3px] border-[#0A0A0A] rounded-2xl bg-[#FCFCFC] shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-0.5 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center font-black uppercase text-xs text-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A]">
-                      {doc.filename.split('.').pop()?.toUpperCase() || 'DOC'}
+              <div className="space-y-3">
+                {documents.map((doc) => (
+                  <div key={doc.id || doc._id} className="flex items-center justify-between p-4 rounded-xl hover:bg-[#111111] transition-colors border border-transparent hover:border-[#1A1A1A] group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-[#111111] border border-[#333333] rounded-lg flex items-center justify-center text-[10px] font-bold text-[#888888]">
+                        {doc.filename.split('.').pop()?.toUpperCase() || 'DOC'}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-white truncate max-w-[200px] md:max-w-md">{doc.filename}</h4>
+                        <p className="text-[10px] text-[#555555] mt-1">Added {new Date(doc.created_at).toLocaleDateString()}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-black text-[#0A0A0A] line-clamp-1">{doc.filename}</h4>
-                      <p className="text-xs font-bold text-[#0A0A0A]/50 font-['Inter'] mt-0.5">Added {new Date(doc.created_at).toLocaleDateString()}</p>
+                    
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-full border ${
+                        doc.status === 'processed' || doc.status === 'completed'
+                          ? 'text-blue-500 border-blue-500/30' 
+                          : doc.status === 'processing'
+                          ? 'text-purple-500 border-purple-500/30 animate-pulse'
+                          : 'text-orange-500 border-orange-500/30'
+                      }`}>
+                        {doc.status}
+                      </span>
+                      {role === 'professor' && (
+                        <button 
+                          onClick={() => handleDeleteDocument(doc.id || doc._id)}
+                          className="p-1.5 text-[#555555] hover:text-[#FF4444] transition-colors opacity-0 group-hover:opacity-100"
+                          title="Delete document"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 text-xs font-black uppercase border-[3px] border-[#0A0A0A] rounded-xl shadow-[2px_2px_0_#0A0A0A] ${
-                      doc.status === 'processed' || doc.status === 'completed'
-                        ? 'bg-[#06D6A0] text-[#0A0A0A]' 
-                        : doc.status === 'processing'
-                        ? 'bg-[#FFD166] text-[#0A0A0A] animate-pulse'
-                        : 'bg-[#EF476F] text-white'
-                    }`}>
-                      {doc.status}
-                    </span>
+                ))}
+                
+                {documents.length === 0 && (
+                  <div className="py-12 flex flex-col items-center justify-center text-[#888888]">
+                    <FileText size={32} className="mb-3 opacity-50" />
+                    <p className="text-sm font-medium text-white mb-1">No materials added</p>
                     {role === 'professor' && (
-                      <button 
-                        onClick={() => handleDeleteDocument(doc.id || doc._id)}
-                        className="p-2 border-[3px] border-[#0A0A0A] bg-white rounded-xl shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0A0A0A] hover:bg-[#EF476F] hover:text-white transition-all"
-                        title="Delete document"
-                      >
-                        <Trash2 size={14} className="stroke-[3px]" />
-                      </button>
+                      <span className="text-xs">Upload syllabus or lectures to build the AI map.</span>
                     )}
                   </div>
-                </div>
-              ))}
-              
-              {documents.length === 0 && (
-                <div className="py-12 flex flex-col items-center justify-center space-y-3 text-[#0A0A0A]/40 text-center">
-                  <FileText size={48} className="stroke-[1.5px]" />
-                  <p className="font-black uppercase tracking-widest text-sm">No materials added yet</p>
-                  {role === 'professor' && (
-                    <span className="text-xs font-bold font-['Inter']">Upload syllabus or course lecture notes to power the AI.</span>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Right Column: Intelligence & Student Access */}
-        <div className="space-y-8">
-          {/* Course Intelligence Card */}
-          <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A] space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b-[3px] border-[#0A0A0A]/10">
-              <span className="text-2xl">🧠</span>
-              <h3 className="text-xl font-black uppercase tracking-tight text-[#0A0A0A]">Course Intelligence</h3>
-            </div>
-            
-            <div className="space-y-4 font-bold text-sm">
-              <div className="flex justify-between items-center p-3 border-2 border-[#0A0A0A] rounded-xl bg-[#FCFCFC]">
-                <span className="text-[#0A0A0A]/60">Total Concepts</span>
-                <span className="font-black text-base">{graphNodes.length || '--'}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 border-2 border-[#0A0A0A] rounded-xl bg-[#FCFCFC]">
-                <span className="text-[#0A0A0A]/60">Study Synapses</span>
-                <span className="font-black text-base">{graphEdges.length || '--'}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 border-2 border-[#0A0A0A] rounded-xl bg-[#FCFCFC]">
-                <span className="text-[#0A0A0A]/60">Document Count</span>
-                <span className="font-black text-base">{documents.length}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 border-2 border-[#0A0A0A] rounded-xl bg-[#FCFCFC]">
-                <span className="text-[#0A0A0A]/60">Intelligence Status</span>
-                <span className={`px-2.5 py-0.5 border-2 border-[#0A0A0A] rounded-lg text-xs font-black uppercase ${
-                  graphNodes.length > 0 ? 'bg-[#06D6A0] text-[#0A0A0A]' : 'bg-[#FFD166] text-[#0A0A0A]'
-                }`}>
-                  {graphNodes.length > 0 ? 'Map Optimized' : 'Map Required'}
-                </span>
+                )}
               </div>
             </div>
           </div>
           
-          {/* Student Access Card */}
-          {role === 'professor' && (
-            <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A] space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b-[3px] border-[#0A0A0A]/10">
-                <span className="text-2xl">🎟</span>
-                <h3 className="text-xl font-black uppercase tracking-tight text-[#0A0A0A]">Student Access</h3>
-              </div>
+          {/* Right Column: Intelligence & Student Access */}
+          <div className="space-y-6">
+            
+            {/* Course Intelligence */}
+            <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6">
+              <h3 className="text-lg font-outfit font-medium text-white mb-6">Intelligence Status</h3>
               
-              <p className="text-sm font-bold font-['Inter'] text-[#0A0A0A]/60 leading-relaxed">
-                Provide this invitation code to your students to grant them full access to this course's AI materials.
-              </p>
-              
-              {inviteCode ? (
-                <div className="p-4 border-[3px] border-[#0A0A0A] bg-[#FFD166] text-[#0A0A0A] font-black text-2xl text-center rounded-2xl tracking-widest shadow-[4px_4px_0_#0A0A0A]">
-                  {inviteCode}
+              <div className="space-y-4 text-sm">
+                <div className="flex justify-between items-center py-2 border-b border-[#1A1A1A]">
+                  <span className="text-[#888888]">Total Concepts</span>
+                  <span className="font-medium text-white">{graphNodes.length || '--'}</span>
                 </div>
-              ) : (
-                <button 
-                  onClick={generateInvite} 
-                  className="w-full py-4 border-[3px] border-[#0A0A0A] bg-[#0A0A0A] text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[4px_4px_0_#06D6A0] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#06D6A0] active:translate-y-0 active:shadow-none transition-all"
-                >
-                  Generate Invitation Code
-                </button>
-              )}
+                <div className="flex justify-between items-center py-2 border-b border-[#1A1A1A]">
+                  <span className="text-[#888888]">Connections</span>
+                  <span className="font-medium text-white">{graphEdges.length || '--'}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-[#1A1A1A]">
+                  <span className="text-[#888888]">Documents</span>
+                  <span className="font-medium text-white">{documents.length}</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-[#888888]">Status</span>
+                  <span className={`text-xs font-medium ${
+                    graphNodes.length > 0 ? 'text-blue-500' : 'text-orange-500'
+                  }`}>
+                    {graphNodes.length > 0 ? 'Map Optimized' : 'Map Required'}
+                  </span>
+                </div>
+              </div>
             </div>
-          )}
+            
+            {/* Student Access Card */}
+            {role === 'professor' && (
+              <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6">
+                <h3 className="text-lg font-outfit font-medium text-white mb-4">Student Access</h3>
+                
+                <p className="text-xs text-[#888888] mb-6">
+                  Provide this code to your students to grant them full access to this course's AI materials.
+                </p>
+                
+                {inviteCode ? (
+                  <div className="p-4 bg-[#111111] border border-[#333333] text-white font-medium text-xl text-center rounded-lg tracking-widest">
+                    {inviteCode}
+                  </div>
+                ) : (
+                  <button 
+                    onClick={generateInvite} 
+                    className="w-full py-3 bg-white text-black font-medium text-sm rounded-lg hover:bg-[#F0F0F0] transition-colors"
+                  >
+                    Generate Invite Code
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

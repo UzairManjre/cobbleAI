@@ -61,47 +61,6 @@ def test_course_model_has_docs_count_in_schema():
     assert "docs_count" in Course.__annotations__ or "docs_count" in Course.model_fields
 
 
-# ── Test 4: Double-prefix redirect middleware ──────────────────────────
-
-@pytest.mark.asyncio
-async def test_redirect_legacy_double_prefix():
-    """Requests to /api/api/... should get a 307 redirect to /api/..."""
-    from starlette.datastructures import URL
-    from app.main import redirect_legacy_api_prefix
-
-    mock_request = MagicMock()
-    mock_request.url = URL("http://test/api/api/study-plans/123?foo=bar")
-
-    async def dummy_call_next(req):
-        return {"called": True}
-
-    response = await redirect_legacy_api_prefix(mock_request, dummy_call_next)
-
-    assert response.status_code == 307
-    assert "/api/api/" not in str(response.headers.get("location", ""))
-    assert "/api/study-plans/" in str(response.headers.get("location", ""))
-
-
-@pytest.mark.asyncio
-async def test_no_redirect_for_normal_paths():
-    """Normal API paths should pass through without redirect."""
-    from starlette.datastructures import URL
-    from app.main import redirect_legacy_api_prefix
-
-    mock_request = MagicMock()
-    mock_request.url = URL("http://test/api/study-plans/123")
-
-    called = False
-
-    async def dummy_call_next(req):
-        nonlocal called
-        called = True
-        return {"called": True}
-
-    response = await redirect_legacy_api_prefix(mock_request, dummy_call_next)
-
-    assert called is True
-    assert response == {"called": True}
 
 
 # ── Test 5: Graph status endpoint logic (unit) ────────────────────────

@@ -9,8 +9,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Login first
 print("🔐 Logging in...")
-email = input("Email: ")
-password = input("Password: ")
+email = os.environ.get("TEST_EMAIL", "test@example.com")
+password = os.environ.get("TEST_PASSWORD", "password123")
 
 login_data = json.dumps({"username": email, "password": password}).encode('utf-8')
 req = urllib.request.Request(

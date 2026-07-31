@@ -3,11 +3,12 @@ import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import LandingPage from './pages/common/LandingPage';
 import NewLanding from './pages/common/NewLanding';
-import ProfessorOnboarding from './pages/professor/ProfessorOnboarding';
+
 import StudentOnboarding from './pages/student/StudentOnboarding';
 import StudentAuthFlow from './pages/auth/StudentAuthFlow';
 import ProfessorAuthFlow from './pages/auth/ProfessorAuthFlow';
-import Dashboard from './pages/student/Dashboard';
+import StudentDashboard from './pages/student/StudentDashboard';
+import ProfessorDashboard from './pages/professor/ProfessorDashboard';
 import MyClasses from './pages/professor/MyClasses';
 import Assignments from './pages/student/Assignments';
 import CourseDetail from './pages/common/CourseDetail';
@@ -18,16 +19,16 @@ import StudyPlan from './pages/student/StudyPlan';
 import ProfessorTests from './pages/professor/ProfessorTests';
 import TakeTest from './pages/student/TakeTest';
 import AppLayout from './components/layout/AppLayout';
-import AnalyticsDashboard from './pages/professor/AnalyticsDashboard';
 import { useAuthStore } from './store/authStore';
+import { ToastProvider } from './components/ui/ToastProvider';
 
 const ProtectedRoute = ({ children, allowedRole, requireOnboarding = true }: { children: ReactNode, allowedRole?: 'professor' | 'student' | Array<'professor' | 'student'>, requireOnboarding?: boolean }) => {
   const { token, role, hasOnboarded } = useAuthStore();
   if (!token) return <Navigate to="/" replace />;
 
-  // Handle onboarding redirect
-  if (requireOnboarding && !hasOnboarded) {
-    return <Navigate to={`/onboarding/${role}`} replace />;
+  // Handle onboarding redirect (only for students now)
+  if (requireOnboarding && !hasOnboarded && role === 'student') {
+    return <Navigate to={`/onboarding/student`} replace />;
   }
 
   if (allowedRole) {
@@ -57,7 +58,9 @@ export default function App() {
   }, [initialize]);
 
   return (
-    <BrowserRouter>
+    <>
+      <ToastProvider />
+      <BrowserRouter>
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<NewLanding />} />
@@ -67,14 +70,7 @@ export default function App() {
         <Route path="/signup/student" element={<StudentAuthFlow initialStep="welcome" />} />
         <Route path="/signup/professor" element={<ProfessorAuthFlow initialStep="welcome" />} />
 
-        <Route
-          path="/onboarding/professor"
-          element={
-            <ProtectedRoute requireOnboarding={false} allowedRole="professor">
-              <ProfessorOnboarding />
-            </ProtectedRoute>
-          }
-        />
+
 
         <Route
           path="/onboarding/student"
@@ -157,11 +153,11 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="/professor/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<ProfessorDashboard />} />
           <Route path="classes" element={<MyClasses />} />
           <Route path="students" element={<Navigate to="/professor/classes?tab=students" replace />} />
           <Route path="assignments" element={<Assignments />} />
-          <Route path="analytics" element={<AnalyticsDashboard />} />
+          <Route path="analytics" element={<ProfessorDashboard />} />
           
           {/* Course routes */}
           <Route path="courses/:courseId" element={<CourseDetail />} />
@@ -181,7 +177,7 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="/student/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="chat" element={<Chat />} />
           
           {/* Course routes */}
@@ -192,5 +188,6 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </>
   );
 }

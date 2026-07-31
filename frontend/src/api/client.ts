@@ -52,7 +52,8 @@ api.interceptors.response.use(
       const isInitCheck = requestUrl.includes('/users/me');
 
       if (!isInitCheck) {
-        console.warn('401 Unauthorized - token expired or invalid, redirecting to login');
+        const currentRole = useAuthStore.getState().role;
+        const redirectRoute = currentRole === 'student' ? '/login/student' : '/login/professor';
         useAuthStore.getState().logout();
 
         // Only redirect if we're not already on a public page
@@ -62,7 +63,7 @@ api.interceptors.response.use(
           currentPath.startsWith('/login/') ||
           currentPath.startsWith('/signup/');
         if (!isPublicPage) {
-          window.location.href = '/login/professor';
+          window.location.href = redirectRoute;
         }
       }
     }

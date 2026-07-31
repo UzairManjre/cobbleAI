@@ -1,20 +1,12 @@
 from fastapi import APIRouter, Depends
 from typing import List
 import uuid
-from app.api.auth import current_active_user
+from app.api.auth import current_active_user, require_role
 from app.models.user import User
 from app.schemas.course import CourseRead, JoinCourseRequest
 from app.services.course_service import CourseService
 
 router = APIRouter(prefix="/courses", tags=["courses (student)"])
-
-def require_role(required_role: str):
-    def role_checker(user: User = Depends(current_active_user)):
-        from fastapi import HTTPException
-        if user.role != required_role:
-            raise HTTPException(status_code=403, detail="Not enough permissions")
-        return user
-    return role_checker
 
 @router.get("/", response_model=List[CourseRead])
 async def list_courses(user: User = Depends(require_role("student"))):

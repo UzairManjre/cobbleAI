@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.auth import current_active_user
+from app.api.auth import current_active_user, require_role
 from app.models.user import User
 from app.models.graph import StudySession, ChatMessage
 from app.models.document import DocumentModel
@@ -30,7 +30,7 @@ class GetOrCreateSessionRequest(BaseModel):
 @router.get("/{session_id}")
 async def get_session(
     session_id: uuid.UUID,
-    user: User = Depends(current_active_user)
+    user: User = Depends(require_role("student"))
 ):
     """Get current session state."""
     session = await StudySession.get(session_id)
@@ -70,7 +70,7 @@ async def get_session(
 @router.post("/get-or-create")
 async def get_or_create_session(
     req: GetOrCreateSessionRequest,
-    user: User = Depends(current_active_user)
+    user: User = Depends(require_role("student"))
 ):
     """Get the most recent session for this graph or create a new one."""
 
@@ -115,7 +115,7 @@ async def get_or_create_session(
 async def navigate_to_node(
     session_id: uuid.UUID,
     req: NavigateRequest,
-    user: User = Depends(current_active_user)
+    user: User = Depends(require_role("student"))
 ):
     """Navigate to a new node in the graph."""
     session = await StudySession.get(session_id)
@@ -174,7 +174,7 @@ async def navigate_to_node(
 async def ask_question(
     session_id: uuid.UUID,
     req: AskRequest,
-    user: User = Depends(current_active_user)
+    user: User = Depends(require_role("student"))
 ):
     """Ask a question about the current node with RAG support."""
     start_time = time.time()

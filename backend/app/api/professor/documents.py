@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Form
 from app.models.document import DocumentModel
-from app.api.auth import current_active_user
+from app.api.auth import current_active_user, require_role
 from app.models.user import User
 from app.core.storage import get_s3_client, S3_BUCKET
 from app.services.document_service import DocumentService
@@ -14,31 +14,22 @@ router = APIRouter(prefix="/documents", tags=["documents (professor)"])
 async def upload_document(
     course_id: str = Form(...),
     files: List[UploadFile] = File(...),
-    user: User = Depends(current_active_user)
+    user: User = Depends(require_role("professor"))
 ):
-    if user.role != "professor":
-        raise HTTPException(status_code=403, detail="Only professors can upload documents")
     return await DocumentService.upload_documents(course_id, files, user)
 
 @router.get("/list/{course_id}")
-async def list_documents(course_id: str, user: User = Depends(current_active_user)):
-    if user.role != "professor":
-        raise HTTPException(status_code=403, detail="Only professors can view documents")
+async def list_documents(course_id: str, user: User = Depends(require_role("professor"))):
     return await DocumentService.list_documents(course_id, user)
 
 @router.delete("/{doc_id}")
-async def delete_document(doc_id: str, user: User = Depends(current_active_user)):
-    if user.role != "professor":
-        raise HTTPException(status_code=403, detail="Only professors can delete documents")
+async def delete_document(doc_id: str, user: User = Depends(require_role("professor"))):
     return await DocumentService.delete_document(doc_id, user)
 
 @router.post("/cleanup-duplicates")
 async def cleanup_duplicates(
     course_id: str = Form(...),
-    user: User = Depends(current_active_user)
+    user: User = Depends(require_role("professor"))
 ):
     """Removes duplicate documents for a course."""
-    if user.role != "professor":
-        raise HTTPException(status_code=403, detail="Only professors can cleanup documents")
-        
     return await DocumentService.cleanup_duplicates(course_id, user)

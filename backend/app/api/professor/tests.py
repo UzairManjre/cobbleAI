@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.api.auth import current_active_user
+from app.api.auth import current_active_user, require_role
 from app.models.user import User
 from app.schemas.test import CreateTestRequest, GenerateTestRequest
 from app.services.test_service import TestService
@@ -8,7 +8,7 @@ from fastapi.encoders import jsonable_encoder
 router = APIRouter(prefix="/tests", tags=["tests (professor)"])
 
 @router.post("/create")
-async def create_test(req: CreateTestRequest, user: User = Depends(current_active_user)):
+async def create_test(req: CreateTestRequest, user: User = Depends(require_role("professor"))):
     test = await TestService.create_test(user, req)
     return {
         "test": jsonable_encoder(test),
@@ -17,7 +17,7 @@ async def create_test(req: CreateTestRequest, user: User = Depends(current_activ
     }
 
 @router.post("/{test_id}/generate-questions")
-async def generate_test_questions(test_id: str, req: GenerateTestRequest, user: User = Depends(current_active_user)):
+async def generate_test_questions(test_id: str, req: GenerateTestRequest, user: User = Depends(require_role("professor"))):
     test, num_questions = await TestService.generate_questions(user, test_id, req)
     return {
         "test_id": str(test.id),
@@ -27,12 +27,12 @@ async def generate_test_questions(test_id: str, req: GenerateTestRequest, user: 
     }
 
 @router.post("/{test_id}/publish")
-async def publish_test(test_id: str, user: User = Depends(current_active_user)):
+async def publish_test(test_id: str, user: User = Depends(require_role("professor"))):
     test = await TestService.publish_test(user, test_id)
     return {"test": jsonable_encoder(test), "message": "Test published successfully"}
 
 @router.get("/all")
-async def get_all_professor_tests(user: User = Depends(current_active_user)):
+async def get_all_professor_tests(user: User = Depends(require_role("professor"))):
     tests, course_map = await TestService.get_all_professor_tests(user)
     serialized = []
     for t in tests:
@@ -55,7 +55,7 @@ async def get_all_professor_tests(user: User = Depends(current_active_user)):
     return {"tests": serialized}
 
 @router.get("/course/{course_id}")
-async def get_course_tests(course_id: str, user: User = Depends(current_active_user)):
+async def get_course_tests(course_id: str, user: User = Depends(require_role("professor"))):
     tests = await TestService.get_course_tests(user, course_id)
     return jsonable_encoder([{
         "id": str(t.id),
@@ -70,7 +70,7 @@ async def get_course_tests(course_id: str, user: User = Depends(current_active_u
     } for t in tests])
 
 @router.get("/analytics/{test_id}")
-async def get_test_analytics(test_id: str, user: User = Depends(current_active_user)):
+async def get_test_analytics(test_id: str, user: User = Depends(require_role("professor"))):
     from app.models.test import TestAnalytics
     import uuid
     try:
@@ -84,7 +84,7 @@ async def get_test_analytics(test_id: str, user: User = Depends(current_active_u
     return jsonable_encoder(analytics)
 
 @router.get("/{test_id}")
-async def get_test(test_id: str, user: User = Depends(current_active_user)):
+async def get_test(test_id: str, user: User = Depends(require_role("professor"))):
     test = await TestService.get_test(user, test_id)
     res = {
         "test": {

@@ -1,4 +1,5 @@
 import uuid
+import asyncio
 from datetime import datetime, timezone, timedelta
 import random
 from typing import Optional, List
@@ -7,9 +8,8 @@ from app.models.course import Course, Enrolment
 from app.models.document import DocumentModel
 from app.models.graph import KnowledgeGraph
 from app.models.analytics.event import AnalyticsEvent
-from app.core.config import settings
 from beanie.operators import In
-from qdrant_client import AsyncQdrantClient
+from app.core.qdrant import qdrant_async  # shared singleton — no per-request instantiation
 
 class DashboardAnalyticsService:
     @staticmethod
@@ -39,26 +39,39 @@ class DashboardAnalyticsService:
         total_docs = len(docs)
         total_chunks = sum(d.chunk_count or 0 for d in docs)
 
-        # 3. QDRANT STATS
+        # 3. QDRANT STATS — batch fetch to avoid N+1 sequential get_collection calls
         qdrant_collections = []
         try:
-            qdrant_client = AsyncQdrantClient(url=settings.QDRANT_URL)
-            collections_resp = await qdrant_client.get_collections()
-            for coll in collections_resp.collections:
-                if coll.name.startswith("course_"):
+            collections_resp = await qdrant_async.get_collections()
+            # Filter to only collections belonging to this user's courses
+            relevant = [
+                coll for coll in collections_resp.collections
+                if coll.name.startswith("course_")
+                and coll.name.replace("course_", "") in course_name_map
+            ]
+            if relevant:
+                # Single concurrent batch — one gather instead of N sequential awaits
+                infos = await asyncio.gather(
+                    *[qdrant_async.get_collection(coll.name) for coll in relevant],
+                    return_exceptions=True,
+                )
+                for coll, info in zip(relevant, infos):
+                    if isinstance(info, Exception):
+                        import logging
+                        logging.error(f"Qdrant get_collection failed for {coll.name}: {info}")
+                        continue
                     cid_str = coll.name.replace("course_", "")
-                    if cid_str in course_name_map:
-                        info = await qdrant_client.get_collection(coll.name)
-                        points = getattr(info, "points_count", 0)
-                        if points == 0 and hasattr(info, "vectors_count"):
-                            points = info.vectors_count
-                        qdrant_collections.append({
-                            "course": course_name_map[cid_str],
-                            "chunks": points,
-                            "status": str(info.status)
-                        })
-        except Exception:
-            pass
+                    points = getattr(info, "points_count", 0)
+                    if points == 0 and hasattr(info, "vectors_count"):
+                        points = info.vectors_count
+                    qdrant_collections.append({
+                        "course": course_name_map[cid_str],
+                        "chunks": points,
+                        "status": str(info.status),
+                    })
+        except Exception as e:
+            import logging
+            logging.error(f"Qdrant stats error: {e}")
 
         # 4. LLM TELEMETRY
         now = datetime.now()
@@ -89,31 +102,41 @@ class DashboardAnalyticsService:
         # 5. INTENT RADAR
         real_teach_count = real_test_count = real_review_count = real_rag_count = real_total_chats = 0
         try:
-            real_teach_count = await AnalyticsEvent.find(
-                In(AnalyticsEvent.course_id, course_ids),
-                AnalyticsEvent.event_type == "chat_standalone_sent",
-                {"payload.mode": "teach"}
-            ).count()
-            real_test_count = await AnalyticsEvent.find(
-                In(AnalyticsEvent.course_id, course_ids),
-                AnalyticsEvent.event_type == "chat_standalone_sent",
-                {"payload.mode": "test"}
-            ).count()
-            real_review_count = await AnalyticsEvent.find(
-                In(AnalyticsEvent.course_id, course_ids),
-                AnalyticsEvent.event_type == "chat_standalone_sent",
-                {"payload.mode": "review"}
-            ).count()
-            real_rag_count = await AnalyticsEvent.find(
-                In(AnalyticsEvent.course_id, course_ids),
-                AnalyticsEvent.event_type == "rag_query"
-            ).count()
-            real_total_chats = await AnalyticsEvent.find(
-                In(AnalyticsEvent.course_id, course_ids),
-                AnalyticsEvent.event_type == "chat_standalone_sent"
-            ).count()
-        except Exception:
-            pass
+            # Run all 5 count queries in parallel — one MongoDB round-trip each, all concurrent
+            (
+                real_teach_count,
+                real_test_count,
+                real_review_count,
+                real_rag_count,
+                real_total_chats,
+            ) = await asyncio.gather(
+                AnalyticsEvent.find(
+                    In(AnalyticsEvent.course_id, course_ids),
+                    AnalyticsEvent.event_type == "chat_standalone_sent",
+                    {"payload.mode": "teach"}
+                ).count(),
+                AnalyticsEvent.find(
+                    In(AnalyticsEvent.course_id, course_ids),
+                    AnalyticsEvent.event_type == "chat_standalone_sent",
+                    {"payload.mode": "test"}
+                ).count(),
+                AnalyticsEvent.find(
+                    In(AnalyticsEvent.course_id, course_ids),
+                    AnalyticsEvent.event_type == "chat_standalone_sent",
+                    {"payload.mode": "review"}
+                ).count(),
+                AnalyticsEvent.find(
+                    In(AnalyticsEvent.course_id, course_ids),
+                    AnalyticsEvent.event_type == "rag_query"
+                ).count(),
+                AnalyticsEvent.find(
+                    In(AnalyticsEvent.course_id, course_ids),
+                    AnalyticsEvent.event_type == "chat_standalone_sent"
+                ).count(),
+            )
+        except Exception as e:
+            import logging
+            logging.error(f"Analytics count error: {e}")
 
         intent_data = [
             {"intent": "Socratic Dialogue", "count": max(real_teach_count, 15), "fullMark": 100},
@@ -199,37 +222,48 @@ class DashboardAnalyticsService:
                     t = edge.get("target") if isinstance(edge, dict) else getattr(edge, "target", None)
                     if s in seen_nodes and t in seen_nodes:
                         kg_links.append({"source": s, "target": t, "value": 1})
-        except Exception:
-            pass
+        except Exception as e:
+                    import logging
+                    from fastapi import HTTPException
+                    logging.error(f"An error occurred: {e}")
+                    raise HTTPException(status_code=500, detail="An error occurred")
 
-        # 9. 3D VECTOR SPACE
+        # 9. 3D VECTOR SPACE — batch scroll across all course collections in parallel
         vector_space_3d = []
-        try:
-            qdrant_tsne = AsyncQdrantClient(url=settings.QDRANT_URL)
-            for cid in course_ids:
+        if course_ids:
+            async def _scroll_course(cid: uuid.UUID) -> list:
                 coll_name = f"course_{cid}"
                 c_title = course_name_map.get(str(cid), "Unknown")
                 try:
-                    points_resp = await qdrant_tsne.scroll(
+                    points_resp = await qdrant_async.scroll(
                         collection_name=coll_name,
                         limit=200,
                         with_vectors=True,
                     )
                     points = points_resp[0] if points_resp else []
+                    result = []
                     for pt in points:
                         vec = pt.vector
                         if vec and len(vec) >= 3:
-                            vector_space_3d.append({
+                            result.append({
                                 "x": round(float(vec[0]) * 100, 2),
                                 "y": round(float(vec[1]) * 100, 2),
                                 "z": round(float(vec[2]) * 100, 2),
                                 "course": c_title,
                                 "text_preview": (pt.payload or {}).get("text", "")[:80],
                             })
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                    return result
+                except Exception as e:
+                    import logging
+                    logging.error(f"Vector space scroll failed for course {cid}: {e}")
+                    return []
+
+            scroll_results = await asyncio.gather(
+                *[_scroll_course(cid) for cid in course_ids],
+                return_exceptions=False,
+            )
+            for batch in scroll_results:
+                vector_space_3d.extend(batch)
 
         # 10. STUDY HEATMAP
         days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -248,8 +282,11 @@ class DashboardAnalyticsService:
                 hour = dt.hour
                 if day_name in heatmap_matrix and hour in heatmap_matrix[day_name]:
                     heatmap_matrix[day_name][hour] += 1
-        except Exception:
-            pass
+        except Exception as e:
+                    import logging
+                    from fastapi import HTTPException
+                    logging.error(f"An error occurred: {e}")
+                    raise HTTPException(status_code=500, detail="An error occurred")
             
         study_heatmap = []
         for d in days:

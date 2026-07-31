@@ -1,39 +1,34 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  BookOpen, 
-  FileText, 
-  Users, 
-  Award, 
-  Calendar, 
-  Clock, 
   Plus, 
-  ChevronRight, 
-  ChevronLeft, 
-  MoreVertical,
   ArrowRight,
+  BookOpen,
   Sparkles,
-  FolderOpen
+  MoreVertical,
+  Loader2,
+  Users,
+  FolderOpen,
+  Award,
+  FileText
 } from 'lucide-react';
-import { coursesApi, testsApi, authApi, documentsApi, graphsApi, analyticsApi } from '../../api';
-import KnowledgeGraphViewer from '../../components/analytics/KnowledgeGraphViewer';
-import IntentRadar from '../../components/analytics/IntentRadar';
+import { coursesApi } from '../../api/courses';
+import { documentsApi, graphsApi, authApi } from '../../api';
+import { useToastStore } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
 
 export default function Dashboard() {
-  const { token, role, logout } = useAuthStore();
+  const { token, role } = useAuthStore();
+  const addToast = useToastStore(state => state.addToast);
   const navigate = useNavigate();
 
   // Data State
   const [courses, setCourses] = useState<any[]>([]);
-  const [_tests, setTests] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [professorName, setProfessorName] = useState('Professor');
   const [isLoading, setIsLoading] = useState(true);
-  const [recentDocuments, setRecentDocuments] = useState<any[]>([]);
   const [courseGraphStatuses, setCourseGraphStatuses] = useState<Record<string, string>>({});
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
-  const [activeInsightTab, setActiveInsightTab] = useState<'kg' | 'intent'>('kg');
+  const [recentDocuments, setRecentDocuments] = useState<any[]>([]);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -49,17 +44,13 @@ export default function Dashboard() {
     if (!token) return;
     setIsLoading(true);
     
-    // 1. Load user details
     try {
       const userRes = await authApi.getCurrentUser();
-      if (userRes.data && userRes.data.name) {
-        setProfessorName(userRes.data.name);
-      }
+      if (userRes.data?.name) setProfessorName(userRes.data.name);
     } catch (err) {
-      console.error('Error loading user data:', err);
+      console.error('Error loading user:', err);
     }
 
-    // 2. Load courses
     let activeCourses: any[] = [];
     try {
       const coursesRes = await coursesApi.list();
@@ -70,18 +61,6 @@ export default function Dashboard() {
       setCourses([]);
     }
 
-    // 3. Load tests (Professor Only)
-    if (role === 'professor') {
-      try {
-        const testsRes = await testsApi.listAllProfessorTests();
-        setTests(testsRes.data?.tests || []);
-      } catch (err) {
-        console.error('Error loading tests:', err);
-        setTests([]);
-      }
-    }
-
-    // 4. Load students (Professor Only)
     if (role === 'professor') {
       try {
         const studentsRes = await coursesApi.getProfessorStudents();
@@ -92,30 +71,7 @@ export default function Dashboard() {
       }
     }
 
-    // 5. Load documents & graph statuses for all courses in parallel
     if (activeCourses.length > 0) {
-      try {
-        const docPromises = activeCourses.map(async (c: any) => {
-          try {
-            const docsRes = await documentsApi.list(c.id);
-            return (docsRes.data || []).map((d: any) => ({
-              ...d,
-              courseTitle: c.title,
-              courseCode: c.code,
-              courseId: c.id
-            }));
-          } catch {
-            return [];
-          }
-        });
-        const docsResults = await Promise.all(docPromises);
-        const mergedDocs = docsResults.flat();
-        mergedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        setRecentDocuments(mergedDocs.slice(0, 5));
-      } catch (err) {
-        console.error('Error fetching documents:', err);
-      }
-
       try {
         const statusPromises = activeCourses.map(async (c: any) => {
           try {
@@ -126,28 +82,38 @@ export default function Dashboard() {
           }
         });
         const statuses = await Promise.all(statusPromises);
-        const statusMap = statuses.reduce((acc, curr) => {
-          acc[curr.id] = curr.status;
-          return acc;
-        }, {} as Record<string, string>);
+        const statusMap = statuses.reduce((acc, curr) => ({ ...acc, [curr.id]: curr.status }), {});
         setCourseGraphStatuses(statusMap);
       } catch (err) {
         console.error('Error fetching graph statuses:', err);
       }
-    } else {
-      setRecentDocuments([]);
-      setCourseGraphStatuses({});
-    }
 
-    // 6. Load analytics data (Professor Only)
-    if (role === 'professor') {
-      try {
-        const analyticsRes = await analyticsApi.getDashboardData();
-        setAnalyticsData(analyticsRes.data || null);
-      } catch (err) {
-        console.error('Error fetching analytics data:', err);
-        setAnalyticsData(null);
+      if (role === 'professor') {
+        try {
+          const docPromises = activeCourses.map(async (c: any) => {
+            try {
+              const docsRes = await documentsApi.list(c.id);
+              return (docsRes.data || []).map((d: any) => ({
+                ...d,
+                courseTitle: c.title,
+                courseCode: c.code,
+                courseId: c.id
+              }));
+            } catch {
+              return [];
+            }
+          });
+          const docsResults = await Promise.all(docPromises);
+          const mergedDocs = docsResults.flat();
+          mergedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          setRecentDocuments(mergedDocs.slice(0, 5));
+        } catch (err) {
+          console.error('Error fetching documents:', err);
+        }
       }
+    } else {
+      setCourseGraphStatuses({});
+      setRecentDocuments([]);
     }
 
     setIsLoading(false);
@@ -156,25 +122,28 @@ export default function Dashboard() {
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await coursesApi.create({ 
-        title: courseTitle, 
-        code: courseCode,
-        description: courseDesc || undefined
-      } as any);
-      
+      if (role === 'student') {
+        await coursesApi.join(courseCode);
+      } else {
+        await coursesApi.create({ title: courseTitle, code: courseCode, description: courseDesc });
+      }
       setShowModal(false);
       setCourseTitle('');
       setCourseCode('');
       setCourseDesc('');
-      
-      // Refresh dashboard data
       loadDashboardData();
-    } catch (err) {
-      alert('Failed to create course');
+    } catch (err: any) {
+      addToast(err.response?.data?.detail || 'Failed to create/join class', 'error');
     }
   };
 
-  // Compute Stats
+  const greeting = useMemo(() => {
+    const hours = new Date().getHours();
+    if (hours < 12) return 'Good morning';
+    if (hours < 17) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
+
   const stats = useMemo(() => {
     const classesCount = courses.length;
     const totalDocumentsCount = courses.reduce((sum, c) => sum + (c.docs_count || 0), 0);
@@ -182,325 +151,144 @@ export default function Dashboard() {
     const progressSum = students.reduce((sum, s) => sum + (s.progress || 0), 0);
     const avgProgress = students.length > 0 ? Math.round(progressSum / students.length) : 0;
 
-    return {
-      classesCount,
-      totalDocumentsCount,
-      uniqueStudents,
-      avgProgress
-    };
+    return { classesCount, totalDocumentsCount, uniqueStudents, avgProgress };
   }, [courses, students]);
 
   if (role === 'student') {
     return (
-      <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] p-8">
-        <div className="max-w-5xl mx-auto space-y-8">
-          <h1 className="text-4xl font-black uppercase tracking-tight">Welcome back, {professorName}!</h1>
-          
-          {isLoading ? (
-            <div className="text-[#0A0A0A]/50 font-bold uppercase tracking-widest text-sm">Loading courses...</div>
-          ) : (
+      <div className="min-h-screen bg-black text-white p-8 lg:p-12 relative overflow-hidden">
+        <div className="max-w-6xl mx-auto space-y-12 relative z-10">
+          <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8">
+            <div>
+              <h1 className="text-4xl font-outfit font-light text-white tracking-tight">
+                {greeting}, <span className="font-bold">{professorName}</span>
+              </h1>
+            </div>
+            <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-6 py-2.5 bg-[#0A0A0A] hover:bg-[#111111] border border-[#1A1A1A] rounded-full text-white font-medium text-sm transition-all active:scale-95">
+              <Plus size={16} /> Join Class
+            </button>
+          </header>
+
+          {isLoading ? <div className="flex justify-center py-20 text-[#888888]"><Loader2 className="w-8 h-8 animate-spin" /></div> : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map((cls) => (
-                <div key={cls.id} className="bg-white border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[6px_6px_0_#0A0A0A] flex flex-col hover:-translate-y-1 hover:shadow-[8px_8px_0_#0A0A0A] transition-all">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-xl font-black uppercase tracking-tight">{cls.title}</h3>
-                    <MoreVertical size={20} className="text-[#0A0A0A]/40 cursor-pointer hover:text-[#0A0A0A]" />
-                  </div>
-                  
-                  <p className="text-sm font-bold font-['Inter'] text-[#0A0A0A]/70 mb-6 flex-1">
-                    {cls.description || 'No description provided'}
-                  </p>
-                  
-                  <div className="space-y-3 mt-auto">
-                    <button 
-                      className="w-full flex items-center justify-between px-4 py-3 bg-[#FFD166] text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl font-black shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all uppercase text-sm tracking-wider"
-                      onClick={() => navigate(`/student/courses/${cls.id}`)}
-                    >
-                      <span>Course Material</span>
-                      <ChevronRight size={18} className="stroke-[3px]" />
-                    </button>
-                    <button 
-                      className="w-full flex items-center justify-between px-4 py-3 bg-[#118AB2] text-white border-2 border-[#0A0A0A] rounded-xl font-black shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all uppercase text-sm tracking-wider"
-                      onClick={() => navigate(`/student/courses/${cls.id}/study`)}
-                    >
-                      <span>Study Mode</span>
-                      <ChevronRight size={18} className="stroke-[3px]" />
-                    </button>
+                <div key={cls.id} className="group bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-6 transition-all cursor-pointer" onClick={() => navigate(`/student/courses/${cls.id}`)}>
+                  <span className="text-xs font-semibold text-blue-500 uppercase mb-2 block">{cls.code}</span>
+                  <h3 className="text-xl font-medium text-white mb-6">{cls.title}</h3>
+                  <div className="pt-4 border-t border-[#1A1A1A] flex justify-between text-[#888888] group-hover:text-white transition-colors">
+                    <span className="text-xs font-medium uppercase tracking-widest">Enter Course</span>
+                    <ArrowRight size={16} />
                   </div>
                 </div>
               ))}
-              
-              <div 
-                className="bg-[#06D6A0]/10 border-[3px] border-dashed border-[#0A0A0A]/30 rounded-2xl p-6 flex flex-col justify-center items-center cursor-pointer hover:border-[#0A0A0A] hover:bg-[#06D6A0]/20 transition-colors group"
-                onClick={() => setShowModal(true)}
-              >
-                <div className="w-16 h-16 bg-white border-[3px] border-[#0A0A0A] rounded-full flex items-center justify-center mb-4 shadow-[4px_4px_0_#0A0A0A] group-hover:scale-110 transition-transform">
-                  <Plus size={32} className="text-[#0A0A0A] stroke-[3px]" />
-                </div>
-                <h3 className="text-xl font-black uppercase tracking-tight text-[#0A0A0A] mb-2">Join a class</h3>
-                <p className="text-sm font-bold text-[#0A0A0A]/50 uppercase tracking-widest text-center">Enroll using a code</p>
-              </div>
             </div>
           )}
         </div>
+
+        {showModal && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-8 max-w-md w-full">
+              <h2 className="text-2xl font-light text-white mb-6">Join Class</h2>
+              <form onSubmit={handleCreateCourse} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-[#888888] uppercase tracking-widest">Invite Code</label>
+                  <input className="w-full px-4 py-3 bg-[#111111] border border-[#1A1A1A] rounded-xl text-sm text-white focus:outline-none focus:border-[#333333] transition-all placeholder:text-[#555555]" placeholder="e.g. ABCDEF" value={courseCode} onChange={e => setCourseCode(e.target.value)} required />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 bg-transparent text-[#888888] hover:text-white rounded-xl text-sm font-medium transition-colors">Cancel</button>
+                  <button type="submit" className="flex-1 px-4 py-3 bg-white text-black hover:bg-neutral-200 rounded-xl text-sm font-semibold transition-colors">Join Class</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] p-6 lg:p-8">
+    <div className="min-h-screen bg-black text-white p-8 lg:p-12 relative overflow-hidden">
       
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="max-w-6xl mx-auto space-y-12 relative z-10">
         
-        {/* LEFT COLUMN: Main dashboard */}
-        <div className="lg:col-span-3 space-y-8">
-          <div className="flex justify-between items-center bg-white border-[3px] border-[#0A0A0A] p-6 rounded-2xl shadow-[6px_6px_0_#0A0A0A]">
-            <div>
-              <h1 className="text-3xl font-black uppercase tracking-tight">Overview Dashboard</h1>
-            </div>
-            <button 
-              onClick={() => setShowModal(true)} 
-              className="flex items-center gap-2 px-6 py-3 bg-[#FF4D5B] text-white border-[3px] border-[#0A0A0A] rounded-xl font-black uppercase tracking-widest text-sm shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all"
-            >
-              <Plus size={20} className="stroke-[3px]" />
-              <span>New Class</span>
-            </button>
+        {/* Header Section */}
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+          <div>
+            <h1 className="text-4xl font-outfit font-light text-white tracking-tight">
+              {greeting}, <span className="font-medium">Professor {professorName.split(' ')[0]}</span>
+            </h1>
+            <p className="text-sm text-[#888888] mt-3 font-medium tracking-wide max-w-lg leading-relaxed">
+              Welcome to your centralized intelligence hub. You have <span className="text-white font-medium">{stats.classesCount} active classes</span> training on your materials.
+            </p>
           </div>
+          <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-6 py-3 bg-white hover:bg-neutral-200 text-black rounded-full font-medium text-sm transition-all active:scale-95">
+            <Plus size={16} /> Create Class
+          </button>
+        </header>
 
-          {/* Welcome Banner Card (Premium Professor View) */}
-          <div className="bg-[#118AB2] border-[3px] border-[#0A0A0A] rounded-3xl p-8 lg:p-10 shadow-[8px_8px_0_#0A0A0A] flex flex-col md:flex-row justify-between items-center relative overflow-hidden group">
-            <div className="relative z-10 space-y-4 max-w-lg">
-              <h2 className="text-4xl font-black text-white uppercase tracking-tight">Welcome back, {professorName}!</h2>
-              <p className="text-lg font-bold font-['Inter'] text-white/90">
-                You have {stats.classesCount} active classes and {stats.totalDocumentsCount} study materials uploaded for your AI to learn.
-              </p>
-              <button 
-                onClick={() => navigate('/professor/classes')} 
-                className="mt-6 flex items-center gap-3 px-6 py-3 bg-white text-[#0A0A0A] border-[3px] border-[#0A0A0A] rounded-xl font-black uppercase tracking-widest text-sm shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all w-fit"
-              >
-                <span>Manage Classes & Materials</span>
-                <ArrowRight size={18} className="stroke-[3px]" />
-              </button>
+        {/* Top Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-5 flex flex-col justify-between h-32 hover:border-[#333333] transition-colors cursor-pointer" onClick={() => navigate('/professor/classes')}>
+            <div className="flex justify-between items-start text-[#888888]">
+              <span className="text-xs font-semibold uppercase tracking-widest">Classes</span>
+              <BookOpen size={18} />
             </div>
-            <div className="absolute right-0 bottom-0 md:static mt-8 md:mt-0 opacity-20 md:opacity-100 transform translate-x-1/4 translate-y-1/4 md:translate-x-0 md:translate-y-0">
-              <Sparkles className="w-48 h-48 text-[#FFD166] group-hover:rotate-12 transition-transform duration-500 stroke-1" />
-            </div>
+            <h3 className="text-3xl font-light text-white">{stats.classesCount}</h3>
           </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div 
-              onClick={() => navigate('/professor/classes')}
-              className="bg-[#06D6A0] border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] transition-all cursor-pointer flex flex-col"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[2px_2px_0_#0A0A0A]">
-                  <BookOpen size={24} className="text-[#0A0A0A] stroke-[2.5px]" />
-                </div>
-              </div>
-              <div className="space-y-1 mb-6 mt-auto">
-                <h3 className="text-4xl font-black text-[#0A0A0A]">{stats.classesCount}</h3>
-                <span className="text-sm font-black uppercase tracking-widest text-[#0A0A0A]/80">My Classes</span>
-              </div>
-              <div className="flex items-center justify-between text-[#0A0A0A] font-bold text-sm uppercase tracking-wider border-t-[3px] border-[#0A0A0A]/20 pt-3">
-                <span>View Roster</span>
-                <ArrowRight size={16} className="stroke-[3px]" />
-              </div>
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-5 flex flex-col justify-between h-32">
+            <div className="flex justify-between items-start text-[#888888]">
+              <span className="text-xs font-semibold uppercase tracking-widest">Documents</span>
+              <FolderOpen size={18} />
             </div>
-
-            <div 
-              onClick={() => navigate('/professor/classes')}
-              className="bg-[#FFD166] border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] transition-all cursor-pointer flex flex-col"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[2px_2px_0_#0A0A0A]">
-                  <FolderOpen size={24} className="text-[#0A0A0A] stroke-[2.5px]" />
-                </div>
-              </div>
-              <div className="space-y-1 mb-6 mt-auto">
-                <h3 className="text-4xl font-black text-[#0A0A0A]">{stats.totalDocumentsCount}</h3>
-                <span className="text-sm font-black uppercase tracking-widest text-[#0A0A0A]/80">Documents</span>
-              </div>
-              <div className="flex items-center justify-between text-[#0A0A0A] font-bold text-sm uppercase tracking-wider border-t-[3px] border-[#0A0A0A]/20 pt-3">
-                <span>Manage</span>
-                <ArrowRight size={16} className="stroke-[3px]" />
-              </div>
-            </div>
-
-            <div 
-              onClick={() => navigate('/professor/classes?tab=students')}
-              className="bg-[#EF476F] border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] transition-all cursor-pointer flex flex-col text-white"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[2px_2px_0_#0A0A0A]">
-                  <Users size={24} className="text-[#0A0A0A] stroke-[2.5px]" />
-                </div>
-              </div>
-              <div className="space-y-1 mb-6 mt-auto">
-                <h3 className="text-4xl font-black text-white">{stats.uniqueStudents}</h3>
-                <span className="text-sm font-black uppercase tracking-widest text-white/90">Students</span>
-              </div>
-              <div className="flex items-center justify-between text-white font-bold text-sm uppercase tracking-wider border-t-[3px] border-white/30 pt-3">
-                <span>View All</span>
-                <ArrowRight size={16} className="stroke-[3px]" />
-              </div>
-            </div>
-
-            <div 
-              onClick={() => navigate('/professor/classes')}
-              className="bg-purple-400 border-[3px] border-[#0A0A0A] rounded-2xl p-6 shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] transition-all cursor-pointer flex flex-col"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 bg-white border-[3px] border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[2px_2px_0_#0A0A0A]">
-                  <Award size={24} className="text-[#0A0A0A] stroke-[2.5px]" />
-                </div>
-              </div>
-              <div className="space-y-1 mb-6 mt-auto">
-                <h3 className="text-4xl font-black text-[#0A0A0A]">{stats.avgProgress}%</h3>
-                <span className="text-sm font-black uppercase tracking-widest text-[#0A0A0A]/80">Avg Progress</span>
-              </div>
-              <div className="flex items-center justify-between text-[#0A0A0A] font-bold text-sm uppercase tracking-wider border-t-[3px] border-[#0A0A0A]/20 pt-3">
-                <span>Reports</span>
-                <ArrowRight size={16} className="stroke-[3px]" />
-              </div>
-            </div>
+            <h3 className="text-3xl font-light text-white">{stats.totalDocumentsCount}</h3>
           </div>
-
-          {/* Widgets section */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            
-            {/* Recent Documents */}
-            <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A] flex flex-col">
-              <div className="flex justify-between items-center mb-6 pb-4 border-b-[3px] border-[#0A0A0A]/10">
-                <h4 className="text-2xl font-black uppercase tracking-tight">Recent Documents</h4>
-                <button 
-                  onClick={() => navigate('/professor/classes')} 
-                  className="px-4 py-2 bg-[#0A0A0A] text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-[#333] transition-colors"
-                >
-                  View All
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto">
-                {isLoading ? (
-                  <div className="h-full flex items-center justify-center font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Loading documents...</div>
-                ) : recentDocuments.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-[#0A0A0A]/50 space-y-4">
-                    <FolderOpen size={48} className="stroke-[1.5px]" />
-                    <p className="font-bold uppercase tracking-widest text-center">No documents uploaded yet.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {recentDocuments.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center p-4 bg-gray-50 border-2 border-[#0A0A0A] rounded-xl hover:bg-[#FFD166]/20 transition-colors">
-                        <div>
-                          <h5 className="font-black text-lg text-[#0A0A0A] truncate max-w-[200px] sm:max-w-xs">{item.name}</h5>
-                          <span className="text-xs font-bold uppercase tracking-widest text-[#0A0A0A]/50">{item.courseCode || item.courseTitle}</span>
-                        </div>
-                        <div className="text-right flex flex-col items-end gap-2">
-                          <span className={`px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded border-2 border-[#0A0A0A] ${item.status === 'processed' ? 'bg-[#06D6A0] text-[#0A0A0A]' : 'bg-amber-300 text-[#0A0A0A]'}`}>
-                            {item.status || 'pending'}
-                          </span>
-                          <span className="text-xs font-bold text-[#0A0A0A]/50">
-                            {item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-5 flex flex-col justify-between h-32">
+            <div className="flex justify-between items-start text-[#888888]">
+              <span className="text-xs font-semibold uppercase tracking-widest">Students</span>
+              <Users size={18} />
             </div>
-
-            {/* AI & Student Insights */}
-            <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A] flex flex-col">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 pb-4 border-b-[3px] border-[#0A0A0A]/10">
-                <h4 className="text-2xl font-black uppercase tracking-tight">AI & Student Insights</h4>
-                <div className="flex gap-2">
-                  <button 
-                    className={`px-3 py-1.5 border-2 border-[#0A0A0A] rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeInsightTab === 'kg' ? 'bg-[#FF4D5B] text-white shadow-[2px_2px_0_#0A0A0A]' : 'bg-gray-100 text-[#0A0A0A]/50 hover:bg-gray-200 shadow-none'}`}
-                    onClick={() => setActiveInsightTab('kg')}
-                  >
-                    Knowledge Graph
-                  </button>
-                  <button 
-                    className={`px-3 py-1.5 border-2 border-[#0A0A0A] rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeInsightTab === 'intent' ? 'bg-[#118AB2] text-white shadow-[2px_2px_0_#0A0A0A]' : 'bg-gray-100 text-[#0A0A0A]/50 hover:bg-gray-200 shadow-none'}`}
-                    onClick={() => setActiveInsightTab('intent')}
-                  >
-                    Interactions
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 min-h-[300px] border-[3px] border-[#0A0A0A] rounded-xl bg-gray-50/50 overflow-hidden relative p-2">
-                {isLoading ? (
-                  <div className="absolute inset-0 flex items-center justify-center font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Loading insights...</div>
-                ) : activeInsightTab === 'kg' ? (
-                  <div className="absolute inset-0">
-                    <KnowledgeGraphViewer data={analyticsData?.content?.knowledge_graph} />
-                  </div>
-                ) : (
-                  <div className="absolute inset-0">
-                    <IntentRadar data={analyticsData?.engagement?.intent_radar || []} />
-                  </div>
-                )}
-              </div>
+            <h3 className="text-3xl font-light text-white">{stats.uniqueStudents}</h3>
+          </div>
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-5 flex flex-col justify-between h-32">
+            <div className="flex justify-between items-start text-[#888888]">
+              <span className="text-xs font-semibold uppercase tracking-widest">Avg Progress</span>
+              <Award size={18} />
             </div>
-
+            <h3 className="text-3xl font-light text-white">{stats.avgProgress}%</h3>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: AI Brain Status & Quick Actions */}
-        <aside className="space-y-8">
+        {/* Main Grid: Classes (2/3) & Recent Activity (1/3) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* AI Brain Status widget */}
-          <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A]">
-            <div className="flex justify-between items-center mb-6 pb-4 border-b-[3px] border-[#0A0A0A]/10">
-              <h4 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-                <Sparkles size={24} className="text-[#FF4D5B] fill-[#FF4D5B]" />
-                <span>AI Brains</span>
-              </h4>
-              <span className="px-2 py-1 bg-[#0A0A0A] text-white text-[10px] font-black uppercase tracking-widest rounded border-2 border-[#0A0A0A]">
-                {courses.length} Active
-              </span>
-            </div>
-
-            {courses.length === 0 ? (
-              <div className="text-center py-8 space-y-4">
-                <Sparkles size={48} className="mx-auto text-[#0A0A0A]/20" />
-                <p className="font-bold text-sm text-[#0A0A0A]/50 uppercase tracking-widest">No AI Brains active.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
+          {/* Active Classes */}
+          <div className="lg:col-span-2 space-y-6">
+            <h2 className="text-lg font-outfit font-medium text-white tracking-tight">Active Environments</h2>
+            
+            {isLoading ? <div className="flex justify-center py-24 text-[#888888]"><Loader2 className="w-8 h-8 animate-spin" /></div> : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {courses.map((c) => {
                   const status = courseGraphStatuses[c.id] || 'no_documents';
-                  let statusLabel = 'No Materials';
-                  let statusClass = 'bg-gray-100 text-[#0A0A0A]/50 border-gray-300';
+                  const courseStudents = students.filter(s => s.course_id === c.id).length;
+                  let statusLabel = 'Setup Required';
+                  let statusColor = 'text-[#888888] border-[#1A1A1A]';
                   
-                  if (status === 'ready') {
-                    statusLabel = 'AI Trained';
-                    statusClass = 'bg-[#06D6A0] text-[#0A0A0A] border-[#0A0A0A]';
-                  } else if (status === 'processing') {
-                    statusLabel = 'Training...';
-                    statusClass = 'bg-[#FFD166] text-[#0A0A0A] border-[#0A0A0A] animate-pulse';
-                  } else if (c.docs_count > 0) {
-                    statusLabel = 'Ready to Train';
-                    statusClass = 'bg-[#FFD166] text-[#0A0A0A] border-[#0A0A0A]';
-                  }
+                  if (status === 'ready') { statusLabel = 'AI Ready'; statusColor = 'text-accent border-accent-border'; }
+                  else if (status === 'processing') { statusLabel = 'Training AI...'; statusColor = 'text-purple-400 border-purple-500/30 animate-pulse'; }
+                  else if (c.docs_count > 0) { statusLabel = 'Needs Training'; statusColor = 'text-amber-400 border-amber-500/30'; }
 
                   return (
-                    <div 
-                      key={c.id} 
-                      className="flex items-center justify-between p-3 border-2 border-[#0A0A0A] rounded-xl hover:bg-gray-50 cursor-pointer group transition-colors"
-                      onClick={() => navigate(`/professor/courses/${c.id}`)}
-                    >
-                      <div className="truncate pr-4">
-                        <h5 className="font-black text-sm uppercase tracking-tight">{c.code}</h5>
-                        <p className="text-[11px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest truncate max-w-[120px]">{c.title}</p>
+                    <div key={c.id} onClick={() => navigate(`/professor/courses/${c.id}`)} className="group bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 hover:border-[#333333] transition-all cursor-pointer">
+                      <span className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block mb-2">{c.code}</span>
+                      <h3 className="text-xl font-medium text-white mb-6 group-hover:text-blue-500 transition-colors">{c.title}</h3>
+                      <div className="flex items-center gap-4 mb-6 text-xs text-[#888888]">
+                        <span className="flex items-center gap-1.5"><Users size={14} /> {courseStudents} Enrolled</span>
+                        <span className="flex items-center gap-1.5"><BookOpen size={14} /> {c.docs_count || 0} Docs</span>
                       </div>
-                      <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest border-2 rounded ${statusClass} whitespace-nowrap`}>
-                        {statusLabel}
-                      </span>
+                      <div className="border-t border-[#1A1A1A] pt-4 flex justify-between items-center">
+                        <span className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-full border ${statusColor}`}>{statusLabel}</span>
+                        <ArrowRight size={16} className="text-[#333333] group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+                      </div>
                     </div>
                   );
                 })}
@@ -508,120 +296,62 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Quick Actions widget */}
-          <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-6 shadow-[8px_8px_0_#0A0A0A]">
-            <div className="mb-6 pb-4 border-b-[3px] border-[#0A0A0A]/10">
-              <h4 className="text-xl font-black uppercase tracking-tight">Quick Actions</h4>
-            </div>
-
-            <div className="space-y-4">
-              <button 
-                onClick={() => navigate('/professor/classes')}
-                className="w-full flex items-center gap-4 p-4 bg-white border-[3px] border-[#0A0A0A] rounded-xl shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all group"
-              >
-                <div className="w-10 h-10 bg-[#FFD166] border-2 border-[#0A0A0A] rounded-lg flex items-center justify-center text-xl shrink-0">
-                  📁
+          {/* Recent Documents */}
+          <div className="space-y-6">
+            <h2 className="text-lg font-outfit font-medium text-white tracking-tight">Recent Documents</h2>
+            
+            <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 h-[calc(100%-3rem)] flex flex-col">
+              {recentDocuments.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-[#888888]">
+                  <FileText size={32} className="mb-3 opacity-50" />
+                  <p className="text-sm font-medium">No documents uploaded.</p>
                 </div>
-                <div className="text-left flex-1">
-                  <h5 className="font-black text-[15px] uppercase tracking-tight">Upload Materials</h5>
-                  <p className="text-[11px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Add PDFs/notes</p>
+              ) : (
+                <div className="space-y-4">
+                  {recentDocuments.map((doc) => (
+                    <div key={doc.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-[#111111] cursor-pointer transition-colors" onClick={() => navigate(`/professor/courses/${doc.courseId}`)}>
+                      <div className="w-10 h-10 rounded-lg bg-[#1A1A1A] border border-[#333333] flex items-center justify-center text-[#888888]">
+                        <FileText size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-white truncate">{doc.filename}</h4>
+                        <p className="text-[10px] text-[#888888] uppercase tracking-widest mt-0.5">{doc.courseCode}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <ChevronRight size={20} className="stroke-[3px] text-[#0A0A0A]/30 group-hover:text-[#0A0A0A]" />
-              </button>
-
-              <button 
-                onClick={() => navigate('/professor/assignments')}
-                className="w-full flex items-center gap-4 p-4 bg-white border-[3px] border-[#0A0A0A] rounded-xl shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all group"
-              >
-                <div className="w-10 h-10 bg-[#EF476F] border-2 border-[#0A0A0A] rounded-lg flex items-center justify-center text-xl shrink-0">
-                  📝
-                </div>
-                <div className="text-left flex-1">
-                  <h5 className="font-black text-[15px] uppercase tracking-tight">Create Assignment</h5>
-                  <p className="text-[11px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Set up tests</p>
-                </div>
-                <ChevronRight size={20} className="stroke-[3px] text-[#0A0A0A]/30 group-hover:text-[#0A0A0A]" />
-              </button>
-
-              <button 
-                onClick={() => navigate('/professor/classes?tab=students')}
-                className="w-full flex items-center gap-4 p-4 bg-white border-[3px] border-[#0A0A0A] rounded-xl shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all group"
-              >
-                <div className="w-10 h-10 bg-[#118AB2] border-2 border-[#0A0A0A] rounded-lg flex items-center justify-center text-xl shrink-0">
-                  👥
-                </div>
-                <div className="text-left flex-1">
-                  <h5 className="font-black text-[15px] uppercase tracking-tight">Student Roster</h5>
-                  <p className="text-[11px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">Manage enrolled</p>
-                </div>
-                <ChevronRight size={20} className="stroke-[3px] text-[#0A0A0A]/30 group-hover:text-[#0A0A0A]" />
-              </button>
+              )}
             </div>
           </div>
 
-        </aside>
-
+        </div>
       </div>
 
-      {/* CREATE CLASS MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-[#0A0A0A]/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white border-[4px] border-[#0A0A0A] rounded-3xl p-8 max-w-md w-full shadow-[12px_12px_0_#0A0A0A]">
-            <h2 className="text-2xl font-black uppercase tracking-tight mb-6">Create New Class</h2>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-8 max-w-md w-full">
+            <h2 className="text-2xl font-light text-white mb-6">Create New Class</h2>
             <form onSubmit={handleCreateCourse} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-black uppercase tracking-widest">Class Title</label>
-                <input
-                  autoFocus
-                  className="w-full px-4 py-3 bg-white border-[3px] border-[#0A0A0A] rounded-xl font-bold font-['Inter'] shadow-[4px_4px_0_#0A0A0A] focus:outline-none focus:ring-4 focus:ring-[#FF4D5B]/20"
-                  placeholder="e.g. Mathematics - Grade 10"
-                  value={courseTitle}
-                  onChange={e => setCourseTitle(e.target.value)}
-                  required
-                />
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#888888] uppercase tracking-widest">Class Title</label>
+                <input className="w-full px-4 py-3 bg-[#111111] border border-[#1A1A1A] rounded-xl text-sm text-white focus:outline-none focus:border-[#333333] transition-all placeholder:text-[#555555]" placeholder="e.g. Intro to ML" value={courseTitle} onChange={e => setCourseTitle(e.target.value)} required />
               </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-black uppercase tracking-widest">Department Code</label>
-                <input
-                  className="w-full px-4 py-3 bg-white border-[3px] border-[#0A0A0A] rounded-xl font-bold font-['Inter'] shadow-[4px_4px_0_#0A0A0A] focus:outline-none focus:ring-4 focus:ring-[#FF4D5B]/20"
-                  placeholder="e.g. MATH-101"
-                  value={courseCode}
-                  onChange={e => setCourseCode(e.target.value)}
-                  required
-                />
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#888888] uppercase tracking-widest">Department Code</label>
+                <input className="w-full px-4 py-3 bg-[#111111] border border-[#1A1A1A] rounded-xl text-sm text-white focus:outline-none focus:border-[#333333] transition-all placeholder:text-[#555555]" placeholder="e.g. CS-101" value={courseCode} onChange={e => setCourseCode(e.target.value)} required />
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-black uppercase tracking-widest">Description</label>
-                <input
-                  className="w-full px-4 py-3 bg-white border-[3px] border-[#0A0A0A] rounded-xl font-bold font-['Inter'] shadow-[4px_4px_0_#0A0A0A] focus:outline-none focus:ring-4 focus:ring-[#FF4D5B]/20"
-                  placeholder="e.g. Quadratic Equations, Trigonometry"
-                  value={courseDesc}
-                  onChange={e => setCourseDesc(e.target.value)}
-                />
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#888888] uppercase tracking-widest">Description</label>
+                <textarea className="w-full px-4 py-3 bg-[#111111] border border-[#1A1A1A] rounded-xl text-sm text-white h-24 focus:outline-none focus:border-[#333333] transition-all placeholder:text-[#555555] resize-none" placeholder="Brief overview..." value={courseDesc} onChange={e => setCourseDesc(e.target.value)} />
               </div>
-
-              <div className="flex gap-4 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setShowModal(false)} 
-                  className="flex-1 py-3 px-4 bg-white border-[3px] border-[#0A0A0A] text-[#0A0A0A] rounded-xl font-black uppercase tracking-widest shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 py-3 px-4 bg-[#FF4D5B] border-[3px] border-[#0A0A0A] text-white rounded-xl font-black uppercase tracking-widest shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all"
-                >
-                  Create
-                </button>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 bg-transparent text-[#888888] hover:text-white rounded-xl text-sm font-medium transition-colors">Cancel</button>
+                <button type="submit" className="flex-1 px-4 py-3 bg-white text-black hover:bg-neutral-200 rounded-xl text-sm font-semibold transition-colors">Create Class</button>
               </div>
             </form>
           </div>
         </div>
       )}
-
     </div>
   );
 }

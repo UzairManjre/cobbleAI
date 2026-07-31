@@ -36,7 +36,6 @@ export default function StudyMode() {
   useEffect(() => {
     const nodeId = searchParams.get('node');
     if (nodeId && nodes.length > 0 && !isLoading) {
-      // Navigate to the specified node
       setCurrentNode(nodeId);
       navigateToNode(nodeId);
     }
@@ -54,22 +53,12 @@ export default function StudyMode() {
     try {
       await fetchCourseGraph(courseId!);
       const state = useGraphStore.getState();
-      console.log('StudyMode - Graph state after fetch:', {
-        nodesCount: state.nodes?.length || 0,
-        edgesCount: state.edges?.length || 0,
-        currentNodeId: state.currentNodeId,
-        graphId: state.graphId,
-        error: state.error
-      });
       
       if (state.nodes && state.nodes.length > 0) {
         setShowGenerator(false);
-        // Ensure currentNodeId is set
         if (!state.currentNodeId && state.nodes.length > 0) {
           setCurrentNode(state.nodes[0].id);
         }
-      } else if (state.error) {
-        console.error('Graph fetch error:', state.error);
       }
     } catch (err) {
       console.log('No existing graph found, showing generator:', err);
@@ -96,10 +85,10 @@ export default function StudyMode() {
 
   if (isCheckingGraph) {
     return (
-      <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] flex items-center justify-center p-8">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center p-8">
         <div className="text-center">
-          <RefreshCw className="w-12 h-12 text-[#FF4D5B] animate-spin mx-auto mb-4 stroke-[3px]" />
-          <div className="text-[#0A0A0A]/60 font-black tracking-wider text-xl">LOADING STUDY SESSION...</div>
+          <RefreshCw className="w-10 h-10 text-white animate-spin mx-auto mb-4" />
+          <div className="text-[#888888] font-medium tracking-widest uppercase text-sm">LOADING STUDY SESSION...</div>
         </div>
       </div>
     );
@@ -107,16 +96,16 @@ export default function StudyMode() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] flex items-center justify-center p-8">
-        <div className="max-w-md text-center bg-white border-[3px] border-[#0A0A0A] rounded-2xl p-10 shadow-[8px_8px_0_#0A0A0A]">
-          <div className="w-20 h-20 bg-red-100 border-[3px] border-[#0A0A0A] rounded-full flex items-center justify-center mx-auto mb-6 shadow-[4px_4px_0_#0A0A0A]">
-            <span className="text-4xl">⚠️</span>
+      <div className="min-h-screen bg-black text-white flex items-center justify-center p-8">
+        <div className="max-w-md text-center bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-8">
+          <div className="w-16 h-16 bg-[#111111] border border-[#1A1A1A] rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+            ⚠️
           </div>
-          <h2 className="text-2xl font-black text-[#0A0A0A] mb-3">Error Loading Graph</h2>
-          <p className="text-[#0A0A0A]/70 font-bold mb-8 font-['Inter']">{error}</p>
+          <h2 className="text-xl font-light text-white mb-2">Error Loading Graph</h2>
+          <p className="text-[#888888] text-sm mb-6">{error}</p>
           <button
             onClick={() => initStudySession()}
-            className="px-6 py-3 bg-white text-[#0A0A0A] border-[3px] border-[#0A0A0A] rounded-xl font-black shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-[2px_2px_0_#0A0A0A] transition-all"
+            className="px-6 py-2.5 bg-white text-black hover:bg-neutral-200 rounded-xl font-semibold text-sm transition-all"
           >
             Retry
           </button>
@@ -127,70 +116,70 @@ export default function StudyMode() {
 
   if (showGenerator) {
     return (
-      <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] flex flex-col items-center justify-center p-8">
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-8">
         <div className="max-w-xl w-full">
           <button
             onClick={() => navigate(courseId ? `/${role}/courses/${courseId}` : dashboardRoute)}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[2px_2px_0_#0A0A0A] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-all mb-8 w-fit"
+            className="flex items-center gap-2 px-4 py-2 bg-[#0A0A0A] text-white border border-[#1A1A1A] hover:border-[#333333] rounded-xl font-medium transition-all mb-8 w-fit text-sm"
           >
-            <ArrowLeft className="w-4 h-4 stroke-[3px]" />
-            <span className="text-sm">Back</span>
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
           </button>
 
-          <div className="bg-white border-[3px] border-[#0A0A0A] rounded-3xl p-10 shadow-[8px_8px_0_#0A0A0A]">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-16 h-16 rounded-2xl bg-[#FFD166] border-[3px] border-[#0A0A0A] flex items-center justify-center shadow-[4px_4px_0_#0A0A0A]">
-                <BookOpen className="w-8 h-8 text-[#0A0A0A] stroke-[2.5px]" />
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-3xl p-8">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-[#111111] border border-[#1A1A1A] flex items-center justify-center text-white">
+                <BookOpen className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-[#0A0A0A] tracking-tight">Generate Knowledge Graph</h1>
-                <p className="text-sm font-bold text-[#0A0A0A]/60 mt-1 uppercase tracking-wider">Choose how to build your learning graph</p>
+                <h1 className="text-2xl font-light text-white tracking-tight">Generate Knowledge Graph</h1>
+                <p className="text-xs text-[#888888] mt-0.5 uppercase tracking-widest font-semibold">Choose how to build your learning graph</p>
               </div>
             </div>
 
             {/* Mode Toggle */}
-            <div className="flex gap-4 mb-8">
+            <div className="flex gap-3 mb-6">
               <button
                 onClick={() => setMode('topic')}
-                className={`flex-1 py-3 px-4 border-[3px] border-[#0A0A0A] rounded-xl text-lg font-black transition-all ${
-                  mode === 'topic' ? 'bg-[#118AB2] text-white shadow-[4px_4px_0_#0A0A0A]' : 'bg-gray-100 text-[#0A0A0A]/50 shadow-none hover:bg-gray-200'
+                className={`flex-1 py-3 px-4 border rounded-xl text-sm font-semibold transition-all ${
+                  mode === 'topic' ? 'bg-white text-black border-white' : 'bg-[#111111] text-[#888888] border-[#1A1A1A] hover:text-white'
                 }`}
               >
                 From Topic
               </button>
               <button
                 onClick={() => setMode('docs')}
-                className={`flex-1 py-3 px-4 border-[3px] border-[#0A0A0A] rounded-xl text-lg font-black transition-all ${
-                  mode === 'docs' ? 'bg-[#118AB2] text-white shadow-[4px_4px_0_#0A0A0A]' : 'bg-gray-100 text-[#0A0A0A]/50 shadow-none hover:bg-gray-200'
+                className={`flex-1 py-3 px-4 border rounded-xl text-sm font-semibold transition-all ${
+                  mode === 'docs' ? 'bg-white text-black border-white' : 'bg-[#111111] text-[#888888] border-[#1A1A1A] hover:text-white'
                 }`}
               >
                 From Documents
               </button>
             </div>
 
-            <form onSubmit={handleGenerate} className="space-y-6">
+            <form onSubmit={handleGenerate} className="space-y-5">
               {mode === 'topic' ? (
                 <input
                   type="text"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="e.g., Machine Learning, Quantum Physics"
-                  className="w-full bg-white border-[3px] border-[#0A0A0A] rounded-xl px-5 py-4 text-lg font-bold text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus:outline-none focus:ring-4 focus:ring-[#FF4D5B]/30 shadow-[4px_4px_0_#0A0A0A] transition-all"
+                  className="w-full bg-[#111111] border border-[#1A1A1A] rounded-xl px-4 py-3 text-sm text-white placeholder:text-[#555555] focus:outline-none focus:border-[#333333] transition-all"
                   disabled={isLoading}
                 />
               ) : (
-                <div className="p-6 bg-[#06D6A0]/10 border-2 border-[#0A0A0A] rounded-xl text-lg font-bold text-[#0A0A0A] text-center shadow-[4px_4px_0_#06D6A0]">
+                <div className="p-4 bg-[#111111] border border-[#1A1A1A] rounded-xl text-xs text-[#888888] text-center leading-relaxed font-medium">
                   Will extract concepts from all uploaded course documents and build a connected knowledge graph.
                 </div>
               )}
               <button
                 type="submit"
                 disabled={isLoading || (mode === 'topic' && !topic.trim())}
-                className="w-full bg-[#FF4D5B] text-white border-[3px] border-[#0A0A0A] disabled:opacity-50 disabled:active:translate-y-0 disabled:active:shadow-[6px_6px_0_#0A0A0A] py-4 rounded-xl text-xl font-black transition-all shadow-[6px_6px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[8px_8px_0_#0A0A0A] active:translate-y-0 active:shadow-[2px_2px_0_#0A0A0A] flex justify-center items-center gap-2"
+                className="w-full bg-white text-black hover:bg-neutral-200 disabled:opacity-50 py-3.5 rounded-xl text-sm font-semibold transition-all flex justify-center items-center gap-2"
               >
                 {isLoading ? (
                    <>
-                     <RefreshCw className="w-6 h-6 animate-spin stroke-[3px]" />
+                     <RefreshCw className="w-4 h-4 animate-spin" />
                      {mode === 'docs' ? 'Extracting...' : 'Generating...'}
                    </>
                 ) : (
@@ -200,7 +189,7 @@ export default function StudyMode() {
             </form>
 
             {error && (
-              <div className="mt-6 p-4 bg-red-50 border-2 border-red-500 rounded-xl text-red-600 font-bold shadow-[4px_4px_0_#EF4444]">
+              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 font-medium text-xs">
                 {error}
               </div>
             )}
@@ -214,26 +203,26 @@ export default function StudyMode() {
 
   if (!activeNodeId) {
     return (
-      <div className="min-h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] flex items-center justify-center">
-        <div className="text-xl font-black uppercase tracking-widest text-[#0A0A0A]/40">No active session</div>
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-sm font-semibold uppercase tracking-widest text-[#888888]">No active session</div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] flex flex-col">
+    <div className="h-screen bg-black text-white flex flex-col">
       {/* Header */}
-      <header className="h-16 bg-white border-b-[3px] border-[#0A0A0A] flex items-center justify-between px-6 shrink-0 shadow-sm z-10">
+      <header className="h-16 bg-[#0A0A0A] border-b border-[#1A1A1A] flex items-center justify-between px-6 shrink-0 z-10">
         <div className="flex items-center gap-6">
           <button
             onClick={() => navigate(courseId ? `/${role}/courses/${courseId}` : dashboardRoute)}
-            className="px-3 py-1.5 bg-white border-2 border-[#0A0A0A] rounded-lg shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center justify-center"
+            className="p-2 bg-[#111111] border border-[#1A1A1A] rounded-lg hover:border-[#333333] transition-all text-[#888888] hover:text-white"
           >
-            <ArrowLeft className="w-5 h-5 text-[#0A0A0A] stroke-[3px]" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-xl font-black tracking-tight uppercase">Study Mode</h1>
-            <p className="text-[12px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">
+            <h1 className="text-lg font-medium tracking-tight uppercase text-white">Study Mode</h1>
+            <p className="text-[11px] font-semibold text-[#888888] uppercase tracking-widest">
               {nodes.length} concepts • {edges.length} connections
             </p>
           </div>
@@ -242,47 +231,44 @@ export default function StudyMode() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsGraphCollapsed(!isGraphCollapsed)}
-            className="px-4 py-2 bg-white text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[2px_2px_0_#0A0A0A] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0A0A0A] active:translate-y-0 active:shadow-none transition-all flex items-center gap-2 text-xs uppercase tracking-wider"
+            className="px-4 py-2 bg-[#111111] text-white border border-[#1A1A1A] hover:border-[#333333] rounded-xl font-medium transition-all text-xs uppercase tracking-wider"
           >
             {isGraphCollapsed ? '🕸 Show Graph' : '💬 Focus Tutor Chat'}
           </button>
 
-          <div className="bg-[#FFD166] border-2 border-[#0A0A0A] px-3 py-1.5 rounded-lg shadow-[2px_2px_0_#0A0A0A] text-[12px] font-black uppercase tracking-wider">
-            Visited: {useGraphStore.getState().visitedNodes.length}/{nodes.length}
+          <div className="bg-[#111111] border border-[#1A1A1A] px-3 py-1.5 rounded-lg text-[11px] font-semibold text-[#888888] uppercase tracking-wider">
+            Visited: <span className="text-white">{useGraphStore.getState().visitedNodes.length}</span>/{nodes.length}
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* If graph is NOT collapsed, render the graph section */}
         {!isGraphCollapsed && (
-          <div className="flex-1 border-r-[3px] border-[#0A0A0A] relative bg-gray-50/50">
+          <div className="flex-1 border-r border-[#1A1A1A] relative bg-[#050505]">
             <KnowledgeGraph onNodeClick={handleNodeClick} />
           </div>
         )}
 
         {/* Panels */}
         {isGraphCollapsed ? (
-          // Collapsed Mode: Dual Column Layout (40% Node Info / 60% Massive Chat)
-          <div className="w-full h-full flex overflow-hidden bg-white">
-            <div className="flex-[4] overflow-y-auto border-r-[3px] border-[#0A0A0A] relative bg-white">
+          <div className="w-full h-full flex overflow-hidden bg-black">
+            <div className="flex-[4] overflow-y-auto border-r border-[#1A1A1A] relative bg-[#0A0A0A]">
               <NodeInfo nodeId={activeNodeId} onNavigate={handleNodeClick} />
             </div>
-            <div className="flex-[6] overflow-hidden relative bg-gray-50/50">
+            <div className="flex-[6] overflow-hidden relative bg-[#050505]">
               <TutorChat key={activeNodeId} nodeId={activeNodeId} isMassive={true} />
             </div>
           </div>
         ) : (
-          // Normal Mode: standard right panel stack
-          <div className="w-[450px] flex flex-col overflow-hidden bg-white shrink-0">
+          <div className="w-[450px] flex flex-col overflow-hidden bg-[#0A0A0A] shrink-0">
             {/* Node Info */}
-            <div className="flex-1 overflow-y-auto border-b-[3px] border-[#0A0A0A]">
+            <div className="flex-1 overflow-y-auto border-b border-[#1A1A1A]">
               <NodeInfo nodeId={activeNodeId} onNavigate={handleNodeClick} />
             </div>
 
             {/* Chat */}
-            <div className="h-[450px] bg-gray-50/50 shrink-0">
+            <div className="h-[450px] bg-[#050505] shrink-0">
               <TutorChat key={activeNodeId} nodeId={activeNodeId} />
             </div>
           </div>
@@ -292,15 +278,15 @@ export default function StudyMode() {
         {isGraphCollapsed && (
           <button
             onClick={() => setIsGraphCollapsed(false)}
-            className="absolute bottom-6 left-6 z-30 px-5 py-3.5 bg-[#118AB2] text-white border-[3px] border-[#0A0A0A] rounded-2xl font-black shadow-[4px_4px_0_#0A0A0A] hover:-translate-y-1 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0 active:shadow-[2px_2px_0_#0A0A0A] transition-all flex items-center gap-2.5 uppercase text-[10px] tracking-widest cursor-pointer"
+            className="absolute bottom-6 left-6 z-30 px-4 py-3 bg-[#111111] text-white border border-[#1A1A1A] hover:border-[#333333] rounded-xl font-medium transition-all flex items-center gap-2 text-xs uppercase tracking-widest shadow-2xl cursor-pointer"
           >
-            <span className="text-sm">🕸</span> Show Knowledge Graph
+            <span>🕸</span> Show Knowledge Graph
           </button>
         )}
       </div>
 
       {error && (
-        <div className="fixed bottom-6 right-6 p-4 bg-red-50 border-[3px] border-[#0A0A0A] rounded-xl text-red-600 font-bold shadow-[6px_6px_0_#EF4444] max-w-md z-50">
+        <div className="fixed bottom-6 right-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 font-medium text-xs max-w-md z-50">
           {error}
         </div>
       )}

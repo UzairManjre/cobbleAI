@@ -17,32 +17,32 @@ interface Message {
 const MsgContent = ({ content }: { content: string }) => {
   const [showReasoning, setShowReasoning] = useState(false);
 
-  if (!content) return <span className="opacity-50 font-black tracking-widest uppercase text-xs">Initializing...</span>;
+  if (!content) return <span className="opacity-50 font-medium text-xs tracking-wider uppercase">Initializing...</span>;
 
   const thoughtMatch = typeof content === 'string' ? content.match(/<thought>([\s\S]*?)<\/thought>/g) : null;
   const reasoning = thoughtMatch ? thoughtMatch.map(m => m.replace(/<\/?thought>/g, '')).join('\n') : '';
   const cleanContent = typeof content === 'string' ? content.replace(/<thought>[\s\S]*?<\/thought>/g, '').trim() : '';
 
-  if (!cleanContent && !reasoning) return <span className="opacity-50 font-black tracking-widest uppercase text-xs">...</span>;
+  if (!cleanContent && !reasoning) return <span className="opacity-50 font-medium text-xs tracking-wider uppercase">...</span>;
 
   return (
     <div className="space-y-4">
       {reasoning && (
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl overflow-hidden transition-all duration-300 shadow-sm">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl overflow-hidden transition-all duration-300">
           <button
             type="button"
             onClick={() => setShowReasoning(!showReasoning)}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-blue-100/50 transition-colors focus:outline-none"
+            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-blue-500/20 transition-colors focus:outline-none"
           >
-            <div className="flex items-center gap-2 text-[12px] font-extrabold text-[#0A0A0A] uppercase tracking-widest">
-              <Brain size={14} className={showReasoning ? 'text-blue-600 stroke-[3px]' : 'text-blue-400 stroke-[3px]'} />
+            <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 uppercase tracking-wider">
+              <Brain size={14} className="text-blue-400" />
               Thinking Process
             </div>
-            {showReasoning ? <ChevronUp size={16} className="text-[#0A0A0A] stroke-[3px]" /> : <ChevronDown size={16} className="text-[#0A0A0A] stroke-[3px]" />}
+            {showReasoning ? <ChevronUp size={14} className="text-blue-400" /> : <ChevronDown size={14} className="text-blue-400" />}
           </button>
 
           {showReasoning && (
-            <div className="px-4 pb-4 text-[13px] text-[#0A0A0A]/70 font-bold font-['Inter'] leading-relaxed border-t-2 border-blue-200/50 pt-3 italic whitespace-pre-wrap">
+            <div className="px-4 pb-4 text-xs text-[#CCCCCC] leading-relaxed border-t border-blue-500/20 pt-3 italic whitespace-pre-wrap">
               {reasoning}
             </div>
           )}
@@ -50,13 +50,13 @@ const MsgContent = ({ content }: { content: string }) => {
       )}
 
       {cleanContent && (
-        <div className="prose max-w-none text-sm font-['Inter'] leading-relaxed text-[#0A0A0A]">
+        <div className="prose prose-invert max-w-none text-sm leading-relaxed text-white">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              p: ({node, ...props}) => <p className="my-0 font-medium" {...props} />,
-              pre: ({node, ...props}) => <pre className="bg-gray-50 border-2 border-[#0A0A0A] p-4 rounded-xl overflow-x-auto my-3 shadow-[2px_2px_0_#0A0A0A]" {...props} />,
-              code: ({node, ...props}) => <code className="text-purple-700 bg-purple-50 font-bold px-1.5 py-0.5 rounded-md border border-purple-200" {...props} />
+              p: ({node, ...props}) => <p className="my-0 font-normal" {...props} />,
+              pre: ({node, ...props}) => <pre className="bg-[#050505] border border-[#1A1A1A] p-4 rounded-xl overflow-x-auto my-3 text-xs" {...props} />,
+              code: ({node, ...props}) => <code className="text-purple-300 bg-purple-500/10 font-mono text-xs px-1.5 py-0.5 rounded border border-purple-500/20" {...props} />
             }}
           >
             {cleanContent}
@@ -67,11 +67,6 @@ const MsgContent = ({ content }: { content: string }) => {
   );
 };
 
-/**
- * Generate or retrieve a persistent chat session ID.
- * Uses localStorage with a TTL so sessions survive tab close/reopen.
- * Falls back to a fresh UUID if the stored session is expired.
- */
 const SESSION_STORAGE_KEY = 'chat_session_id';
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -115,21 +110,18 @@ export default function Chat() {
   const { token } = useAuthStore();
   const { nodes, currentNodeId, fetchCourseGraph, navigateToNode, setCurrentNode } = useGraphStore();
 
-  // Stable session ID across renders (not tab-close)
   const sessionIdRef = useRef<string>(getOrCreateSessionId());
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Fetch graph when courseId is present
   useEffect(() => {
     if (courseId) {
       fetchCourseGraph(courseId);
     }
   }, [courseId, fetchCourseGraph]);
 
-  // Auto-select first node when graph loads
   useEffect(() => {
     if (nodes.length > 0 && !currentNodeId) {
       setCurrentNode(nodes[0].id);
@@ -269,15 +261,15 @@ export default function Chat() {
   ];
 
   const chatPanel = (
-    <div className="flex flex-col h-full bg-[#FCFCFC] font-['Outfit']">
-      <div className="flex items-center justify-between px-6 py-4 border-b-[3px] border-[#0A0A0A] bg-white shrink-0 shadow-sm z-10">
+    <div className="flex flex-col h-full bg-black text-white">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[#1A1A1A] bg-[#0A0A0A] shrink-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#FFD166] border-2 border-[#0A0A0A] rounded-xl flex items-center justify-center shadow-[2px_2px_0_#0A0A0A]">
-            <Brain className="w-5 h-5 text-[#0A0A0A] stroke-[2.5px]" />
+          <div className="w-9 h-9 bg-[#111111] border border-[#1A1A1A] rounded-xl flex items-center justify-center text-white">
+            <Brain className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-black text-[#0A0A0A] uppercase tracking-tight">Cobble AI</h2>
-            <p className="text-[11px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">{mode} mode</p>
+            <h2 className="text-base font-medium text-white tracking-tight uppercase">Cobble AI</h2>
+            <p className="text-[10px] font-semibold text-[#888888] uppercase tracking-widest">{mode} mode</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -285,30 +277,30 @@ export default function Chat() {
             <button
               key={m.key}
               onClick={() => setMode(m.key)}
-              className={`px-3 py-2 rounded-xl text-xs font-black transition-all border-2 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 ${
                 mode === m.key
-                  ? 'bg-[#118AB2] text-white border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A]'
-                  : 'bg-white text-[#0A0A0A] border-transparent hover:border-[#0A0A0A]/20'
+                  ? 'bg-white text-black border-white'
+                  : 'bg-[#111111] text-[#888888] border-[#1A1A1A] hover:text-white'
               }`}
             >
-              <m.icon size={14} className={mode === m.key ? 'stroke-[3px]' : 'stroke-[2.5px]'} />
+              <m.icon size={14} />
               {m.label}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-gray-50/50">
+      <div className="flex-1 overflow-y-auto bg-[#050505]">
         <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
           {messages.map((m, idx) => (
             <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`w-full max-w-[85%] ${
                 m.role === 'user'
-                  ? 'bg-[#FF4D5B] text-white rounded-2xl rounded-br-none p-5 shadow-[4px_4px_0_#0A0A0A] border-[3px] border-[#0A0A0A]'
-                  : 'bg-white text-[#0A0A0A] rounded-2xl rounded-bl-none p-6 shadow-[4px_4px_0_#0A0A0A] border-[3px] border-[#0A0A0A]'
+                  ? 'bg-white text-black rounded-2xl rounded-br-none p-4 font-medium text-sm'
+                  : 'bg-[#0A0A0A] text-white rounded-2xl rounded-bl-none p-5 border border-[#1A1A1A]'
               }`}>
                 {m.role === 'user' ? (
-                  <p className="text-[15px] font-bold leading-relaxed">{m.content}</p>
+                  <p className="text-sm font-medium leading-relaxed">{m.content}</p>
                 ) : (
                   <MsgContent content={m.content} />
                 )}
@@ -317,12 +309,12 @@ export default function Chat() {
           ))}
           {isTyping && (
             <div className="flex justify-start">
-              <div className="bg-white border-[3px] border-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] rounded-2xl rounded-bl-none px-5 py-4 flex items-center gap-2 w-fit">
-                <span className="text-[12px] font-black uppercase tracking-widest text-[#0A0A0A] mr-2">Thinking</span>
+              <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-2 w-fit">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#888888] mr-2">Thinking</span>
                 <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-[#FF4D5B] border border-[#0A0A0A] rounded-full animate-bounce [animation-delay:0ms]" />
-                  <span className="w-2 h-2 bg-[#118AB2] border border-[#0A0A0A] rounded-full animate-bounce [animation-delay:150ms]" />
-                  <span className="w-2 h-2 bg-[#06D6A0] border border-[#0A0A0A] rounded-full animate-bounce [animation-delay:300ms]" />
+                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 bg-[#888888] rounded-full animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 bg-[#444444] rounded-full animate-bounce [animation-delay:300ms]" />
                 </div>
               </div>
             </div>
@@ -331,7 +323,7 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="border-t-[3px] border-[#0A0A0A] p-5 bg-white z-10">
+      <div className="border-t border-[#1A1A1A] p-4 bg-[#0A0A0A] z-10">
         <div className="max-w-3xl mx-auto">
           <form onSubmit={handleSend} className="relative flex gap-3">
             <input
@@ -339,18 +331,18 @@ export default function Chat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="Message Cobble AI..."
-              className="w-full bg-white border-[3px] border-[#0A0A0A] text-[15px] font-bold text-[#0A0A0A] placeholder:text-[#0A0A0A]/40 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-4 focus:ring-[#FF4D5B]/20 shadow-[4px_4px_0_#0A0A0A] transition-all"
+              className="w-full bg-[#111111] border border-[#1A1A1A] text-sm text-white placeholder:text-[#555555] rounded-xl px-4 py-3 focus:outline-none focus:border-[#333333] transition-all"
               disabled={isTyping}
             />
             <button
               type="submit"
               disabled={!input.trim() || isTyping}
-              className="px-6 bg-[#FF4D5B] text-white border-[3px] border-[#0A0A0A] hover:bg-[#ff3344] disabled:opacity-50 disabled:active:translate-y-0 disabled:active:shadow-[4px_4px_0_#0A0A0A] rounded-xl transition-all shadow-[4px_4px_0_#0A0A0A] active:translate-y-1 active:shadow-none flex items-center justify-center shrink-0"
+              className="px-5 bg-white text-black hover:bg-neutral-200 disabled:opacity-50 rounded-xl transition-all flex items-center justify-center shrink-0"
             >
-              <Send size={20} className="stroke-[2.5px] -ml-1" />
+              <Send size={18} />
             </button>
           </form>
-          <p className="text-center text-[11px] text-[#0A0A0A]/40 mt-3 font-bold uppercase tracking-wider">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
+          <p className="text-center text-[10px] text-[#555555] mt-2 font-medium uppercase tracking-wider">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
         </div>
       </div>
     </div>
@@ -358,20 +350,20 @@ export default function Chat() {
 
   if (!courseId) {
     return (
-      <div className="h-full bg-[#FCFCFC] text-[#0A0A0A] font-['Outfit']">
+      <div className="h-full bg-black text-white">
         {chatPanel}
       </div>
     );
   }
 
   return (
-    <div className="h-full bg-[#FCFCFC] font-['Outfit'] text-[#0A0A0A] flex overflow-hidden">
+    <div className="h-full bg-black text-white flex overflow-hidden">
       {/* Graph Panel */}
-      <div className="flex-1 border-r-[3px] border-[#0A0A0A] bg-gray-50/50">
+      <div className="flex-1 border-r border-[#1A1A1A] bg-[#050505]">
         <div className="h-full flex flex-col">
-          <div className="px-6 py-4 border-b-[3px] border-[#0A0A0A] bg-white shrink-0 flex items-center justify-between">
-            <h2 className="text-lg font-black text-[#0A0A0A] uppercase tracking-tight">Knowledge Graph</h2>
-            <span className="text-[12px] font-bold text-[#0A0A0A]/50 uppercase tracking-widest">{nodes.length} concepts</span>
+          <div className="px-6 py-4 border-b border-[#1A1A1A] bg-[#0A0A0A] shrink-0 flex items-center justify-between">
+            <h2 className="text-base font-medium text-white tracking-tight uppercase">Knowledge Graph</h2>
+            <span className="text-[11px] font-semibold text-[#888888] uppercase tracking-widest">{nodes.length} concepts</span>
           </div>
           <div className="flex-1">
             <KnowledgeGraph onNodeClick={handleNodeClick} />
@@ -379,7 +371,7 @@ export default function Chat() {
         </div>
       </div>
       {/* Chat Panel */}
-      <div className="w-[500px] flex flex-col border-l-2 border-[#0A0A0A]/10">
+      <div className="w-[500px] flex flex-col border-l border-[#1A1A1A]">
         {chatPanel}
       </div>
     </div>

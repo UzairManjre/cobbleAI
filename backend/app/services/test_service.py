@@ -117,6 +117,13 @@ class TestService:
         if user.role == "professor" and course.professor_id != user.id:
             raise HTTPException(status_code=403, detail="Not your course")
             
+        if user.role == "student":
+            from app.repositories.course_repository import EnrolmentRepository
+            enrolment_repo = EnrolmentRepository()
+            enrolment = await enrolment_repo.find_by_student_and_course(user.id, course_uuid)
+            if not enrolment:
+                raise HTTPException(status_code=403, detail="Not enrolled in this course")
+                
         query = Test.find(Test.course_id == course_uuid)
         if user.role == "student":
             query = query.find(Test.status == "published")
@@ -133,8 +140,14 @@ class TestService:
             raise HTTPException(status_code=404, detail="Test not found")
         if user.role == "professor" and str(test.professor_id) != str(user.id):
             raise HTTPException(status_code=403, detail="Not your test")
-        if user.role == "student" and test.status != "published":
-            raise HTTPException(status_code=403, detail="Test not available")
+        if user.role == "student":
+            if test.status != "published":
+                raise HTTPException(status_code=403, detail="Test not available")
+            from app.repositories.course_repository import EnrolmentRepository
+            enrolment_repo = EnrolmentRepository()
+            enrolment = await enrolment_repo.find_by_student_and_course(user.id, test.course_id)
+            if not enrolment:
+                raise HTTPException(status_code=403, detail="Not enrolled in this course")
             
         now = datetime.now(timezone.utc)
         if test.available_from:
@@ -200,6 +213,11 @@ class TestService:
         if attempt.status == "submitted":
             return attempt, 0, 0
             
+        if req.last_saved_at and attempt.last_saved_at:
+            # Check for optimistic concurrency (version/timestamp check)
+            if attempt.last_saved_at.isoformat() != req.last_saved_at:
+                raise HTTPException(status_code=409, detail="A newer version of this test attempt exists. Please refresh.")
+        
         test = await Test.get(attempt.test_id)
         if not test:
             raise HTTPException(status_code=404, detail="Test not found")
@@ -219,36 +237,46 @@ class TestService:
                 selected_options=ans_req.selected_options,
                 time_spent_seconds=ans_req.time_spent_seconds
             )
-            if question.type == "mcq" and ans_req.selected_option_id:
-                is_correct, marks = evaluator.evaluate_mcq(question, ans_req.selected_option_id)
-                answer.is_correct = is_correct
-                answer.marks_awarded = marks
-                answer.graded_by = "auto"
-            elif question.type == "true_false" and ans_req.answer_text:
-                try:
-                    student_answer = ans_req.answer_text.lower() in ["true", "yes", "1"]
-                    is_correct, marks = evaluator.evaluate_true_false(question, student_answer)
+            if not req.is_auto_save:
+                if question.type == "mcq" and ans_req.selected_option_id:
+                    is_correct, marks = evaluator.evaluate_mcq(question, ans_req.selected_option_id)
                     answer.is_correct = is_correct
                     answer.marks_awarded = marks
                     answer.graded_by = "auto"
-                except:
-                    pass
-            elif question.type in ["short_answer", "code", "essay"] and ans_req.answer_text:
-                is_correct, marks, feedback = await evaluator.evaluate_short_answer(question, ans_req.answer_text)
-                answer.is_correct = is_correct
-                answer.marks_awarded = marks
-                answer.feedback = feedback
-                answer.graded_by = "auto"
-            total_marks += answer.marks_awarded or 0.0
+                elif question.type == "true_false" and ans_req.answer_text:
+                    try:
+                        student_answer = ans_req.answer_text.lower() in ["true", "yes", "1"]
+                        is_correct, marks = evaluator.evaluate_true_false(question, student_answer)
+                        answer.is_correct = is_correct
+                        answer.marks_awarded = marks
+                        answer.graded_by = "auto"
+                    except Exception as e:
+                        import logging
+                        from fastapi import HTTPException
+                        logging.error(f"Failed to evaluate true/false question: {e}")
+                        raise HTTPException(status_code=500, detail="Failed to evaluate question")
+                elif question.type in ["short_answer", "code", "essay"] and ans_req.answer_text:
+                    is_correct, marks, feedback = await evaluator.evaluate_short_answer(question, ans_req.answer_text)
+                    answer.is_correct = is_correct
+                    answer.marks_awarded = marks
+                    answer.feedback = feedback
+                    answer.graded_by = "auto"
+                total_marks += answer.marks_awarded or 0.0
             answers.append(answer)
             
         attempt.answers = answers
+        attempt.last_saved_at = datetime.now(timezone.utc)
+        
+        if req.is_auto_save:
+            attempt.is_auto_saved = True
+            await attempt.save()
+            return attempt, 0, test.total_marks
+
         attempt.total_marks_awarded = total_marks
         attempt.percentage = (total_marks / test.total_marks * 100) if test.total_marks > 0 else 0
         attempt.submitted_at = datetime.now(timezone.utc)
         attempt.time_taken_seconds = int((attempt.submitted_at - attempt.started_at).total_seconds())
         attempt.status = "graded" if test.show_results_immediately else "submitted"
-        attempt.last_saved_at = datetime.now(timezone.utc)
         await attempt.save()
         await TestService.update_test_analytics(test.id, test.course_id)
         return attempt, total_marks, test.total_marks
@@ -275,5 +303,8 @@ class TestService:
             a.lowest_score = min(scores)
             a.updated_at = datetime.now(timezone.utc)
             await a.save()
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            from fastapi import HTTPException
+            logging.error(f"Failed to update test analytics: {e}")
+            raise HTTPException(status_code=500, detail="Failed to update test analytics")

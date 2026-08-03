@@ -15,14 +15,32 @@ export const graphsApi = {
 
   /**
    * Stream graph generation progress via Server-Sent Events.
-   * Returns an EventSource that emits:
-   *   - "progress" events: { step, totalSteps, message, detail, elapsed }
-   *   - "complete" events: { graph_id, session_id, nodes_count, edges_count, elapsed }
-   *   - "error" events: { message }
    */
-  generateFromDocsStream: (courseId: string, userId: string): EventSource => {
-    const url = `${API_BASE_URL}/graph/generate-from-docs-stream/${courseId}?user_id=${encodeURIComponent(userId)}`;
-    return new EventSource(url);
+  generateFromDocsStream: (courseId: string, userId: string, token: string, ctrl: AbortController, onMessage: (ev: any) => void, onError: (err: any) => void, onComplete: () => void) => {
+    import('@microsoft/fetch-event-source').then(({ fetchEventSource }) => {
+      fetchEventSource(`${API_BASE_URL}/api/professor/graph/generate-from-docs-stream/${courseId}?user_id=${encodeURIComponent(userId)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        signal: ctrl.signal,
+        onmessage(ev) {
+          onMessage(ev);
+        },
+        onerror(err) {
+          onError(err);
+          // throw err to stop retrying
+          throw err;
+        },
+        onclose() {
+          onComplete();
+        }
+      }).catch((err) => {
+        if (err.name !== 'AbortError') {
+          onError(err);
+        }
+      });
+    });
   },
   
   get: (graphId: string) => {

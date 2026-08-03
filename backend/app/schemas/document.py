@@ -9,19 +9,18 @@ class DocumentBase(BaseModel):
 class DocumentCreate(DocumentBase):
     pass
 
-class Document(DocumentBase):
-    id: uuid.UUID = Field(alias="_id")
+class DocumentResponse(BaseModel):
+    id: uuid.UUID
     course_id: uuid.UUID
-    uploaded_by: uuid.UUID
-    file_type: str
-    file_size_bytes: int
-    s3_key: str
-    processing_status: str
-    chunk_count: Optional[int] = None
-    page_count: Optional[int] = None
-    has_images: bool = False
+    filename: str
+    s3_path: str
+    status: str
     error_message: Optional[str] = None
-    celery_task_id: Optional[str] = None
-    concept_graph: dict = Field(default_factory=dict)
-    created_at: datetime
+    chunk_count: int = 0
+    file_type: str = "pdf"
+    file_size_bytes: int = 0
     processed_at: Optional[datetime] = None
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True

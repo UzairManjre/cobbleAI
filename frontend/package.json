@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.4",
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@nivo/core": "^0.99.0",
     "@nivo/heatmap": "^0.99.0",
     "@nivo/sankey": "^0.99.0",

@@ -12,67 +12,105 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useGraphStore } from '../../store/graphStore';
 import dagre from 'dagre';
+import { CheckCircle, Lock, Sparkles } from 'lucide-react';
 
 // --- Custom Node Implementation ---
 const ConceptNode = ({ data, id }: NodeProps) => {
-  const { visitedNodes, currentNodeId } = useGraphStore();
+  const { visitedNodes, masteredNodes, currentNodeId, edges } = useGraphStore();
+  
   const isCurrent = id === currentNodeId;
+  const isMastered = masteredNodes.includes(id);
   const isVisited = visitedNodes.includes(id);
 
-  // Difficulty-based colors
-  const difficultyColor = data.difficulty === 'advanced' ? 'bg-[#FFD166]' :
-                          data.difficulty === 'beginner' ? 'bg-[#06D6A0]' : 'bg-[#118AB2]';
+  // A node is locked if it has incoming edges and at least one predecessor is neither visited nor mastered
+  const incomingEdges = edges.filter(e => e.to === id);
+  const isLocked = incomingEdges.length > 0 && incomingEdges.some(
+    e => !visitedNodes.includes(e.from) && !masteredNodes.includes(e.from)
+  );
 
-  const borderColor = isCurrent
-    ? 'border-[#FF4D5B]'
-    : 'border-[#0A0A0A]';
+  // Difficulty badge colors
+  const difficultyColor = data.difficulty === 'advanced' ? 'bg-amber-400 text-amber-950' :
+                          data.difficulty === 'beginner' ? 'bg-emerald-400 text-emerald-950' : 'bg-blue-400 text-blue-950';
 
-  const bgColor = isCurrent
-    ? 'bg-[#FDF0EF]'
-    : isVisited
-      ? 'bg-[#E6FAF5]'
-      : 'bg-white';
+  // Dynamic visual states
+  let cardStyle = 'bg-[#0A0A0A] border-[#1A1A1A] text-white hover:border-[#333333]';
+  let badgeStyle = 'bg-[#111111] text-[#888888] border-[#1A1A1A]';
+  let statusText = 'Unlocked';
+  let StatusIcon = Sparkles;
 
-  const shadowColor = isCurrent
-    ? 'shadow-[4px_4px_0_#FF4D5B]'
-    : 'shadow-[4px_4px_0_#0A0A0A]';
+  if (isMastered) {
+    cardStyle = 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.12)]';
+    badgeStyle = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+    statusText = 'Mastered';
+    StatusIcon = CheckCircle;
+  } else if (isLocked) {
+    cardStyle = 'bg-[#050505] border-[#1A1A1A] text-[#888888] opacity-60 cursor-not-allowed';
+    badgeStyle = 'bg-[#111111] text-[#A3A3A3] border-[#1A1A1A]';
+    statusText = 'Locked';
+    StatusIcon = Lock;
+  } else if (isVisited) {
+    cardStyle = 'bg-blue-500/5 border-blue-500/30 text-white hover:border-blue-500/50';
+    badgeStyle = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+    statusText = 'In Progress';
+    StatusIcon = Sparkles;
+  }
+
+  if (isCurrent) {
+    cardStyle = `${cardStyle} ring-2 ring-blue-500/50 border-blue-500 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.2)]`;
+  }
 
   return (
-    <div className={`
-      relative px-6 py-4 rounded-2xl transition-all duration-300
-      border-[3px] cursor-pointer group ${borderColor} ${bgColor} ${shadowColor}
-      hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] active:translate-y-0
+    <div 
+      role="button"
+      tabIndex={0}
+      aria-label={`${data.label} - ${statusText} - ${data.difficulty || 'Core'}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          // ReactFlow handles selection when nodes are focused and enter is pressed
+        }
+      }}
+      className={`
+      relative px-5 py-4 rounded-2xl transition-all duration-300
+      border cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${cardStyle}
     `}>
-      <Handle type="target" position={Position.Top} className="!w-2.5 !h-2.5 !bg-[#0A0A0A] !border-none" />
+      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-[#333333] !border-none" />
 
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-           <div className={`w-2 h-2 rounded-full border border-[#0A0A0A] ${difficultyColor}`} />
-           <span className="text-[9px] font-extrabold uppercase tracking-wider text-[#0A0A0A]/50">
-             {data.difficulty || 'Concept'}
-           </span>
+      <div className="space-y-1.5 min-w-[170px]">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <StatusIcon className="w-3.5 h-3.5 shrink-0" />
+            <span className={`text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded border ${badgeStyle}`}>
+              {statusText}
+            </span>
+          </div>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${difficultyColor}`}>
+            {data.difficulty || 'Core'}
+          </span>
         </div>
-        <h4 className={`text-sm font-black tracking-tight text-[#0A0A0A]`}>
+
+        <h4 className="text-sm font-medium tracking-tight leading-snug">
           {data.label}
         </h4>
-        <p className="text-[11px] font-bold text-[#0A0A0A]/60 line-clamp-1 max-w-[180px]">
+
+        <p className="text-[11px] text-[#888888] line-clamp-1 max-w-[190px]">
           {data.description}
         </p>
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="!w-2.5 !h-2.5 !bg-[#0A0A0A] !border-none" />
+      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-[#333333] !border-none" />
 
-      {/* Pulse effect for current node */}
+      {/* Pulse effect for current active node */}
       {isCurrent && (
-        <div className="absolute bottom-2 right-3">
-          <div className="w-2 h-2 rounded-full bg-[#FF4D5B] border border-[#0A0A0A] animate-ping" />
+        <div className="absolute -top-1 -right-1">
+          <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping" />
+          <div className="w-2.5 h-2.5 rounded-full bg-blue-500 absolute inset-0" />
         </div>
       )}
     </div>
   );
 };
 
-// Define nodeTypes outside component to prevent React Flow warning
 const nodeTypes = {
   concept: ConceptNode,
 };
@@ -83,9 +121,9 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   
   const nodeWidth = 220;
-  const nodeHeight = 80;
+  const nodeHeight = 90;
   
-  dagreGraph.setGraph({ rankdir: direction, ranksep: 100, nodesep: 80 });
+  dagreGraph.setGraph({ rankdir: direction, ranksep: 90, nodesep: 70 });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
@@ -129,7 +167,7 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
         description: node.description,
         difficulty: node.difficulty
       },
-      position: { x: 0, y: 0 }, // Positioned by dagre
+      position: { x: 0, y: 0 },
     }));
 
     const initialEdges: Edge[] = graphEdges.map((edge) => ({
@@ -137,8 +175,8 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
       source: edge.from,
       target: edge.to,
       animated: true,
-      style: { stroke: '#0A0A0A', strokeWidth: 3 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: '#0A0A0A' },
+      style: { stroke: '#333333', strokeWidth: 2 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#888888' },
     }));
 
     return getLayoutedElements(initialNodes, initialEdges);
@@ -149,7 +187,7 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
   }, [onNodeClick]);
 
   return (
-    <div className="w-full h-full bg-[#FCFCFC]">
+    <div className="w-full h-full bg-[#050505] relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -161,29 +199,29 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
         nodesConnectable={false}
         elementsSelectable={true}
       >
-        <Background color="#0A0A0A" gap={25} size={1.5} style={{ opacity: 0.06 }} />
+        <Background color="#333333" gap={24} size={1} style={{ opacity: 0.15 }} />
         <Controls 
-          className="!bg-white !border-2 !border-[#0A0A0A] !rounded-xl !shadow-[2px_2px_0_#0A0A0A] !overflow-hidden !fill-[#0A0A0A]" 
+          className="!bg-[#0A0A0A] !border !border-[#1A1A1A] !rounded-xl !shadow-2xl !overflow-hidden !fill-[#888888]" 
           showInteractive={false} 
         />
       </ReactFlow>
       
       {/* Legend */}
-      <div className="absolute top-6 right-6 p-4 bg-white border-[3px] border-[#0A0A0A] rounded-2xl shadow-[4px_4px_0_#0A0A0A] pointer-events-none flex flex-col gap-2 font-['Outfit'] z-20">
-         <div className="text-[10px] font-black uppercase tracking-wider text-[#0A0A0A] border-b-2 border-[#0A0A0A]/10 pb-1 mb-1">
-           Legend
+      <div className="absolute top-4 right-4 p-3 bg-[#0A0A0A]/90 backdrop-blur-md border border-[#1A1A1A] rounded-xl pointer-events-none flex flex-col gap-2 z-20">
+         <div className="text-[10px] font-semibold uppercase tracking-widest text-[#888888] border-b border-[#1A1A1A] pb-1">
+           Node States
          </div>
-         <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#06D6A0] border border-[#0A0A0A]" />
-            <span className="text-[9px] text-[#0A0A0A] uppercase font-black tracking-wider">Foundation</span>
+         <div className="flex items-center gap-2">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-xs text-[#CCCCCC]">Mastered</span>
          </div>
-         <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#118AB2] border border-[#0A0A0A]" />
-            <span className="text-[9px] text-[#0A0A0A] uppercase font-black tracking-wider">Core Theory</span>
+         <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-xs text-[#CCCCCC]">Unlocked / Ready</span>
          </div>
-         <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#FFD166] border border-[#0A0A0A]" />
-            <span className="text-[9px] text-[#0A0A0A] uppercase font-black tracking-wider">Advanced</span>
+         <div className="flex items-center gap-2">
+            <Lock className="w-3.5 h-3.5 text-[#888888]" />
+            <span className="text-xs text-[#A3A3A3]">Locked (Prerequisite)</span>
          </div>
       </div>
     </div>

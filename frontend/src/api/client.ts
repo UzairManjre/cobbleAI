@@ -13,13 +13,26 @@ const api = axios.create({
 // Export API URL for components that need it
 export const API_URL = API_BASE_URL;
 
-// Request interceptor - add auth token to all requests
+// Request interceptor - add auth token and role prefix to all requests
 api.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().token;
+    const state = useAuthStore.getState();
+    const token = state.token;
+    const role = state.role;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Auto-prefix routes that are role-segregated on the backend
+    if (role && config.url) {
+      let path = config.url.startsWith('/api/') ? config.url.substring(4) : config.url;
+      const prefixesToRewrite = ['/courses', '/documents', '/graphs', '/graph', '/tests', '/sessions', '/study-plans'];
+      const shouldRewrite = prefixesToRewrite.some(p => path.startsWith(p));
+      if (shouldRewrite) {
+        config.url = `/api/${role}${path}`;
+      }
+    }
+    
     return config;
   },
   (error) => {
@@ -39,7 +52,16 @@ api.interceptors.response.use(
       const isInitCheck = requestUrl.includes('/users/me');
 
       if (!isInitCheck) {
-        console.warn('401 Unauthorized - token expired or invalid, redirecting to login');
+        const stateRole = useAuthStore.getState().role;
+        const currentRole = stateRole || localStorage.getItem('last_active_role');
+        
+        let redirectRoute = '/login';
+        if (currentRole === 'student') {
+          redirectRoute = '/login/student';
+        } else if (currentRole === 'professor') {
+          redirectRoute = '/login/professor';
+        }
+        
         useAuthStore.getState().logout();
 
         // Only redirect if we're not already on a public page
@@ -49,7 +71,7 @@ api.interceptors.response.use(
           currentPath.startsWith('/login/') ||
           currentPath.startsWith('/signup/');
         if (!isPublicPage) {
-          window.location.href = '/login/professor';
+          window.location.href = redirectRoute;
         }
       }
     }

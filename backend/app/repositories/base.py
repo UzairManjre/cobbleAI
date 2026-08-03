@@ -1,27 +1,28 @@
-from typing import Generic, TypeVar, List, Optional
-from pydantic import BaseModel
-from motor.motor_asyncio import AsyncIOMotorCollection
-from app.core.db import get_database
+from typing import Generic, TypeVar, Optional, List
+from beanie import Document
+import uuid
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T", bound=Document)
 
 class BaseRepository(Generic[T]):
-    def __init__(self, collection_name: str, model: type[T]):
-        self.collection_name = collection_name
+    def __init__(self, model: type[T]):
         self.model = model
 
-    @property
-    def collection(self) -> AsyncIOMotorCollection:
-        db = get_database()
-        return db[self.collection_name]
-
-    async def get_by_id(self, id: str) -> Optional[T]:
-        doc = await self.collection.find_one({"_id": id})
-        if doc:
-            return self.model(**doc)
-        return None
+    async def get_by_id(self, document_id: uuid.UUID | str) -> Optional[T]:
+        if isinstance(document_id, str):
+            try:
+                document_id = uuid.UUID(document_id)
+            except ValueError:
+                return None
+        return await self.model.get(document_id)
 
     async def insert(self, entity: T) -> T:
-        doc = entity.dict(by_alias=True)
-        await self.collection.insert_one(doc)
+        await entity.insert()
         return entity
+        
+    async def save(self, entity: T) -> T:
+        await entity.save()
+        return entity
+        
+    async def delete(self, entity: T) -> None:
+        await entity.delete()

@@ -35,20 +35,20 @@ interface GraphState {
   edges: GraphEdge[];
   currentNodeId: string | null;
   visitedNodes: string[];
+  masteredNodes: string[];
   chatHistory: ChatMessage[];
   isLoading: boolean;
   error: string | null;
-  autoIntroNodeId: string | null; // New: node ID to automatically intro
 
   // Actions
   generateGraph: (topic: string, courseId?: string) => Promise<void>;
   generateFromDocs: (courseId: string) => Promise<void>;
   fetchCourseGraph: (courseId: string) => Promise<void>;
-  startTopicIntro: (nodeId: string) => Promise<void>;
   navigateToNode: (nodeId: string) => Promise<void>;
   askQuestion: (nodeId: string, question: string) => Promise<void>;
   loadSession: (sessionId: string) => Promise<void>;
   setCurrentNode: (nodeId: string) => void;
+  toggleMastered: (nodeId: string) => void;
   clearGraph: () => void;
 }
 
@@ -59,10 +59,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   edges: [],
   currentNodeId: null,
   visitedNodes: [],
+  masteredNodes: [],
   chatHistory: [],
   isLoading: false,
   error: null,
-  autoIntroNodeId: null,
 
   generateGraph: async (topic: string, courseId?: string) => {
     set({ isLoading: true, error: null });
@@ -248,9 +248,11 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     try {
       const { useAuthStore } = await import('./authStore');
       const { API_URL } = await import('../api/client');
-      const token = useAuthStore.getState().token;
+      const authState = useAuthStore.getState();
+      const token = authState.token;
+      const role = authState.role || 'student';
 
-      const response = await fetch(`${API_URL}/sessions/${sessionId}/ask`, {
+      const response = await fetch(`${API_URL}/api/${role}/sessions/${sessionId}/ask`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -358,25 +360,28 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     }
   },
 
-  startTopicIntro: async (nodeId: string) => {
-    const { sessionId } = get();
-    if (!sessionId) {
-      // If no session, generate one or wait? 
-      // For now, assume a session exists if we're in study mode
-      return; 
-    }
-
-    const introQuestion = "Please introduce this topic, explain what it is, and how it connects to the other concepts shown in the mind map based on our documents.";
-    
-    // Call askQuestion with the automated intro question
-    await get().askQuestion(nodeId, introQuestion);
-    
-    // Clear the flag after starting
-    set({ autoIntroNodeId: null });
-  },
-
   setCurrentNode: (nodeId: string) => {
     set({ currentNodeId: nodeId });
+  },
+
+  toggleMastered: (nodeId: string) => {
+    const { masteredNodes, visitedNodes } = get();
+    const isMastered = masteredNodes.includes(nodeId);
+    const updatedMastered = isMastered
+      ? masteredNodes.filter(id => id !== nodeId)
+      : [...masteredNodes, nodeId];
+    
+    // Auto-visit node if mastered
+    const updatedVisited = visitedNodes.includes(nodeId)
+      ? visitedNodes
+      : [...visitedNodes, nodeId];
+
+    set({
+      masteredNodes: updatedMastered,
+      visitedNodes: updatedVisited
+    });
+
+    analytics.track(isMastered ? 'node_unmastered' : 'node_mastered', { nodeId });
   },
 
   clearGraph: () => {
@@ -387,6 +392,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       edges: [],
       currentNodeId: null,
       visitedNodes: [],
+      masteredNodes: [],
       chatHistory: [],
       error: null
     });

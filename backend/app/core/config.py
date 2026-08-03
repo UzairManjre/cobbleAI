@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "gemma4:e2b"
     JWT_PRIVATE_KEY: str = "temp_private_key"
     JWT_PUBLIC_KEY: str = "temp_public_key"
+    ENVIRONMENT: str = "development"
 
     def validate_jwt_keys(self) -> None:
         """Fail fast if JWT keys are still the example placeholders."""
@@ -32,6 +33,14 @@ class Settings(BaseSettings):
                     "Generate a real RSA key pair and update .env. See .env.example for instructions."
                 )
 
+    def validate_production_secrets(self) -> None:
+        if self.ENVIRONMENT.lower() == "production":
+            if self.AWS_SECRET_ACCESS_KEY == "minioadmin":
+                raise RuntimeError("CRITICAL: AWS_SECRET_ACCESS_KEY is still the default placeholder in production.")
+            if self.SECRET_KEY == "temp_secret_key":
+                raise RuntimeError("CRITICAL: SECRET_KEY is still the default placeholder in production.")
+
 settings = Settings()
 # Validate on import   server refuses to start with bad keys
 settings.validate_jwt_keys()
+settings.validate_production_secrets()

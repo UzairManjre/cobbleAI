@@ -46,7 +46,8 @@ pip install -r requirements.txt
 
 # Start Celery in the background
 echo "🏃‍♂️ Starting Celery worker..."
-nohup celery -A app.core.celery_app worker --loglevel=info > celery_worker.log 2>&1 &
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+nohup celery -A app.core.celery_app worker --pool=solo --loglevel=info > celery_worker.log 2>&1 &
 CELERY_PID=$!
 echo "   Celery worker started (PID: $CELERY_PID)"
 

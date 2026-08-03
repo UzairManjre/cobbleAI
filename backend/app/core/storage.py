@@ -7,6 +7,8 @@ AWS_SECRET_ACCESS_KEY = settings.AWS_SECRET_ACCESS_KEY
 S3_ENDPOINT_URL = settings.S3_ENDPOINT_URL
 S3_BUCKET = settings.S3_BUCKET
 
+from botocore.config import Config
+
 # Sync client for worker
 def get_s3_client():
     return boto3.client(
@@ -14,6 +16,8 @@ def get_s3_client():
         endpoint_url=S3_ENDPOINT_URL,
         aws_access_key_id=AWS_ACCESS_KEY_ID,
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name="us-east-1",
+        config=Config(signature_version='s3v4', s3={'addressing_style': 'path'})
     )
 
 # Async wrapper - uses sync client in thread pool (avoids aioboto3 dep hell)

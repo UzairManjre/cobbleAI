@@ -1,33 +1,36 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import LandingPage from './pages/LandingPage';
-import NewLanding from './pages/NewLanding';
-import ProfessorOnboarding from './pages/ProfessorOnboarding';
-import StudentOnboarding from './pages/StudentOnboarding';
-import StudentAuthFlow from './pages/StudentAuthFlow';
-import ProfessorAuthFlow from './pages/ProfessorAuthFlow';
-import Dashboard from './pages/Dashboard';
-import MyClasses from './pages/MyClasses';
-import Assignments from './pages/Assignments';
-import CourseDetail from './pages/CourseDetail';
-import MindMap from './pages/MindMap';
-import Chat from './pages/Chat';
-import StudyMode from './pages/StudyMode';
-import StudyPlan from './pages/StudyPlan';
-import ProfessorTests from './pages/ProfessorTests';
-import TakeTest from './pages/TakeTest';
+import LandingPage from './pages/common/LandingPage';
+import NewLanding from './pages/common/NewLanding';
+
+import StudentOnboarding from './pages/student/StudentOnboarding';
+import StudentAuthFlow from './pages/auth/StudentAuthFlow';
+import ProfessorAuthFlow from './pages/auth/ProfessorAuthFlow';
+import StudentDashboard from './pages/student/StudentDashboard';
+import ProfessorDashboard from './pages/professor/ProfessorDashboard';
+import AnalyticsDashboard from './pages/professor/AnalyticsDashboard';
+import MyClasses from './pages/professor/MyClasses';
+import Assignments from './pages/student/Assignments';
+import CourseDetail from './pages/common/CourseDetail';
+import MindMap from './pages/common/MindMap';
+import Chat from './pages/common/Chat';
+import StudyMode from './pages/student/StudyMode';
+import StudyPlan from './pages/student/StudyPlan';
+import ProfessorTests from './pages/professor/ProfessorTests';
+import GradingDashboard from './pages/professor/GradingDashboard';
+import TakeTest from './pages/student/TakeTest';
 import AppLayout from './components/layout/AppLayout';
-import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import { useAuthStore } from './store/authStore';
+import { ToastProvider } from './components/ui/ToastProvider';
 
 const ProtectedRoute = ({ children, allowedRole, requireOnboarding = true }: { children: ReactNode, allowedRole?: 'professor' | 'student' | Array<'professor' | 'student'>, requireOnboarding?: boolean }) => {
   const { token, role, hasOnboarded } = useAuthStore();
   if (!token) return <Navigate to="/" replace />;
 
-  // Handle onboarding redirect
-  if (requireOnboarding && !hasOnboarded) {
-    return <Navigate to={`/onboarding/${role}`} replace />;
+  // Handle onboarding redirect (only for students now)
+  if (requireOnboarding && !hasOnboarded && role === 'student') {
+    return <Navigate to={`/onboarding/student`} replace />;
   }
 
   if (allowedRole) {
@@ -57,7 +60,9 @@ export default function App() {
   }, [initialize]);
 
   return (
-    <BrowserRouter>
+    <>
+      <ToastProvider />
+      <BrowserRouter>
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<NewLanding />} />
@@ -67,14 +72,7 @@ export default function App() {
         <Route path="/signup/student" element={<StudentAuthFlow initialStep="welcome" />} />
         <Route path="/signup/professor" element={<ProfessorAuthFlow initialStep="welcome" />} />
 
-        <Route
-          path="/onboarding/professor"
-          element={
-            <ProtectedRoute requireOnboarding={false} allowedRole="professor">
-              <ProfessorOnboarding />
-            </ProtectedRoute>
-          }
-        />
+
 
         <Route
           path="/onboarding/student"
@@ -137,6 +135,15 @@ export default function App() {
           }
         />
 
+        <Route
+          path="/course/:courseId/tests/:testId/grading"
+          element={
+            <ProtectedRoute allowedRole="professor">
+              <CourseSubRouteRedirect subPath="tests/:testId/grading" />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Test route */}
         <Route
           path="/tests/:testId"
@@ -157,10 +164,10 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="/professor/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<ProfessorDashboard />} />
           <Route path="classes" element={<MyClasses />} />
           <Route path="students" element={<Navigate to="/professor/classes?tab=students" replace />} />
-          <Route path="assignments" element={<Assignments />} />
+          {/* TODO (Phase 2): Build actual Professor assignment management/grading hub */}
           <Route path="analytics" element={<AnalyticsDashboard />} />
           
           {/* Course routes */}
@@ -169,6 +176,7 @@ export default function App() {
           <Route path="courses/:courseId/study" element={<StudyMode />} />
           <Route path="courses/:courseId/plan" element={<StudyPlan />} />
           <Route path="courses/:courseId/tests" element={<ProfessorTests />} />
+          <Route path="courses/:courseId/tests/:testId/grading" element={<GradingDashboard />} />
         </Route>
 
         {/* Student Layout with Sidebar/Topbar - ALL student routes */}
@@ -181,7 +189,8 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="/student/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<StudentDashboard />} />
+          <Route path="assignments" element={<Assignments />} />
           <Route path="chat" element={<Chat />} />
           
           {/* Course routes */}
@@ -192,5 +201,6 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </>
   );
 }

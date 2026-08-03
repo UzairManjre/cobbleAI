@@ -70,6 +70,7 @@ class AnalyticsTracker {
           },
           body: JSON.stringify({
             event_type: item.event,
+            event_category: item.payload.category || 'ui',
             payload: item.payload,
           }),
           keepalive: true,

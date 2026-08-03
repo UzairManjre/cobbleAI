@@ -33,6 +33,8 @@ class SubmitAnswerRequest(BaseModel):
 class SubmitTestRequest(BaseModel):
     attempt_id: str
     answers: List[SubmitAnswerRequest]
+    last_saved_at: Optional[str] = None
+    is_auto_save: bool = False
 
 class GenerateMockTestRequest(BaseModel):
     course_id: str

@@ -1,4 +1,5 @@
 import pytest
+import uuid
 from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import HTTPException
 from app.api.auth import require_role, get_user_from_token, get_jwt_strategy
@@ -72,3 +73,49 @@ def test_jwt_strategy_settings():
     strategy = get_jwt_strategy()
     assert strategy.lifetime_seconds == 604800
     assert strategy.algorithm == "RS256"
+
+@pytest.mark.asyncio
+@patch('app.services.analytics.AnalyticsService.track_event')
+async def test_on_after_register_atomicity_failure(mock_track_event):
+    from app.api.auth import UserManager
+    
+    mock_user_db = MagicMock()
+    mock_user_db.delete = AsyncMock()
+    
+    manager = UserManager(mock_user_db)
+    user = MagicMock()
+    user.id = uuid.uuid4()
+    user.name = "Test"
+    user.role = "student"
+    
+    mock_track_event.side_effect = Exception("Simulated analytics failure")
+    
+    with pytest.raises(HTTPException) as exc:
+        await manager.on_after_register(user=user)
+        
+    assert exc.value.status_code == 400
+    assert "Registration failed during post-processing" in exc.value.detail
+    
+    # Assert the user document is deleted, ensuring no orphaned user!
+    mock_user_db.delete.assert_called_once_with(user)
+
+@pytest.mark.asyncio
+@patch('app.services.analytics.AnalyticsService.track_event')
+async def test_on_after_login_analytics_failure_non_blocking(mock_track_event):
+    from app.api.auth import UserManager
+    
+    mock_user_db = MagicMock()
+    manager = UserManager(mock_user_db)
+    
+    user = MagicMock()
+    user.id = uuid.uuid4()
+    user.role = "student"
+    user.save = AsyncMock()
+    
+    mock_track_event.side_effect = Exception("Simulated analytics failure")
+    
+    # Should complete without raising any exception (no HTTP 500)
+    await manager.on_after_login(user=user)
+    
+    # Assert DB update was still saved
+    user.save.assert_called_once()

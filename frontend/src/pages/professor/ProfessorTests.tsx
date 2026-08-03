@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
+import { useToastStore } from "../../store/toastStore";
 import { FileText, Plus, Sparkles } from "lucide-react";
 import { testsApi, documentsApi, graphsApi } from "../../api";
 
@@ -12,6 +13,7 @@ export default function ProfessorTests() {
   const navigate = useNavigate();
   const { courseId } = useParams();
   const { token, role } = useAuthStore();
+  const addToast = useToastStore((state) => state.addToast);
 
   const [tests, setTests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +74,7 @@ export default function ProfessorTests() {
       setPreviewTest(res.data.test);
       setShowPreviewModal(true);
     } catch (err) {
-      alert("Failed to load test details");
+      addToast("Failed to load test details", "error");
     }
   };
 
@@ -97,7 +99,7 @@ export default function ProfessorTests() {
       });
       return res.data.test?.id || res.data.test_id;
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to create test");
+      addToast(err.response?.data?.detail || "Failed to create test", "error");
       return null;
     }
   };
@@ -119,7 +121,7 @@ export default function ProfessorTests() {
       });
       loadTests();
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to generate questions");
+      addToast(err.response?.data?.detail || "Failed to generate questions", "error");
     } finally {
       setIsGeneratingMap(prev => ({ ...prev, [testId]: false }));
     }

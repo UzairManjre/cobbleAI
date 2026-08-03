@@ -22,8 +22,11 @@ async def track_event_endpoint(req: TrackEventRequest, request: Request, user: U
                 user_agent=request.headers.get("user-agent"),
                 ip_address=request.client.host if request.client else None,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            from fastapi import HTTPException
+            logging.error(f"An error occurred: {e}")
+            raise HTTPException(status_code=500, detail="An error occurred")
     asyncio.create_task(_track())
     return {"status": "ok"}
 

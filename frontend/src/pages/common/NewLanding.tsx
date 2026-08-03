@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, GraduationCap, Cloud, Bell, X } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 
 export default function NewLanding() {
   const navigate = useNavigate();
@@ -32,28 +34,27 @@ export default function NewLanding() {
 
   return (
     <div 
-      className="bg-[#fcfcfc] text-black selection:bg-[#ff5c5c] selection:text-white overflow-x-hidden"
-      style={{ fontFamily: "'Outfit', sans-serif", fontWeight: "inherit" }}
+      className="bg-background text-foreground selection:bg-accent selection:text-background overflow-x-hidden min-h-screen"
     >
       
       {/* HEADER */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#fcfcfc]/90 backdrop-blur-md flex items-center justify-between px-8 md:px-16 py-4 border-b border-black/5">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md flex items-center justify-between px-8 md:px-16 py-4 border-b border-border">
         <h1 className="text-2xl font-bold tracking-tight">Cobble</h1>
-        <nav className="hidden md:flex items-center gap-8 text-[15px] font-semibold text-black/80">
-          <a href="#about" className="hover:text-[#ff5c5c] transition-colors">About us</a>
-          <span className="text-black/20">|</span>
-          <a href="#how" className="hover:text-[#ff5c5c] transition-colors">How it Works</a>
+        <nav className="hidden md:flex items-center gap-8 text-[15px] font-semibold text-muted-foreground">
+          <a href="#about" className="hover:text-foreground transition-colors">About us</a>
+          <span className="text-border">|</span>
+          <a href="#how" className="hover:text-foreground transition-colors">How it Works</a>
         </nav>
-        <button onClick={handleStart} className="bg-[#ff5c5c] text-white px-6 py-2.5 rounded-full text-[15px] font-semibold hover:bg-[#ff4444] transition-all hover:shadow-lg hover:shadow-[#ff5c5c]/30">
+        <Button onClick={handleStart} variant="primary" className="px-6 py-2.5">
           Start Now
-        </button>
+        </Button>
       </header>
 
       {/* HERO SECTION */}
       <section className="min-h-screen relative flex flex-col items-center justify-center pt-20 px-6 max-w-4xl mx-auto text-center">
         <div className="relative">
           {/* Clean Looped Top Arrow */}
-          <motion.svg style={{ overflow: 'visible' }} width="100" height="100" viewBox="0 0 100 100" fill="none" className="absolute -top-24 -right-4 text-[#ff5c5c] hidden md:block" initial="hidden" whileInView="visible" viewport={{ once: true }}>
+          <motion.svg style={{ overflow: 'visible' }} width="100" height="100" viewBox="0 0 100 100" fill="none" className="absolute -top-24 -right-4 text-accent hidden md:block" initial="hidden" whileInView="visible" viewport={{ once: true }}>
             {/* Loop path */}
             <motion.path d="M 90 90 C 90 50, 70 30, 50 30 C 30 30, 20 45, 30 60 C 40 75, 60 70, 50 50 C 40 30, 20 50, 10 70" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" variants={drawPath}/>
             {/* Arrow head */}
@@ -61,12 +62,12 @@ export default function NewLanding() {
           </motion.svg>
 
           {/* Sparkles (Left side) */}
-          <motion.div className="absolute top-10 -left-20 text-[#ff5c5c] hidden md:flex flex-col items-center" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <motion.div className="absolute top-10 -left-20 text-accent hidden md:flex flex-col items-center" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
              <Sparkles className="w-12 h-12 mb-2" strokeWidth={1.5} />
              <Sparkles className="w-8 h-8 -ml-8" strokeWidth={1.5} />
           </motion.div>
 
-          <motion.h2 className="text-7xl md:text-[9rem] font-extrabold tracking-tight mb-8 leading-[0.9]" style={{ fontFamily: "'Outfit', sans-serif" }} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <motion.h2 className="text-7xl md:text-[9rem] font-extrabold tracking-tight mb-8 leading-[0.9]" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
             COBBLE
             <br />
             AI
@@ -74,22 +75,22 @@ export default function NewLanding() {
         </div>
 
         <motion.div className="relative mb-16" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-          <p className="text-xl md:text-2xl font-medium font-mono text-black/80">
+          <p className="text-xl md:text-2xl font-medium font-mono text-muted-foreground">
             Your new classmate just<br/>got a new upgrade
           </p>
-          <motion.svg width="300" height="30" viewBox="0 0 300 30" fill="none" className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[#ff5c5c]">
+          <motion.svg width="300" height="30" viewBox="0 0 300 30" fill="none" className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-accent">
             <motion.path d="M 10 15 Q 150 0, 290 20" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" variants={drawPath}/>
             <motion.path d="M 30 22 Q 150 10, 270 25" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" variants={drawPath}/>
           </motion.svg>
         </motion.div>
 
         <motion.div className="flex flex-col sm:flex-row gap-6 mt-8" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-          <button onClick={() => navigate('/signup/student')} className="bg-[#ff5c5c] text-white px-10 py-4 rounded-full text-xl font-semibold hover:bg-[#ff4444] transition-all hover:scale-105 hover:shadow-xl hover:shadow-[#ff5c5c]/20">
+          <Button onClick={() => navigate('/signup/student')} variant="primary" size="lg" className="px-10 py-4 text-xl rounded-full">
             Join a Class
-          </button>
-          <button onClick={() => navigate('/signup/professor')} className="bg-[#ff5c5c] text-white px-10 py-4 rounded-full text-xl font-semibold hover:bg-[#ff4444] transition-all hover:scale-105 hover:shadow-xl hover:shadow-[#ff5c5c]/20">
+          </Button>
+          <Button onClick={() => navigate('/signup/professor')} variant="secondary" size="lg" className="px-10 py-4 text-xl rounded-full">
             Create a Class
-          </button>
+          </Button>
         </motion.div>
       </section>
 
@@ -98,35 +99,35 @@ export default function NewLanding() {
         <motion.div className="flex flex-col lg:flex-row items-center gap-16" initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={staggerContainer}>
           <motion.div className="lg:w-1/3 relative" variants={fadeUp}>
             <div className="flex flex-col">
-              <Sparkles className="text-[#ff5c5c] w-12 h-12 mb-4" strokeWidth={1.5} />
+              <Sparkles className="text-accent w-12 h-12 mb-4" strokeWidth={1.5} />
               <h2 className="text-6xl md:text-[6rem] font-bold tracking-tight mb-8 leading-[0.9]">WHY<br/>COBBLE AI?</h2>
             </div>
             {/* Loop Underline */}
-            <motion.svg style={{ overflow: 'visible' }} width="350" height="80" viewBox="0 0 350 80" fill="none" className="absolute -bottom-12 left-10 text-[#ff5c5c] hidden lg:block">
+            <motion.svg style={{ overflow: 'visible' }} width="350" height="80" viewBox="0 0 350 80" fill="none" className="absolute -bottom-12 left-10 text-accent hidden lg:block">
               <motion.path d="M 20 80 Q 140 120, 260 70 C 320 30, 270 0, 270 50 C 270 80, 300 60, 320 40" stroke="currentColor" strokeWidth="5" strokeLinecap="round" fill="none" variants={drawPath}/>
             </motion.svg>
           </motion.div>
 
           <motion.div className="lg:w-2/3 w-full relative" variants={fadeUp}>
-            <div className="border-[5px] border-[#ff5c5c] rounded-3xl p-8 md:p-12 bg-white relative z-10 shadow-sm" style={{ borderBottomRightRadius: '40px' }}>
+            <Card className="p-8 md:p-12 relative z-10" style={{ borderBottomRightRadius: '40px' }}>
               <div className="absolute top-4 right-4 flex gap-2">
-                  <div className="w-7 h-7 rounded-sm border-[3px] border-[#ff5c5c] flex items-center justify-center">
-                    <div className="w-3.5 h-[3px] bg-[#ff5c5c] translate-y-1 rounded-full" />
+                  <div className="w-7 h-7 rounded-sm border-[3px] border-border flex items-center justify-center">
+                    <div className="w-3.5 h-[3px] bg-border translate-y-1 rounded-full" />
                   </div>
-                  <div className="w-7 h-7 rounded-sm border-[3px] border-[#ff5c5c] flex flex-col">
-                    <div className="w-full h-2 border-b-[3px] border-[#ff5c5c]" />
+                  <div className="w-7 h-7 rounded-sm border-[3px] border-border flex flex-col">
+                    <div className="w-full h-2 border-b-[3px] border-border" />
                   </div>
-                  <div className="w-7 h-7 rounded-sm border-[3px] border-[#ff5c5c] flex items-center justify-center">
-                    <X size={18} className="text-[#ff5c5c]" strokeWidth={4} />
+                  <div className="w-7 h-7 rounded-sm border-[3px] border-border flex items-center justify-center">
+                    <X size={18} className="text-border" strokeWidth={4} />
                   </div>
               </div>
-              <div className="mt-12 space-y-10 font-mono text-base md:text-lg text-black/80">
-                <p><span className="font-bold text-black">• The Problem:</span> Generic AI often gives flat, out-of-context answers that don't match your course material.</p>
-                <p><span className="font-bold text-black">• The Solution:</span> Cobble extracts the specific tone and knowledge from your professor's actual course notes.</p>
-                <p><span className="font-bold text-black">• The Result:</span> You get a 24/7 tutor that explains concepts exactly the way they'll appear on your exam.</p>
+              <div className="mt-12 space-y-10 font-mono text-base md:text-lg text-muted-foreground">
+                <p><span className="font-bold text-foreground">• The Problem:</span> Generic AI often gives flat, out-of-context answers that don't match your course material.</p>
+                <p><span className="font-bold text-foreground">• The Solution:</span> Cobble extracts the specific tone and knowledge from your professor's actual course notes.</p>
+                <p><span className="font-bold text-foreground">• The Result:</span> You get a 24/7 tutor that explains concepts exactly the way they'll appear on your exam.</p>
               </div>
-            </div>
-            <div className="absolute top-3 left-3 right-[-12px] bottom-[-12px] border-[5px] border-[#ff5c5c]/20 rounded-3xl z-0 pointer-events-none" style={{ borderBottomRightRadius: '40px' }}></div>
+            </Card>
+            <div className="absolute top-3 left-3 right-[-12px] bottom-[-12px] border-[5px] border-border/20 rounded-3xl z-0 pointer-events-none" style={{ borderBottomRightRadius: '40px' }}></div>
           </motion.div>
         </motion.div>
       </section>
@@ -136,7 +137,7 @@ export default function NewLanding() {
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}>
           <motion.div className="flex flex-col items-center mb-20 relative" variants={fadeUp}>
             <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-center">THIS MONTH'S HIGHLIGHTS</h2>
-            <motion.svg width="350" height="30" viewBox="0 0 350 30" fill="none" className="absolute -bottom-10 text-[#ff5c5c]">
+            <motion.svg width="350" height="30" viewBox="0 0 350 30" fill="none" className="absolute -bottom-10 text-accent">
               <motion.path d="M 20 15 Q 80 -5, 140 15 T 240 15 T 320 15" stroke="currentColor" strokeWidth="5" strokeLinecap="round" fill="none" variants={drawPath}/>
             </motion.svg>
           </motion.div>
@@ -148,11 +149,11 @@ export default function NewLanding() {
               { img: 'hdfs_code.png', title: 'Zero-Latency HDFS Integration', desc: 'Our new Hadoop Distributed File System (HDFS) architecture ensures high-throughput data streaming. Even with a 2.90GB dataset, students experience instant response times during peak study sessions.' }
             ].map((item, i) => (
               <motion.div key={i} className="flex flex-col" variants={fadeUp}>
-                <div className="w-full aspect-[4/3] rounded-[2rem] overflow-hidden mb-8 bg-gray-100 shadow-xl">
-                  <img src={`/assets/images/${item.img}`} alt={item.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                <div className="w-full aspect-[4/3] rounded-[2rem] overflow-hidden mb-8 bg-[#111111]">
+                  <img src={`/assets/images/${item.img}`} alt={item.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 opacity-80" />
                 </div>
                 <h3 className="text-3xl font-semibold mb-4 leading-tight">{item.title}</h3>
-                <p className="text-base font-mono text-black/70 leading-relaxed">
+                <p className="text-base font-mono text-muted-foreground leading-relaxed">
                   {item.desc}
                 </p>
               </motion.div>
@@ -174,23 +175,22 @@ export default function NewLanding() {
               { icon: Cloud, title: 'Large-Scale Knowledge Base', desc: 'We\'ve successfully indexed over 1,000,180,358 high-quality educational tokens, providing deep factual reasoning for every student doubt.' },
               { icon: Bell, title: 'Actionable Student Data', desc: 'Our new heatmap feature identifies topics needing review, allowing professors to send nudges or export detailed PDF progress reports.', hasArrow: true }
             ].map((item, i) => (
-              <motion.div key={i} variants={fadeUp} className="border-[5px] border-black p-10 text-center flex flex-col items-center group hover:-translate-y-2 transition-transform duration-300 shadow-[12px_12px_0_0_rgba(0,0,0,1)] hover:shadow-[16px_16px_0_0_rgba(0,0,0,1)] bg-white">
-                <div className="w-24 h-24 mb-8 text-[#ff5c5c] relative flex justify-center items-center">
-                  <item.icon className="w-full h-full" strokeWidth={1.5} />
-                  {item.hasArrow && (
-                    <motion.svg width="60" height="30" viewBox="0 0 60 30" className="absolute -top-4 -right-10 hidden lg:block" initial="hidden" whileInView="visible" viewport={{ once: true }}>
-                      <motion.path d="M 10 20 Q 30 0, 50 20" stroke="#ff5c5c" strokeWidth="4" strokeLinecap="round" fill="none" variants={drawPath}/>
-                      <motion.path d="M 40 25 L 50 20 L 55 10" stroke="#ff5c5c" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" variants={drawPath}/>
-                    </motion.svg>
-                  )}
-                  {i === 0 && (
-                    <div className="absolute -bottom-4 left-0 right-0 h-1 bg-[#ff5c5c]"></div>
-                  )}
-                </div>
-                <h3 className="text-2xl font-bold mb-6 uppercase">{item.title}</h3>
-                <p className="text-base font-mono text-black/70 leading-relaxed">
-                  {item.desc}
-                </p>
+              <motion.div key={i} variants={fadeUp}>
+                <Card className="p-10 text-center flex flex-col items-center group h-full hover:border-accent">
+                  <div className="w-24 h-24 mb-8 text-accent relative flex justify-center items-center">
+                    <item.icon className="w-full h-full" strokeWidth={1.5} />
+                    {item.hasArrow && (
+                      <motion.svg width="60" height="30" viewBox="0 0 60 30" className="absolute -top-4 -right-10 hidden lg:block" initial="hidden" whileInView="visible" viewport={{ once: true }}>
+                        <motion.path d="M 10 20 Q 30 0, 50 20" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" variants={drawPath}/>
+                        <motion.path d="M 40 25 L 50 20 L 55 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" variants={drawPath}/>
+                      </motion.svg>
+                    )}
+                  </div>
+                  <h3 className="text-2xl font-bold mb-6 uppercase">{item.title}</h3>
+                  <p className="text-base font-mono text-muted-foreground leading-relaxed">
+                    {item.desc}
+                  </p>
+                </Card>
               </motion.div>
             ))}
           </div>
@@ -211,21 +211,23 @@ export default function NewLanding() {
               { img: 'prof_2.png', name: 'YOGESH CHAUDHARI', desc: 'Managing HDFS infrastructure for fast, scalable AI streaming.' },
               { img: 'prof_3.png', name: 'DR JAIDEEPSINH RAULJI', desc: 'Guiding our 1-billion-token knowledge base for educational accuracy.' }
             ].map((prof, i) => (
-              <motion.div key={i} variants={fadeUp} className="border-[5px] border-[#ff5c5c] rounded-xl bg-white overflow-hidden shadow-sm flex flex-col">
-                <div className="border-b-[5px] border-[#ff5c5c] px-4 py-3 flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full border-[3px] border-[#ff5c5c] bg-white"></div>
-                  <div className="w-4 h-4 rounded-full border-[3px] border-[#ff5c5c] bg-white"></div>
-                  <div className="w-4 h-4 rounded-full border-[3px] border-[#ff5c5c] bg-[#ff5c5c]"></div>
-                </div>
-                <div className="p-8 flex-1 flex flex-col">
-                  <div className="w-full aspect-square rounded-2xl overflow-hidden mb-8 bg-gray-100">
-                    <img src={`/assets/images/${prof.img}`} alt={prof.name} className="w-full h-full object-cover" />
+              <motion.div key={i} variants={fadeUp}>
+                <Card className="overflow-hidden flex flex-col h-full">
+                  <div className="border-b border-border px-4 py-3 flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-border"></div>
+                    <div className="w-3 h-3 rounded-full bg-border"></div>
+                    <div className="w-3 h-3 rounded-full bg-border"></div>
                   </div>
-                  <h3 className="text-2xl font-bold mb-4 text-center uppercase">{prof.name}</h3>
-                  <p className="text-base font-mono text-black/80 text-center leading-relaxed flex-1">
-                    {prof.desc}
-                  </p>
-                </div>
+                  <div className="p-8 flex-1 flex flex-col">
+                    <div className="w-full aspect-square rounded-2xl overflow-hidden mb-8 bg-[#111111]">
+                      <img src={`/assets/images/${prof.img}`} alt={prof.name} className="w-full h-full object-cover opacity-80" />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-4 text-center uppercase">{prof.name}</h3>
+                    <p className="text-base font-mono text-muted-foreground text-center leading-relaxed flex-1">
+                      {prof.desc}
+                    </p>
+                  </div>
+                </Card>
               </motion.div>
             ))}
           </div>
@@ -246,18 +248,20 @@ export default function NewLanding() {
             READY TO UPGRADE<br/>YOUR LEARNING?
           </motion.h2>
           
-          <motion.p className="text-xl font-mono text-black/80 mb-12" variants={fadeUp}>
+          <motion.p className="text-xl font-mono text-muted-foreground mb-12" variants={fadeUp}>
             Join your class today and start chatting with an<br/>AI that finally speaks your language.
           </motion.p>
 
-          <motion.button onClick={handleStart} variants={fadeUp} className="bg-[#ff5c5c] text-white px-12 py-5 rounded-full text-2xl font-bold hover:bg-[#ff4444] transition-all hover:scale-105 shadow-2xl shadow-[#ff5c5c]/30">
-            Start a Class
-          </motion.button>
+          <motion.div variants={fadeUp}>
+            <Button onClick={handleStart} variant="primary" size="lg" className="px-12 py-5 text-2xl rounded-full">
+              Start a Class
+            </Button>
+          </motion.div>
         </motion.div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-[#ff5c5c] text-white py-16 px-8">
+      <footer className="bg-background border-t border-border text-foreground py-16 px-8">
         <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex gap-6 font-medium text-lg">
             <a href="#about" className="hover:text-white/80 transition-colors">About us</a>
@@ -266,7 +270,7 @@ export default function NewLanding() {
           </div>
           
           <div className="text-center">
-            <a href="mailto:support@cobbleai.com" className="font-mono text-base hover:text-white/80 transition-colors">
+            <a href="mailto:support@cobbleai.com" className="font-mono text-base hover:text-foreground/80 transition-colors">
               support@cobbleai.com
             </a>
           </div>

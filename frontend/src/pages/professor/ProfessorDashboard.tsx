@@ -1,4 +1,4 @@
-import AnalyticsDashboard from './AnalyticsDashboard';
+import Dashboard from '../student/Dashboard';
 
-export { AnalyticsDashboard as ProfessorDashboard };
-export default AnalyticsDashboard;
+export { Dashboard as ProfessorDashboard };
+export default Dashboard;

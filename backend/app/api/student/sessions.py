@@ -33,7 +33,10 @@ async def get_session(
     user: User = Depends(require_role("student"))
 ):
     """Get current session state."""
-    session = await StudySession.get(session_id)
+    from app.repositories.session_repository import StudySessionRepository, ChatMessageRepository
+    
+    session_repo = StudySessionRepository()
+    session = await session_repo.get_by_id(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -43,10 +46,8 @@ async def get_session(
     # Get chat history for current node
     chat_history = []
     if session.current_node_id:
-        messages = await ChatMessage.find(
-            ChatMessage.session_id == session_id,
-            ChatMessage.node_id == session.current_node_id
-        ).sort(ChatMessage.created_at).to_list()
+        chat_repo = ChatMessageRepository()
+        messages = await chat_repo.find_by_session_and_node(session_id, session.current_node_id)
 
         chat_history = [
             {
@@ -74,11 +75,11 @@ async def get_or_create_session(
 ):
     """Get the most recent session for this graph or create a new one."""
 
+    from app.repositories.session_repository import StudySessionRepository
+    session_repo = StudySessionRepository()
+    
     # Try to find an existing session for this user and graph
-    session = await StudySession.find(
-        StudySession.student_id == user.id,
-        StudySession.graph_id == req.graph_id
-    ).sort(-StudySession.updated_at).first_or_none()
+    session = await session_repo.find_latest_by_student_and_graph(user.id, req.graph_id)
 
     if not session:
         # Create a new session
@@ -93,7 +94,7 @@ async def get_or_create_session(
             current_node_id=graph.nodes[0]["id"] if graph.nodes else None,
             visited_nodes=[graph.nodes[0]["id"]] if graph.nodes else []
         )
-        await session.insert()
+        await session_repo.create(session)
 
         # Track session start
         safe_track_event(
@@ -118,7 +119,9 @@ async def navigate_to_node(
     user: User = Depends(require_role("student"))
 ):
     """Navigate to a new node in the graph."""
-    session = await StudySession.get(session_id)
+    from app.repositories.session_repository import StudySessionRepository
+    session_repo = StudySessionRepository()
+    session = await session_repo.get_by_id(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -134,7 +137,7 @@ async def navigate_to_node(
     if req.node_id not in session.visited_nodes:
         session.visited_nodes.append(req.node_id)
     session.updated_at = datetime.now(timezone.utc)
-    await session.save()
+    await session_repo.update(session)
 
     # Get graph to find node label
     from app.models.graph import KnowledgeGraph
@@ -179,7 +182,9 @@ async def ask_question(
     """Ask a question about the current node with RAG support."""
     start_time = time.time()
 
-    session = await StudySession.get(session_id)
+    from app.repositories.session_repository import StudySessionRepository, ChatMessageRepository
+    session_repo = StudySessionRepository()
+    session = await session_repo.get_by_id(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -218,10 +223,8 @@ async def ask_question(
         raise HTTPException(status_code=400, detail="Node not found in graph")
 
     # Get chat history for this node
-    messages = await ChatMessage.find(
-        ChatMessage.session_id == session_id,
-        ChatMessage.node_id == req.node_id
-    ).sort(ChatMessage.created_at).to_list()
+    chat_repo = ChatMessageRepository()
+    messages = await chat_repo.find_by_session_and_node(session_id, req.node_id)
 
     chat_history = [{"role": msg.role, "content": msg.content} for msg in messages]
 
@@ -257,8 +260,9 @@ async def ask_question(
             filename = source.get("filename")  
             if not filename and did and did != "unknown":
                 try:
+                    from app.repositories.document_repository import DocumentRepository
                     doc_uuid = uuid.UUID(did)
-                    doc = await DocumentModel.get(doc_uuid)
+                    doc = await DocumentRepository().get_by_id(doc_uuid)
                     if doc:
                         filename = doc.filename
                 except Exception as e:
@@ -294,7 +298,7 @@ async def ask_question(
             content=req.question,
             sources=[]
         )
-        await user_msg.insert()
+        await chat_repo.create(user_msg)
 
         assistant_msg = ChatMessage(
             session_id=session_id,
@@ -303,7 +307,7 @@ async def ask_question(
             content=full_answer,
             sources=resolved_sources
         )
-        await assistant_msg.insert()
+        await chat_repo.create(assistant_msg)
 
         # Track answer received event
         latency_ms = int((time.time() - start_time) * 1000)

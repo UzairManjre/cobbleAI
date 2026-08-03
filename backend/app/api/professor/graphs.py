@@ -35,10 +35,10 @@ async def generate_graph_from_docs(
 async def generate_graph_from_docs_stream(
     course_id: uuid.UUID,
     user_id: uuid.UUID,
-    user: User = Depends(get_user_from_token)
+    user: User = Depends(require_role("professor"))
 ):
     """Stream graph generation progress via Server-Sent Events."""
-    if user.role != "professor" or user.id != user_id:
+    if user.id != user_id:
         raise HTTPException(status_code=403, detail="Unauthorized")
     return await GraphService.generate_graph_from_docs_stream(course_id, user_id)
 

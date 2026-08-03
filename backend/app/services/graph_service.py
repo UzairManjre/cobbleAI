@@ -353,7 +353,7 @@ class GraphService:
 
         from app.models.document import DocumentModel
 
-        graph = await KnowledgeGraph.find_one(
+        graph = await KnowledgeGraph.find(
             KnowledgeGraph.course_id == course_id
         ).sort(-KnowledgeGraph.created_at).first_or_none()
 

@@ -35,9 +35,12 @@ class DocumentService:
         uploaded_docs = []
         upload_start = time.time()
 
-        import re
+        import os
+        from werkzeug.utils import secure_filename
+        
         for file in files:
-            file.filename = re.sub(r'[^a-zA-Z0-9_\.-]', '_', file.filename or "unnamed")
+            # Prevent path traversal by getting just the base filename
+            file.filename = secure_filename(file.filename or "unnamed")
             if file.content_type not in ALLOWED_TYPES:
                 raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename}. Allowed: PDF, DOCX, PPTX")
 
@@ -79,6 +82,8 @@ class DocumentService:
             await doc.insert()
             uploaded_docs.append(doc)
 
+            course.docs_count += 1
+            await course.save()
             safe_track_event(
                 event_type="document_uploaded",
                 event_category="document",
@@ -218,14 +223,45 @@ class DocumentService:
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid course_id")
             
-        from app.models.course import Course
-        course = await Course.get(course_uuid)
+        from app.repositories.course_repository import CourseRepository
+        from app.repositories.document_repository import DocumentRepository
+        
+        course_repo = CourseRepository()
+        course = await course_repo.get_by_id(course_uuid)
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
         if course.professor_id != user.id:
             raise HTTPException(status_code=403, detail="Not your course")
             
-        docs = await DocumentModel.find(DocumentModel.course_id == course_uuid).to_list()
+        doc_repo = DocumentRepository()
+        docs = await doc_repo.find_by_course(course_uuid)
+        return docs
+
+    @staticmethod
+    async def list_student_documents(course_id: str, user: User):
+        try:
+            course_uuid = uuid.UUID(course_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid course_id")
+            
+        from app.repositories.course_repository import CourseRepository, EnrolmentRepository
+        from app.repositories.document_repository import DocumentRepository
+        
+        course_repo = CourseRepository()
+        course = await course_repo.get_by_id(course_uuid)
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+            
+        if user.role == "student":
+            enrolment_repo = EnrolmentRepository()
+            enrolment = await enrolment_repo.find_by_student_and_course(user.id, course_uuid)
+            if not enrolment:
+                raise HTTPException(status_code=403, detail="Not enrolled")
+                
+        # Only return processed/ready documents to students
+        doc_repo = DocumentRepository()
+        docs = await doc_repo.find_ready_by_course(course_uuid)
+        
         return docs
 
     @staticmethod
@@ -271,7 +307,8 @@ class DocumentService:
             print(f"Error deleting from Qdrant: {e}")
             
         await doc.delete()
-        
+        course.docs_count = max(0, course.docs_count - 1)
+        await course.save()        
         safe_track_event(
             event_type="document_deleted",
             event_category="document",

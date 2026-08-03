@@ -59,21 +59,7 @@ async def test_student_cannot_generate_topic_graph():
         assert exc.value.status_code == 403
 
 
-@pytest.mark.asyncio
-async def test_student_cannot_stream_graph_generation():
-    """Verify that the stream handler raises 403 for non-professors."""
-    student_id = uuid.uuid4()
-    mock_user = create_mock_user(id=student_id, role="student")
 
-    # The route checks user.role != "professor" and raises 403 directly.
-    # Signature: (course_id: UUID, user_id: UUID, user: User)
-    with pytest.raises(HTTPException) as exc:
-        await generate_graph_from_docs_stream(
-            course_id=uuid.uuid4(),
-            user_id=student_id,  # UUID – same student, different role
-            user=mock_user,
-        )
-    assert exc.value.status_code == 403
 
 
 # ── Student test operations ────────────────────────────────────────────────

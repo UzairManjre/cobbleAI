@@ -2,6 +2,8 @@ import uuid
 from datetime import datetime, timezone
 from fastapi import HTTPException
 from app.models.test import Test, TestAttempt, MockTest, TestAnalytics, Question, Answer
+from app.repositories.test_repository import TestRepository, TestAttemptRepository
+from app.repositories.course_repository import CourseRepository
 from app.models.course import Course
 from app.models.graph import KnowledgeGraph
 from app.models.user import User
@@ -17,7 +19,7 @@ class TestService:
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid course ID")
             
-        course = await Course.get(course_uuid)
+        course = await CourseRepository().get_by_id(course_uuid)
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
         if str(course.professor_id) != str(user.id):
@@ -40,7 +42,7 @@ class TestService:
             test.available_from = datetime.fromisoformat(req.available_from)
         if req.available_until:
             test.available_until = datetime.fromisoformat(req.available_until)
-        await test.insert()
+        await TestRepository().create(test)
         return test
 
     @staticmethod
@@ -51,7 +53,7 @@ class TestService:
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid UUID")
             
-        test = await Test.get(test_uuid)
+        test = await TestRepository().get_by_id(test_uuid)
         if not test:
             raise HTTPException(status_code=404, detail="Test not found")
         if str(test.professor_id) != str(user.id):
@@ -70,7 +72,7 @@ class TestService:
         test.questions = questions
         test.total_marks = sum(q.marks for q in questions)
         test.updated_at = datetime.now(timezone.utc)
-        await test.save()
+        await TestRepository().update(test)
         return test, len(questions)
 
     @staticmethod
@@ -80,7 +82,7 @@ class TestService:
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid UUID")
             
-        test = await Test.get(test_uuid)
+        test = await TestRepository().get_by_id(test_uuid)
         if not test:
             raise HTTPException(status_code=404, detail="Test not found")
         if str(test.professor_id) != str(user.id):
@@ -91,17 +93,17 @@ class TestService:
         test.status = "published"
         test.published_at = datetime.now(timezone.utc)
         test.updated_at = datetime.now(timezone.utc)
-        await test.save()
+        await TestRepository().update(test)
         return test
 
     @staticmethod
     async def get_all_professor_tests(user: User):
-        courses = await Course.find(Course.professor_id == user.id).to_list()
+        courses = await CourseRepository().find_by_professor(user.id)
         course_ids = [c.id for c in courses]
         if not course_ids:
             return [], {}
         course_map = {c.id: c.title for c in courses}
-        tests = await Test.find(In(Test.course_id, course_ids)).to_list()
+        tests = await TestRepository().find_by_courses(course_ids)
         return tests, course_map
 
     @staticmethod
@@ -111,7 +113,7 @@ class TestService:
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid course ID")
             
-        course = await Course.get(course_uuid)
+        course = await CourseRepository().get_by_id(course_uuid)
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
         if user.role == "professor" and course.professor_id != user.id:
@@ -124,10 +126,9 @@ class TestService:
             if not enrolment:
                 raise HTTPException(status_code=403, detail="Not enrolled in this course")
                 
-        query = Test.find(Test.course_id == course_uuid)
         if user.role == "student":
-            query = query.find(Test.status == "published")
-        return await query.to_list()
+            return await TestRepository().find_published_by_course(course_uuid)
+        return await TestRepository().find_by_course(course_uuid)
 
     @staticmethod
     async def get_test(user: User, test_id: str):
@@ -135,7 +136,7 @@ class TestService:
             test_uuid = uuid.UUID(test_id)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid UUID")
-        test = await Test.get(test_uuid)
+        test = await TestRepository().get_by_id(test_uuid)
         if not test:
             raise HTTPException(status_code=404, detail="Test not found")
         if user.role == "professor" and str(test.professor_id) != str(user.id):
@@ -166,26 +167,19 @@ class TestService:
             test_uuid = uuid.UUID(test_id)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid UUID")
-        test = await Test.get(test_uuid)
+        test = await TestRepository().get_by_id(test_uuid)
         if not test:
             raise HTTPException(status_code=404, detail="Test not found")
         if test.status != "published":
             raise HTTPException(status_code=403, detail="Test not available")
             
-        existing = await TestAttempt.find_one(
-            TestAttempt.test_id == test_uuid,
-            TestAttempt.student_id == user.id,
-            TestAttempt.status == "in_progress"
-        )
+        existing_list = await TestAttemptRepository().find_by_test_and_student(test_uuid, user.id)
+        existing = next((a for a in existing_list if a.status == "in_progress"), None)
         if existing:
             return existing, test, True
             
         if not test.allow_retakes:
-            completed = await TestAttempt.find(
-                TestAttempt.test_id == test_uuid,
-                TestAttempt.student_id == user.id,
-                TestAttempt.status == "graded"
-            ).count()
+            completed = sum(1 for a in existing_list if a.status == "graded")
             if completed >= test.max_attempts:
                 raise HTTPException(status_code=403, detail="Max attempts reached")
                 
@@ -196,7 +190,7 @@ class TestService:
             answers=[],
             status="in_progress"
         )
-        await attempt.insert()
+        await TestAttemptRepository().create(attempt)
         return attempt, test, False
 
     @staticmethod
@@ -205,7 +199,7 @@ class TestService:
             attempt_uuid = uuid.UUID(attempt_id)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid UUID")
-        attempt = await TestAttempt.get(attempt_uuid)
+        attempt = await TestAttemptRepository().get_by_id(attempt_uuid)
         if not attempt:
             raise HTTPException(status_code=404, detail="Attempt not found")
         if attempt.student_id != user.id:
@@ -218,7 +212,7 @@ class TestService:
             if attempt.last_saved_at.isoformat() != req.last_saved_at:
                 raise HTTPException(status_code=409, detail="A newer version of this test attempt exists. Please refresh.")
         
-        test = await Test.get(attempt.test_id)
+        test = await TestRepository().get_by_id(attempt.test_id)
         if not test:
             raise HTTPException(status_code=404, detail="Test not found")
             
@@ -269,7 +263,7 @@ class TestService:
         
         if req.is_auto_save:
             attempt.is_auto_saved = True
-            await attempt.save()
+            await TestAttemptRepository().update(attempt)
             return attempt, 0, test.total_marks
 
         attempt.total_marks_awarded = total_marks
@@ -277,14 +271,14 @@ class TestService:
         attempt.submitted_at = datetime.now(timezone.utc)
         attempt.time_taken_seconds = int((attempt.submitted_at - attempt.started_at).total_seconds())
         attempt.status = "graded" if test.show_results_immediately else "submitted"
-        await attempt.save()
+        await TestAttemptRepository().update(attempt)
         await TestService.update_test_analytics(test.id, test.course_id)
         return attempt, total_marks, test.total_marks
 
     @staticmethod
     async def update_test_analytics(test_id: uuid.UUID, course_id: uuid.UUID):
         try:
-            attempts = await TestAttempt.find(
+            attempts = await TestAttemptRepository().model.find(
                 TestAttempt.test_id == test_id,
                 TestAttempt.status == "graded"
             ).to_list()

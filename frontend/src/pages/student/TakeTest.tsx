@@ -200,7 +200,7 @@ export default function TakeTest() {
             <div className="h-6 w-px bg-[#1A1A1A]" />
             <div>
               <h1 className="text-sm font-medium tracking-wide text-white">{test.title}</h1>
-              <p className="text-xs text-[#666666] tracking-wide mt-0.5">{answeredCount} of {totalQuestions} Completed</p>
+              <p className="text-xs text-[#A3A3A3] tracking-wide mt-0.5">{answeredCount} of {totalQuestions} Completed</p>
             </div>
           </div>
           
@@ -226,8 +226,8 @@ export default function TakeTest() {
               </div>
               <div className="pt-1">
                 <div className="flex items-center gap-3 mb-3 text-xs tracking-wider">
-                  <span className="text-[#666666] uppercase bg-[#111111] px-2 py-1 rounded-md">{currentQuestion.type.replace('_', ' ')}</span>
-                  <span className="text-[#666666]">{currentQuestion.marks} Pts</span>
+                  <span className="text-[#A3A3A3] uppercase bg-[#111111] px-2 py-1 rounded-md">{currentQuestion.type.replace('_', ' ')}</span>
+                  <span className="text-[#A3A3A3]">{currentQuestion.marks} Pts</span>
                 </div>
                 <h2 className="text-2xl font-light text-white leading-snug">
                   {currentQuestion.question_text}
@@ -240,12 +240,14 @@ export default function TakeTest() {
               
               {/* Multiple Choice */}
               {currentQuestion.type === 'mcq' && (
-                <div className="space-y-3">
+                <div className="space-y-3" role="radiogroup" aria-label="Multiple choice options">
                   {currentQuestion.options?.map((option: any) => {
                     const isSelected = answers[currentQuestion.id]?.value === option.id;
                     return (
                       <button
                         key={option.id}
+                        role="radio"
+                        aria-checked={isSelected}
                         onClick={() => handleAnswer(currentQuestion.id, option.id, 'option')}
                         className={`w-full text-left p-5 rounded-xl border transition-all duration-200 flex items-center gap-4 ${
                           isSelected 
@@ -267,8 +269,10 @@ export default function TakeTest() {
 
               {/* True / False */}
               {currentQuestion.type === 'true_false' && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4" role="radiogroup" aria-label="True or False options">
                   <button
+                    role="radio"
+                    aria-checked={answers[currentQuestion.id]?.value === 'true'}
                     onClick={() => handleAnswer(currentQuestion.id, 'true', 'option')}
                     className={`p-6 rounded-xl border transition-all flex items-center justify-center gap-3 ${
                       answers[currentQuestion.id]?.value === 'true'
@@ -279,6 +283,8 @@ export default function TakeTest() {
                     <span className="text-lg font-medium">True</span>
                   </button>
                   <button
+                    role="radio"
+                    aria-checked={answers[currentQuestion.id]?.value === 'false'}
                     onClick={() => handleAnswer(currentQuestion.id, 'false', 'option')}
                     className={`p-6 rounded-xl border transition-all flex items-center justify-center gap-3 ${
                       answers[currentQuestion.id]?.value === 'false'
@@ -372,7 +378,7 @@ export default function TakeTest() {
                       ? 'bg-white text-black' 
                       : isAnswered
                         ? 'bg-[#1A1A1A] text-white hover:bg-[#222222]'
-                        : 'text-[#666666] hover:text-[#AAAAAA] hover:bg-[#111111]'
+                        : 'text-[#A3A3A3] hover:text-[#AAAAAA] hover:bg-[#111111]'
                   }`}
                 >
                   {isAnswered && !isActive ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}

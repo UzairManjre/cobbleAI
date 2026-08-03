@@ -44,8 +44,8 @@ const ConceptNode = ({ data, id }: NodeProps) => {
     statusText = 'Mastered';
     StatusIcon = CheckCircle;
   } else if (isLocked) {
-    cardStyle = 'bg-[#050505] border-[#1A1A1A] text-[#555555] opacity-60 cursor-not-allowed';
-    badgeStyle = 'bg-[#111111] text-[#666666] border-[#1A1A1A]';
+    cardStyle = 'bg-[#050505] border-[#1A1A1A] text-[#888888] opacity-60 cursor-not-allowed';
+    badgeStyle = 'bg-[#111111] text-[#A3A3A3] border-[#1A1A1A]';
     statusText = 'Locked';
     StatusIcon = Lock;
   } else if (isVisited) {
@@ -60,9 +60,19 @@ const ConceptNode = ({ data, id }: NodeProps) => {
   }
 
   return (
-    <div className={`
+    <div 
+      role="button"
+      tabIndex={0}
+      aria-label={`${data.label} - ${statusText} - ${data.difficulty || 'Core'}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          // ReactFlow handles selection when nodes are focused and enter is pressed
+        }
+      }}
+      className={`
       relative px-5 py-4 rounded-2xl transition-all duration-300
-      border cursor-pointer group ${cardStyle}
+      border cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${cardStyle}
     `}>
       <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-[#333333] !border-none" />
 
@@ -166,7 +176,7 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
       target: edge.to,
       animated: true,
       style: { stroke: '#333333', strokeWidth: 2 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: '#555555' },
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#888888' },
     }));
 
     return getLayoutedElements(initialNodes, initialEdges);
@@ -210,8 +220,8 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
             <span className="text-xs text-[#CCCCCC]">Unlocked / Ready</span>
          </div>
          <div className="flex items-center gap-2">
-            <Lock className="w-3.5 h-3.5 text-[#555555]" />
-            <span className="text-xs text-[#666666]">Locked (Prerequisite)</span>
+            <Lock className="w-3.5 h-3.5 text-[#888888]" />
+            <span className="text-xs text-[#A3A3A3]">Locked (Prerequisite)</span>
          </div>
       </div>
     </div>

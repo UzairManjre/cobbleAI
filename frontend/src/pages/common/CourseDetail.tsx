@@ -3,7 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { coursesApi, documentsApi, graphsApi } from '../../api';
 import { useGraphStore } from '../../store/graphStore';
+import { useToastStore } from '../../store/toastStore';
 import { ArrowLeft, Upload, Sparkles, FileText, Trash2, Loader2, BookOpen, Users, Flag, Map, Calendar, Zap, LayoutDashboard } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 
 interface GenerationProgress {
   step: number;
@@ -29,6 +32,7 @@ export default function CourseDetail() {
   const { courseId } = useParams();
   const { token, role } = useAuthStore();
   const navigate = useNavigate();
+  const addToast = useToastStore(state => state.addToast);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [course, setCourse] = useState<any>(null);
@@ -36,13 +40,14 @@ export default function CourseDetail() {
   const [isUploading, setIsUploading] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [students, setStudents] = useState<any[]>([]);
 
   // Graph generation progress state
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
   const [genResult, setGenResult] = useState<{ nodes_count: number; edges_count: number; elapsed: number } | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const eventSourceRef = useRef<AbortController | null>(null);
 
   const {
     nodes: graphNodes,
@@ -55,6 +60,9 @@ export default function CourseDetail() {
       fetchCourseDetails();
       fetchDocuments();
       fetchCourseGraph(courseId);
+      if (role === 'professor') {
+        fetchStudents();
+      }
     }
   }, [courseId, token]);
 
@@ -72,7 +80,7 @@ export default function CourseDetail() {
   useEffect(() => {
     return () => {
       if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+        eventSourceRef.current.abort();
       }
     };
   }, []);
@@ -86,6 +94,16 @@ export default function CourseDetail() {
     } catch (err) {
       console.error(err);
       setIsLoading(false);
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      const res = await coursesApi.getProfessorStudents();
+      const courseStudents = (res.data || []).filter((s: any) => s.course_id === courseId);
+      setStudents(courseStudents);
+    } catch (err) {
+      console.error('Failed to fetch students:', err);
     }
   };
 
@@ -110,7 +128,7 @@ export default function CourseDetail() {
       fetchDocuments();
     } catch (err: any) {
       console.error('Upload error:', err);
-      alert(err.response?.data?.detail || 'Upload failed');
+      addToast(err.response?.data?.detail || 'Upload failed', 'error');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -126,7 +144,7 @@ export default function CourseDetail() {
       fetchDocuments();
     } catch (err) {
       console.error('Failed to delete document', err);
-      alert('Failed to delete document');
+      addToast('Failed to delete document', 'error');
     }
   };
 
@@ -135,7 +153,7 @@ export default function CourseDetail() {
       const res = await coursesApi.createInvite(courseId || '');
       setInviteCode(res.data.code);
     } catch (err) {
-      alert('Failed to generate invite');
+      addToast('Failed to generate invite', 'error');
     }
   };
 
@@ -157,57 +175,78 @@ export default function CourseDetail() {
     setGenResult(null);
 
     if (eventSourceRef.current) {
-      eventSourceRef.current.close();
+      eventSourceRef.current.abort();
     }
 
-    const es = graphsApi.generateFromDocsStream(courseId, userId, token);
-    eventSourceRef.current = es;
-    
+    const ctrl = new AbortController();
+    eventSourceRef.current = ctrl;
+
     let isComplete = false;
 
-    es.addEventListener('progress', (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data);
-        setProgress(data);
-      } catch (err) {
-        console.error('Failed to parse progress event:', err);
-      }
-    });
-
-    es.addEventListener('complete', async (e: MessageEvent) => {
-      isComplete = true;
-      try {
-        const data = JSON.parse(e.data);
-        setGenResult({
-          nodes_count: data.nodes_count,
-          edges_count: data.edges_count,
-          elapsed: data.elapsed,
-        });
-        await fetchCourseGraph(courseId);
-      } catch (err) {
-        console.error('Failed to parse complete event:', err);
-      }
-      es.close();
-      eventSourceRef.current = null;
-    });
-
-    es.addEventListener('error', (e: any) => {
-      if (isComplete) return; 
-      
-      if (e.data) {
-        try {
-          const data = JSON.parse(e.data);
-          setGenError(data.message || 'Graph generation failed');
-        } catch {
-          setGenError('Graph generation failed');
+    graphsApi.generateFromDocsStream(
+      courseId, 
+      userId, 
+      token, 
+      ctrl,
+      (e) => {
+        if (e.event === 'progress') {
+          try {
+            const data = JSON.parse(e.data);
+            setProgress(data);
+          } catch (err) {
+            console.error('Failed to parse progress event:', err);
+          }
+        } else if (e.event === 'complete') {
+          isComplete = true;
+          try {
+            const data = JSON.parse(e.data);
+            setGenResult({
+              nodes_count: data.nodes_count,
+              edges_count: data.edges_count,
+              elapsed: data.elapsed,
+            });
+            fetchCourseGraph(courseId).catch(err => console.error(err));
+          } catch (err) {
+            console.error('Failed to parse complete event:', err);
+          }
+        } else if (e.event === 'error') {
+          if (isComplete) return;
+          try {
+            const data = JSON.parse(e.data);
+            setGenError(data.message || 'Graph generation failed');
+          } catch {
+            setGenError('Graph generation failed');
+          }
+          if (eventSourceRef.current) {
+            eventSourceRef.current.abort();
+            eventSourceRef.current = null;
+          }
+          setIsGenerating(false);
         }
-      } else {
+      },
+      (err) => {
+        if (isComplete) return;
         setGenError('Connection lost during graph generation. The graph may still be generating — please refresh in a minute.');
+        eventSourceRef.current = null;
+        setIsGenerating(false);
+      },
+      async () => {
+        isComplete = true;
+        try {
+          // fetch latest on complete
+          await fetchCourseGraph(courseId);
+          setGenResult({
+            nodes_count: 0,
+            edges_count: 0,
+            elapsed: 0
+          });
+        } catch (err) {
+          console.error('Failed on complete:', err);
+        }
+        eventSourceRef.current = null;
+        setIsGenerating(false);
       }
-      es.close();
-      eventSourceRef.current = null;
-      setIsGenerating(false);
-    });
+    );
   };
 
   const dismissOverlay = () => {
@@ -223,11 +262,11 @@ export default function CourseDetail() {
 
     try {
       const res = await documentsApi.cleanupDuplicates();
-      alert(res.data.message);
+      addToast(res.data.message, 'success');
       fetchDocuments();
     } catch (err: any) {
       console.error('Cleanup error:', err);
-      alert('Cleanup failed');
+      addToast('Cleanup failed', 'error');
     }
   };
 
@@ -250,13 +289,13 @@ export default function CourseDetail() {
     return (
       <div className="min-h-screen bg-black text-white p-8 flex flex-col items-center justify-center space-y-6">
         <h2 className="text-3xl font-outfit font-light tracking-tight text-white">Course not found</h2>
-        <button 
+        <Button
           onClick={() => navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard')}
-          className="px-6 py-3 border border-[#333333] hover:border-white hover:bg-white hover:text-black rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+          variant="outline"
         >
           <ArrowLeft size={16} />
           <span>Back to Dashboard</span>
-        </button>
+        </Button>
       </div>
     );
   }
@@ -265,14 +304,14 @@ export default function CourseDetail() {
 
   return (
     <div className="min-h-screen bg-black text-white p-8 lg:p-12 relative overflow-hidden">
-      
+
       {/* Graph Generation Progress Overlay */}
       {(isGenerating || genResult || genError) && (
         <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={dismissOverlay} />
-          
+
           <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-8 max-w-lg w-full relative z-10 shadow-2xl space-y-6">
-            
+
             {/* Header */}
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-outfit font-medium tracking-tight text-white">
@@ -312,9 +351,8 @@ export default function CourseDetail() {
                     return (
                       <div
                         key={i}
-                        className={`flex items-center justify-between p-3 rounded-lg transition-all ${
-                          isActive ? 'bg-[#111111]' : isDone ? 'opacity-50' : 'opacity-30'
-                        }`}
+                        className={`flex items-center justify-between p-3 rounded-lg transition-all ${isActive ? 'bg-[#111111]' : isDone ? 'opacity-50' : 'opacity-30'
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-sm">
@@ -343,28 +381,29 @@ export default function CourseDetail() {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="p-4 border border-[#1A1A1A] rounded-xl bg-[#050505] text-center">
                     <span className="block text-2xl font-light text-white mb-1">{genResult.nodes_count}</span>
-                    <span className="text-[10px] uppercase tracking-widest text-[#555555]">Concepts</span>
+                    <span className="text-[10px] uppercase tracking-widest text-[#888888]">Concepts</span>
                   </div>
                   <div className="p-4 border border-[#1A1A1A] rounded-xl bg-[#050505] text-center">
                     <span className="block text-2xl font-light text-white mb-1">{genResult.edges_count}</span>
-                    <span className="text-[10px] uppercase tracking-widest text-[#555555]">Links</span>
+                    <span className="text-[10px] uppercase tracking-widest text-[#888888]">Links</span>
                   </div>
                   <div className="p-4 border border-[#1A1A1A] rounded-xl bg-[#050505] text-center">
                     <span className="block text-2xl font-light text-white mb-1">{formatElapsed(genResult.elapsed)}</span>
-                    <span className="text-[10px] uppercase tracking-widest text-[#555555]">Time</span>
+                    <span className="text-[10px] uppercase tracking-widest text-[#888888]">Time</span>
                   </div>
                 </div>
-                
-                <button 
+
+                <Button
                   onClick={() => {
                     dismissOverlay();
                     navigate(`/${role}/courses/${courseId}/map`);
                   }}
-                  className="w-full py-4 bg-white text-black font-medium text-sm rounded-lg hover:bg-[#F0F0F0] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  variant="primary"
+                  className="w-full"
                 >
                   <Sparkles size={16} />
                   <span>View Knowledge Graph</span>
-                </button>
+                </Button>
               </div>
             )}
 
@@ -374,12 +413,13 @@ export default function CourseDetail() {
                 <div className="p-4 border border-[#331111] bg-[#1A0505] text-[#FF4444] text-sm rounded-lg">
                   {genError}
                 </div>
-                <button 
+                <Button
                   onClick={dismissOverlay}
-                  className="w-full py-3 border border-[#333333] hover:bg-[#111111] text-white font-medium text-sm rounded-lg"
+                  variant="outline"
+                  className="w-full"
                 >
                   Dismiss
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -387,16 +427,17 @@ export default function CourseDetail() {
       )}
 
       <div className="max-w-6xl mx-auto space-y-12 relative z-10">
-        
+
         {/* Navigation & Header */}
         <div className="flex flex-col gap-6">
-          <button 
+          <Button
             onClick={() => navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard')}
-            className="w-fit flex items-center gap-2 text-sm text-[#888888] hover:text-white transition-colors"
+            variant="ghost"
+            className="w-fit -ml-4"
           >
             <ArrowLeft size={16} />
             Back to Dashboard
-          </button>
+          </Button>
 
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
@@ -416,20 +457,20 @@ export default function CourseDetail() {
 
             {role === 'professor' && (
               <div className="flex items-center gap-3">
-                <button 
+                <Button
                   onClick={cleanupDuplicates}
-                  className="px-4 py-2 border border-[#1A1A1A] hover:border-[#333333] bg-[#0A0A0A] text-white rounded-lg text-xs font-medium transition-all"
+                  variant="outline"
                 >
                   Clean Duplicates
-                </button>
-                <button 
+                </Button>
+                <Button
                   onClick={generateGraph}
                   disabled={isGenerating}
-                  className="px-4 py-2 bg-white text-black rounded-lg text-xs font-medium hover:bg-[#F0F0F0] active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                  variant="primary"
                 >
                   <Zap size={14} />
                   {isGenerating ? 'Generating...' : 'Regenerate Graph'}
-                </button>
+                </Button>
               </div>
             )}
           </header>
@@ -438,7 +479,7 @@ export default function CourseDetail() {
         {/* Feature Navigation Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {role === 'professor' && (
-            <div 
+            <div
               onClick={() => navigate(`/professor/courses/${courseId}/tests`)}
               className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
             >
@@ -446,8 +487,8 @@ export default function CourseDetail() {
               <span className="text-sm font-medium text-white">Manage Tests</span>
             </div>
           )}
-          
-          <div 
+
+          <div
             onClick={() => navigate(`/${role}/courses/${courseId}/map`)}
             className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
           >
@@ -455,7 +496,7 @@ export default function CourseDetail() {
             <span className="text-sm font-medium text-white">Visual Map</span>
           </div>
 
-          <div 
+          <div
             onClick={() => navigate(`/${role}/courses/${courseId}/plan`)}
             className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
           >
@@ -463,7 +504,7 @@ export default function CourseDetail() {
             <span className="text-sm font-medium text-white">Study Plan</span>
           </div>
 
-          <div 
+          <div
             onClick={() => navigate(`/${role}/courses/${courseId}/study`)}
             className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-white rounded-2xl p-5 cursor-pointer transition-all group flex flex-col items-center text-center justify-center min-h-[120px] md:col-span-2 lg:col-span-1"
           >
@@ -474,13 +515,13 @@ export default function CourseDetail() {
 
         {/* Main Split Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* Left Column: Learning Materials */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6">
+            <Card className="p-6">
               <div className="flex items-center justify-between pb-6 mb-6 border-b border-[#1A1A1A]">
                 <h3 className="text-lg font-outfit font-medium text-white">Learning Materials</h3>
-                
+
                 {role === 'professor' && (
                   <>
                     <input
@@ -491,18 +532,18 @@ export default function CourseDetail() {
                       accept=".pdf,.docx,.pptx"
                       multiple
                     />
-                    <button
+                    <Button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
-                      className="px-4 py-2 border border-[#333333] hover:bg-[#111111] text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                      variant="outline"
                     >
                       {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload size={14} />}
                       <span>{isUploading ? 'Uploading...' : 'Upload Files'}</span>
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
-              
+
               <div className="space-y-3">
                 {documents.map((doc) => (
                   <div key={doc.id || doc._id} className="flex items-center justify-between p-4 rounded-xl hover:bg-[#111111] transition-colors border border-transparent hover:border-[#1A1A1A] group">
@@ -512,24 +553,23 @@ export default function CourseDetail() {
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-white truncate max-w-[200px] md:max-w-md">{doc.filename}</h4>
-                        <p className="text-[10px] text-[#555555] mt-1">Added {new Date(doc.created_at).toLocaleDateString()}</p>
+                        <p className="text-[10px] text-[#888888] mt-1">Added {new Date(doc.created_at).toLocaleDateString()}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
-                      <span className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-full border ${
-                        doc.status === 'processed' || doc.status === 'completed'
-                          ? 'text-blue-500 border-blue-500/30' 
+                      <span className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-full border ${doc.status === 'processed' || doc.status === 'completed'
+                          ? 'text-blue-500 border-blue-500/30'
                           : doc.status === 'processing'
-                          ? 'text-purple-500 border-purple-500/30 animate-pulse'
-                          : 'text-orange-500 border-orange-500/30'
-                      }`}>
+                            ? 'text-purple-500 border-purple-500/30 animate-pulse'
+                            : 'text-orange-500 border-orange-500/30'
+                        }`}>
                         {doc.status}
                       </span>
                       {role === 'professor' && (
-                        <button 
+                        <button
                           onClick={() => handleDeleteDocument(doc.id || doc._id)}
-                          className="p-1.5 text-[#555555] hover:text-[#FF4444] transition-colors opacity-0 group-hover:opacity-100"
+                          className="p-1.5 text-[#888888] hover:text-[#FF4444] transition-colors opacity-0 group-hover:opacity-100"
                           title="Delete document"
                         >
                           <Trash2 size={14} />
@@ -538,7 +578,7 @@ export default function CourseDetail() {
                     </div>
                   </div>
                 ))}
-                
+
                 {documents.length === 0 && (
                   <div className="py-12 flex flex-col items-center justify-center text-[#888888]">
                     <FileText size={32} className="mb-3 opacity-50" />
@@ -549,16 +589,16 @@ export default function CourseDetail() {
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
           </div>
-          
+
           {/* Right Column: Intelligence & Student Access */}
           <div className="space-y-6">
-            
+
             {/* Course Intelligence */}
-            <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6">
+            <Card className="p-6">
               <h3 className="text-lg font-outfit font-medium text-white mb-6">Intelligence Status</h3>
-              
+
               <div className="space-y-4 text-sm">
                 <div className="flex justify-between items-center py-2 border-b border-[#1A1A1A]">
                   <span className="text-[#888888]">Total Concepts</span>
@@ -574,37 +614,77 @@ export default function CourseDetail() {
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-[#888888]">Status</span>
-                  <span className={`text-xs font-medium ${
-                    graphNodes.length > 0 ? 'text-blue-500' : 'text-orange-500'
-                  }`}>
+                  <span className={`text-xs font-medium ${graphNodes.length > 0 ? 'text-blue-500' : 'text-orange-500'
+                    }`}>
                     {graphNodes.length > 0 ? 'Map Optimized' : 'Map Required'}
                   </span>
                 </div>
               </div>
-            </div>
-            
+            </Card>
+
             {/* Student Access Card */}
             {role === 'professor' && (
-              <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6">
+              <Card className="p-6">
                 <h3 className="text-lg font-outfit font-medium text-white mb-4">Student Access</h3>
-                
+
                 <p className="text-xs text-[#888888] mb-6">
                   Provide this code to your students to grant them full access to this course's AI materials.
                 </p>
-                
+
                 {inviteCode ? (
                   <div className="p-4 bg-[#111111] border border-[#333333] text-white font-medium text-xl text-center rounded-lg tracking-widest">
                     {inviteCode}
                   </div>
                 ) : (
-                  <button 
-                    onClick={generateInvite} 
-                    className="w-full py-3 bg-white text-black font-medium text-sm rounded-lg hover:bg-[#F0F0F0] transition-colors"
+                  <Button
+                    onClick={generateInvite}
+                    variant="primary"
+                    className="w-full"
                   >
                     Generate Invite Code
-                  </button>
+                  </Button>
                 )}
-              </div>
+              </Card>
+            )}
+
+            {/* Enrolled Students Card */}
+            {role === 'professor' && (
+              <Card className="p-6">
+                <h3 className="text-lg font-outfit font-medium text-white mb-6">Enrolled Students</h3>
+                <div className="space-y-4">
+                  {students.length === 0 ? (
+                    <div className="py-6 flex flex-col items-center justify-center text-[#888888] text-center">
+                      <Users size={24} className="mb-2 opacity-50" />
+                      <p className="text-sm font-medium text-white mb-1">No students yet</p>
+                      <span className="text-xs">Share the invite code above.</span>
+                    </div>
+                  ) : (
+                    students.map((student) => (
+                      <div key={student.id} className="flex items-center justify-between p-3 rounded-lg bg-[#111111] border border-[#1A1A1A]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#1A1A1A] border border-[#333333] flex items-center justify-center text-[#888888] text-xs font-medium shrink-0">
+                            {(student.name || student.email || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <div className="overflow-hidden">
+                            <span className="block font-medium text-sm text-white truncate">{student.name || student.email || "Unknown Student"}</span>
+                            <span className="block text-[10px] text-[#888888]">
+                              Enrolled: {student.enrolled_at ? new Date(student.enrolled_at).toLocaleDateString() : 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className={`block text-xs font-medium ${student.flagIcon ? 'text-red-500' : 'text-[#888888]'}`}>
+                            {student.status}
+                          </span>
+                          <span className="text-[10px] text-[#888888]">
+                            {student.progress}% Done
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
             )}
           </div>
         </div>

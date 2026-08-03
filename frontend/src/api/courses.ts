@@ -2,7 +2,7 @@ import api from './client';
 
 // Courses API
 export const coursesApi = {
-  create: (data: { title: string; code: string }) => {
+  create: (data: { title: string; code: string; description?: string }) => {
     return api.post('/courses/', data);
   },
   
@@ -27,7 +27,7 @@ export const coursesApi = {
   },
   
   getProfessorStudents: () => {
-    return api.get('/courses/professor/students');
+    return api.get('/courses/students');
   },
 };
 

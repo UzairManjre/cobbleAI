@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { analytics } from '../../utils/analytics';
 import { API_URL } from '../../api';
+import { Button } from '../../components/ui/Button';
 import KnowledgeGraph from '../../components/graph/KnowledgeGraph';
 import { useGraphStore } from '../../store/graphStore';
 
@@ -274,18 +275,16 @@ export default function Chat() {
         </div>
         <div className="flex items-center gap-2">
           {modes.map(m => (
-            <button
+            <Button
               key={m.key}
               onClick={() => setMode(m.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 ${
-                mode === m.key
-                  ? 'bg-white text-black border-white'
-                  : 'bg-[#111111] text-[#888888] border-[#1A1A1A] hover:text-white'
-              }`}
+              variant={mode === m.key ? 'primary' : 'outline'}
+              size="sm"
+              leftIcon={<m.icon size={14} />}
+              className={mode !== m.key ? 'text-[#888888] border-[#1A1A1A] bg-[#111111] hover:text-white' : ''}
             >
-              <m.icon size={14} />
               {m.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -331,18 +330,19 @@ export default function Chat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="Message Cobble AI..."
-              className="w-full bg-[#111111] border border-[#1A1A1A] text-sm text-white placeholder:text-[#555555] rounded-xl px-4 py-3 focus:outline-none focus:border-[#333333] transition-all"
+              className="w-full bg-[#111111] border border-[#1A1A1A] text-sm text-white placeholder:text-[#888888] rounded-xl px-4 py-3 focus:outline-none focus:border-[#333333] transition-all"
               disabled={isTyping}
             />
-            <button
+            <Button
               type="submit"
               disabled={!input.trim() || isTyping}
-              className="px-5 bg-white text-black hover:bg-neutral-200 disabled:opacity-50 rounded-xl transition-all flex items-center justify-center shrink-0"
+              variant="primary"
+              className="px-5 shrink-0"
             >
               <Send size={18} />
-            </button>
+            </Button>
           </form>
-          <p className="text-center text-[10px] text-[#555555] mt-2 font-medium uppercase tracking-wider">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
+          <p className="text-center text-[10px] text-[#888888] mt-2 font-medium uppercase tracking-wider">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
         </div>
       </div>
     </div>

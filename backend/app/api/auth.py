@@ -44,28 +44,36 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                 user_agent=request.headers.get("user-agent") if request else None,
                 ip_address=request.client.host if request and request.client else None,
             )
-        except Exception:
-            pass  # Never break registration on analytics failure
+        except Exception as e:
+            # Prevent orphaned users: delete the user if side-effects fail
+            await self.user_db.delete(user)
+            from fastapi import HTTPException
+            logging.error(f"Failed to track signup event: {e}")
+            raise HTTPException(status_code=400, detail="Registration failed during post-processing")
 
     async def on_after_login(self, user: User, request: Optional[Request] = None, response=None):
-        # Update last_login
-        from datetime import datetime, timezone
-        user.last_login = datetime.now(timezone.utc)
-        await user.save()
-        # Track login event
         try:
-            from app.services.analytics import analytics_service
-            await analytics_service.track_event(
-                event_type="login_success",
-                event_category="auth",
-                user_id=user.id,
-                user_role=user.role,
-                payload={"method": "jwt"},
-                user_agent=request.headers.get("user-agent") if request else None,
-                ip_address=request.client.host if request and request.client else None,
-            )
-        except Exception:
-            pass
+            # Update last_login
+            from datetime import datetime, timezone
+            user.last_login = datetime.now(timezone.utc)
+            await user.save()
+            
+            # Track login event
+            try:
+                from app.services.analytics import analytics_service
+                await analytics_service.track_event(
+                    event_type="login_success",
+                    event_category="auth",
+                    user_id=user.id,
+                    user_role=user.role,
+                    payload={"method": "jwt"},
+                    user_agent=request.headers.get("user-agent") if request else None,
+                    ip_address=request.client.host if request and request.client else None,
+                )
+            except Exception as e:
+                logging.error(f"Failed to track login event (non-fatal): {e}")
+        except Exception as e:
+            logging.error(f"Error in on_after_login hook: {e}")
 
 async def get_user_manager(user_db=Depends(get_user_db)):
     yield UserManager(user_db)

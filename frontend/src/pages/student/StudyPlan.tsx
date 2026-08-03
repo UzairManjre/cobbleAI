@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { studyPlansApi, coursesApi } from '../../api';
 import ReactMarkdown from 'react-markdown';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 
 interface Exercise {
   id: string;
@@ -246,14 +248,15 @@ export default function StudyPlanView() {
     return (
       <div className="min-h-screen bg-black text-white p-8">
         <div className="max-w-3xl mx-auto">
-          <button
+          <Button
             onClick={() => navigate(`/${role}/courses/${courseId}`)}
-            className="mb-8 px-4 py-2 bg-[#0A0A0A] text-white border border-[#1A1A1A] hover:border-[#333333] rounded-xl font-medium transition-all inline-flex items-center gap-2 text-sm"
+            variant="outline"
+            className="mb-8"
           >
             <ArrowLeft size={16} /> Back to Course
-          </button>
+          </Button>
           
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-12 text-center">
+          <Card className="p-12 text-center">
             <div className="w-20 h-20 bg-[#111111] border border-[#1A1A1A] rounded-full flex items-center justify-center mx-auto mb-6">
               <FileText className="w-10 h-10 text-[#888888]" />
             </div>
@@ -261,10 +264,11 @@ export default function StudyPlanView() {
             <p className="text-[#888888] font-medium text-base mb-8 max-w-lg mx-auto leading-relaxed">
               Generate a personalized study plan based on your course materials and knowledge graph. Get structured learning with practical exercises for each topic.
             </p>
-            <button
+            <Button
               onClick={handleGeneratePlan}
               disabled={isGenerating}
-              className="inline-flex items-center justify-center gap-2 bg-white text-black hover:bg-neutral-200 disabled:opacity-50 px-6 py-3.5 rounded-xl font-semibold text-sm transition-all"
+              variant="primary"
+              size="lg"
             >
               {isGenerating ? (
                 <>
@@ -277,7 +281,7 @@ export default function StudyPlanView() {
                   Generate Study Plan
                 </>
               )}
-            </button>
+            </Button>
             {error && (
               <div className="mt-8 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-left">
                 <div className="flex items-center gap-2 text-red-400 font-medium">
@@ -286,7 +290,7 @@ export default function StudyPlanView() {
                 </div>
               </div>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     );
@@ -314,12 +318,13 @@ export default function StudyPlanView() {
       {/* Header */}
       <div className="bg-[#0A0A0A] border-b border-[#1A1A1A] sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 py-8">
-          <button
+          <Button
             onClick={() => navigate(`/${role}/courses/${courseId}`)}
-            className="mb-6 px-4 py-2 bg-[#111111] text-white border border-[#1A1A1A] hover:border-[#333333] rounded-xl font-medium transition-all inline-flex items-center gap-2 text-sm"
+            variant="outline"
+            className="mb-6"
           >
             <ArrowLeft size={16} /> Back to Course
-          </button>
+          </Button>
           
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
             <div className="flex-1">
@@ -329,15 +334,15 @@ export default function StudyPlanView() {
             
             <div className="flex flex-col items-end gap-4 shrink-0 min-w-[200px]">
               <div className="flex items-center gap-3">
-                <button
+                <Button
                   onClick={() => setShowRegenerateConfirm(true)}
-                  className="px-4 py-2 bg-[#111111] hover:bg-[#1A1A1A] border border-[#1A1A1A] text-white rounded-xl font-medium text-sm transition-all flex items-center gap-2"
+                  variant="outline"
                 >
                   <RefreshCw className="w-4 h-4" /> Regenerate
-                </button>
+                </Button>
               </div>
               
-              <div className="text-right bg-[#111111] border border-[#1A1A1A] rounded-xl p-4 w-full">
+              <Card className="text-right p-4 w-full bg-[#111111]">
                 <div className="text-3xl font-light text-white mb-1">{progressPercentage}%</div>
                 <div className="text-xs font-semibold text-[#888888] uppercase tracking-widest">Complete</div>
                 {/* Progress bar */}
@@ -347,13 +352,13 @@ export default function StudyPlanView() {
                     style={{ width: `${progressPercentage}%` }}
                   />
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
 
           {/* Progress Stats */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-[#111111] border border-[#1A1A1A] rounded-2xl p-5 flex items-center gap-4">
+            <Card className="p-5 flex items-center gap-4 bg-[#111111]">
               <div className="w-10 h-10 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
                 <Target className="w-5 h-5" />
               </div>
@@ -363,9 +368,9 @@ export default function StudyPlanView() {
                   {progress?.completed_topics?.length || 0} / {plan.total_topics}
                 </span>
               </div>
-            </div>
+            </Card>
             
-            <div className="bg-[#111111] border border-[#1A1A1A] rounded-2xl p-5 flex items-center gap-4">
+            <Card className="p-5 flex items-center gap-4 bg-[#111111]">
               <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400">
                 <CheckCircle className="w-5 h-5" />
               </div>
@@ -375,9 +380,9 @@ export default function StudyPlanView() {
                   {exerciseProgress.completed} / {exerciseProgress.total}
                 </span>
               </div>
-            </div>
+            </Card>
             
-            <div className="bg-[#111111] border border-[#1A1A1A] rounded-2xl p-5 flex items-center gap-4">
+            <Card className="p-5 flex items-center gap-4 bg-[#111111]">
               <div className="w-10 h-10 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-center text-purple-400">
                 <Clock className="w-5 h-5" />
               </div>
@@ -387,7 +392,7 @@ export default function StudyPlanView() {
                   {plan.estimated_duration_hours} hrs
                 </span>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </div>
@@ -406,9 +411,9 @@ export default function StudyPlanView() {
             const completedExercises = topic.exercises.filter(e => isExerciseCompleted(e.id)).length;
 
             return (
-              <div
+              <Card
                 key={topic.id}
-                className={`bg-[#0A0A0A] border rounded-2xl transition-all ${
+                className={`transition-all ${
                   isCompleted ? 'border-emerald-500/30' : 'border-[#1A1A1A] hover:border-[#333333]'
                 }`}
               >
@@ -524,10 +529,11 @@ export default function StudyPlanView() {
 
                     {/* Deep Dive Study Plan Button */}
                     <div className="pt-2">
-                      <button
+                      <Button
                         onClick={() => handleLoadTopicPlan(topic.node_id)}
                         disabled={isGeneratingTopicPlan && topicPlanNodeId === topic.node_id}
-                        className="w-full py-3 bg-[#111111] hover:bg-[#1A1A1A] text-white border border-[#1A1A1A] rounded-xl font-medium transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
+                        variant="outline"
+                        className="w-full"
                       >
                         {isGeneratingTopicPlan && topicPlanNodeId === topic.node_id ? (
                           <>
@@ -540,7 +546,7 @@ export default function StudyPlanView() {
                             Generate Deep Dive Plan for This Topic
                           </>
                         )}
-                      </button>
+                      </Button>
                     </div>
 
                     {/* Exercises */}
@@ -624,21 +630,18 @@ export default function StudyPlanView() {
                                     )}
 
                                     {/* Complete Button */}
-                                    <button
+                                    <Button
                                       onClick={() => handleCompleteExercise(exercise.id)}
                                       disabled={exCompleted}
-                                      className={`w-full py-2.5 border rounded-xl font-medium text-sm transition-all flex justify-center items-center gap-2 ${
-                                        exCompleted
-                                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 cursor-default'
-                                          : 'bg-white text-black hover:bg-neutral-200 border-white'
-                                      }`}
+                                      variant={exCompleted ? 'outline' : 'primary'}
+                                      className={`w-full ${exCompleted ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 opacity-100 hover:bg-emerald-500/10 hover:text-emerald-400' : ''}`}
                                     >
                                       {exCompleted ? (
                                         <>
                                           <CheckCircle className="w-4 h-4" /> Completed
                                         </>
                                       ) : 'Mark as Complete'}
-                                    </button>
+                                    </Button>
                                   </div>
                                 )}
                               </div>
@@ -650,20 +653,18 @@ export default function StudyPlanView() {
 
                     {/* Complete Topic Action Row */}
                     <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-[#1A1A1A]">
-                      <button
+                      <Button
                         onClick={() => navigate(`/${role}/courses/${courseId}/study?node=${topic.node_id}`)}
-                        className="flex-1 py-3 bg-[#111111] hover:bg-[#1A1A1A] text-white border border-[#1A1A1A] rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2"
+                        variant="outline"
+                        className="flex-1"
                       >
                         <Brain className="w-4 h-4" /> Practice in Study Mode
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => handleCompleteTopic(topic.node_id)}
                         disabled={isCompleted}
-                        className={`flex-1 py-3 border rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${
-                          isCompleted
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 cursor-default'
-                            : 'bg-white text-black hover:bg-neutral-200 border-white'
-                        }`}
+                        variant={isCompleted ? 'outline' : 'primary'}
+                        className={`flex-1 ${isCompleted ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 opacity-100 hover:bg-emerald-500/10 hover:text-emerald-400' : ''}`}
                       >
                         {isCompleted ? (
                           <>
@@ -674,11 +675,11 @@ export default function StudyPlanView() {
                             <Award className="w-4 h-4" /> Mark Topic Complete
                           </>
                         )}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -699,21 +700,23 @@ export default function StudyPlanView() {
             </div>
 
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={() => setShowRegenerateConfirm(false)}
-                className="flex-1 py-3 bg-transparent text-[#888888] hover:text-white rounded-xl text-sm font-medium transition-colors"
+                variant="ghost"
+                className="flex-1 text-[#888888] hover:text-white"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   setShowRegenerateConfirm(false);
                   handleGeneratePlan();
                 }}
-                className="flex-1 py-3 bg-white text-black hover:bg-neutral-200 rounded-xl text-sm font-semibold transition-colors"
+                variant="primary"
+                className="flex-1"
               >
                 Yes, Regenerate
-              </button>
+              </Button>
             </div>
           </div>
         </div>

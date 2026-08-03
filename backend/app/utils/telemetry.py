@@ -12,6 +12,9 @@ def safe_track_event(event_type: str, event_category: str, user_id, user_role: s
                 user_role=user_role,
                 **kwargs,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            from fastapi import HTTPException
+            logging.error(f"An error occurred: {e}")
+            raise HTTPException(status_code=500, detail="An error occurred")
     asyncio.create_task(_track())

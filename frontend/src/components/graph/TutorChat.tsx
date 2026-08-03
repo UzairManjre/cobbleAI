@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import type { FormEvent } from 'react';
 import { useGraphStore } from '../../store/graphStore';
 import { Send, BookOpen, Brain, ChevronDown, ChevronUp, MessageSquare, CheckCircle, Sparkles, HelpCircle, Code, Award } from 'lucide-react';
@@ -24,6 +24,7 @@ interface ChatMessage {
 
 const MessageContent = ({ content }: { content: string }) => {
   const [showReasoning, setShowReasoning] = useState(false);
+  const reasoningId = useId();
 
   const thoughtMatch = content.match(/<thought>([\s\S]*?)<\/thought>/g);
   const reasoning = thoughtMatch ? thoughtMatch.map(m => m.replace(/<\/?thought>/g, '')).join('\n') : '';
@@ -37,6 +38,8 @@ const MessageContent = ({ content }: { content: string }) => {
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl overflow-hidden transition-all duration-300">
           <button
             type="button"
+            aria-expanded={showReasoning}
+            aria-controls={reasoningId}
             onClick={() => {
               const newState = !showReasoning;
               setShowReasoning(newState);
@@ -54,7 +57,7 @@ const MessageContent = ({ content }: { content: string }) => {
           </button>
 
           {showReasoning && (
-            <div className="px-3.5 pb-3 text-xs text-[#CCCCCC] leading-relaxed border-t border-blue-500/20 pt-2.5 italic whitespace-pre-wrap">
+            <div id={reasoningId} className="px-3.5 pb-3 text-xs text-[#CCCCCC] leading-relaxed border-t border-blue-500/20 pt-2.5 italic whitespace-pre-wrap">
               {reasoning}
             </div>
           )}
@@ -151,7 +154,7 @@ const TutorChat = ({ nodeId, isMassive, mode = 'teach' }: TutorChatProps) => {
             className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 ${
               isMastered
                 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30'
-                : 'bg-[#1A1A1A] text-[#888888] border-[#333333] hover:text-white hover:border-[#555555]'
+                : 'bg-[#1A1A1A] text-[#888888] border-[#333333] hover:text-white hover:border-[#888888]'
             }`}
           >
             {isMastered ? (
@@ -186,7 +189,7 @@ const TutorChat = ({ nodeId, isMassive, mode = 'teach' }: TutorChatProps) => {
             </div>
 
             {/* Quick Prompt Chips */}
-            <div className="flex flex-wrap justify-center gap-2 pt-2 max-w-sm">
+            <div className="flex flex-wrap justify-center gap-2 pt-2 max-w-sm" role="group" aria-label="Quick prompts">
               {promptChips.map((chip, idx) => (
                 <button
                   key={idx}
@@ -274,7 +277,7 @@ const TutorChat = ({ nodeId, isMassive, mode = 'teach' }: TutorChatProps) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={`Ask about ${activeNode?.label || 'this concept'}...`}
-            className="flex-1 bg-[#111111] border border-[#1A1A1A] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#555555] focus:outline-none focus:border-[#333333] transition-all"
+            className="flex-1 bg-[#111111] border border-[#1A1A1A] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#888888] focus:outline-none focus:border-[#333333] transition-all"
             disabled={isLoading}
           />
           <button

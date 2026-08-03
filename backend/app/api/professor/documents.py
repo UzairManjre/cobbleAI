@@ -18,10 +18,11 @@ async def upload_document(
 ):
     return await DocumentService.upload_documents(course_id, files, user)
 
-@router.get("/list/{course_id}")
+from app.schemas.document import DocumentResponse
+
+@router.get("/list/{course_id}", response_model=List[DocumentResponse])
 async def list_documents(course_id: str, user: User = Depends(require_role("professor"))):
     return await DocumentService.list_documents(course_id, user)
-
 @router.delete("/{doc_id}")
 async def delete_document(doc_id: str, user: User = Depends(require_role("professor"))):
     return await DocumentService.delete_document(doc_id, user)

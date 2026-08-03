@@ -1,65 +1,41 @@
 import os
 import uuid
 import asyncio
-from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.celery_app import celery_app
 from app.services.pdf_extractor import extract_text
 from app.services.chunking import split_into_chunks, embed_and_store
 from app.core.storage import get_s3_client, S3_BUCKET
 from app.core.config import settings
+from app.core.db import connect_to_mongo
+from app.repositories.document_repository import DocumentRepository
 
-def get_db():
-    loop = asyncio.get_running_loop()
-    if not hasattr(loop, "_motor_client"):
-        loop._motor_client = AsyncIOMotorClient(settings.MONGO_URI, uuidRepresentation="standard")
-    return loop._motor_client.get_default_database()
-
-async def update_doc_status(doc_id: uuid.UUID, status: str, error: str = None, chunks: int = None):
-    db = get_db()
-    update_data = {
-        "status": status,
-        "processed_at": datetime.now(timezone.utc)
-    }
-    if error:
-        update_data["error_message"] = error
-    if chunks is not None:
-        update_data["chunk_count"] = chunks
-
-    result = await db["documents"].update_one(
-        {"_id": doc_id},
-        {"$set": update_data}
-    )
-    print(f"Updated document {doc_id} status to '{status}': {result.modified_count} modified")
-
-async def get_doc_metadata(doc_id: uuid.UUID):
-    db = get_db()
-    return await db["documents"].find_one({"_id": doc_id})
-
-@celery_app.task(name="process_document", bind=True, max_retries=3)
-def process_document(self, doc_id_str: str):
-    """Celery task to process a document (PDF -> Text -> Chunks -> Qdrant)."""
+async def run_process_document(doc_id_str: str, task):
     print(f"Beginning processing for document: {doc_id_str}")
     
-    # Ensure we use a UUID object for MongoDB queries
+    # Initialize Beanie inside the celery worker for this task
+    await connect_to_mongo()
+    
     try:
         doc_id = uuid.UUID(doc_id_str)
     except ValueError:
         print(f"Invalid UUID string: {doc_id_str}")
         return
 
+    doc_repo = DocumentRepository()
+    
     # 1. Fetch metadata
-    doc = asyncio.run(get_doc_metadata(doc_id))
+    doc = await doc_repo.get_by_id(doc_id)
     if not doc:
         print(f"Document {doc_id} not found in database")
         return
 
-    asyncio.run(update_doc_status(doc_id, "processing"))
+    await doc_repo.update_status(doc_id, "processing")
 
     try:
         # 2. Download from S3 (MinIO)
         s3 = get_s3_client()
-        s3_key = doc.get("s3_path") or doc.get("s3_key")
+        s3_key = getattr(doc, "s3_path", None) or getattr(doc, "s3_key", None)
         if not s3_key:
             raise ValueError(f"Document {doc_id} has no S3 path")
         
@@ -68,7 +44,7 @@ def process_document(self, doc_id_str: str):
         file_bytes = response['Body'].read()
 
         # 3. Extract text
-        file_type = doc.get("file_type", "pdf")
+        file_type = getattr(doc, "file_type", "pdf")
         print(f"Extracting text from {file_type}...")
         raw_text = extract_text(file_type, file_bytes)
         print(f"Extracted {len(raw_text)} characters")
@@ -79,7 +55,7 @@ def process_document(self, doc_id_str: str):
         print(f"Created {len(chunks)} chunks")
 
         # 5. Embed & push to Qdrant
-        course_id_raw = doc.get("course_id", "")
+        course_id_raw = getattr(doc, "course_id", "")
         # Standardize course ID (Beanie stores it as Binary UUID)
         if isinstance(course_id_raw, bytes):
             course_id = str(uuid.UUID(bytes=course_id_raw))
@@ -87,12 +63,15 @@ def process_document(self, doc_id_str: str):
             course_id = str(course_id_raw)
         
         print(f"Pushing {len(chunks)} chunks to Qdrant for course {course_id}...")
-        filename = doc.get("filename")
+        filename = getattr(doc, "filename", "")
         pushed_count = embed_and_store(chunks, course_id, str(doc_id), filename)
         print(f"Pushed {pushed_count} chunks to Qdrant")
 
+        if pushed_count == 0:
+            raise RuntimeError("No chunks were successfully pushed to Qdrant. Document is empty or embedding failed.")
+
         # 6. Mark Success
-        asyncio.run(update_doc_status(doc_id, "ready", chunks=pushed_count))
+        await doc_repo.update_status(doc_id, "ready", chunks=pushed_count)
         print(f"  Document {doc_id} processed successfully.")
         return True
 
@@ -101,5 +80,10 @@ def process_document(self, doc_id_str: str):
         error_msg = f"Processing failed: {str(e)}"
         print(error_msg)
         print(traceback.format_exc())
-        asyncio.run(update_doc_status(doc_id, "failed", error=str(e)))
-        raise self.retry(exc=e)
+        await doc_repo.update_status(doc_id, "failed", error=str(e))
+        raise task.retry(exc=e)
+
+@celery_app.task(name="process_document", bind=True, max_retries=3)
+def process_document(self, doc_id_str: str):
+    """Celery task to process a document (PDF -> Text -> Chunks -> Qdrant)."""
+    return asyncio.run(run_process_document(doc_id_str, self))

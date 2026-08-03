@@ -8,7 +8,7 @@ import NodeInfo from '../../components/graph/NodeInfo';
 import {
   ArrowLeft, BookOpen, RefreshCw, GraduationCap,
   RotateCcw, CheckCircle2, Sparkles, ChevronLeft,
-  ChevronRight, Award, Lock, HelpCircle
+  ChevronRight, Award, Lock, HelpCircle, MessageSquare
 } from 'lucide-react';
 
 export default function StudyMode() {
@@ -39,6 +39,7 @@ export default function StudyMode() {
   const [generatorMode, setGeneratorMode] = useState<'topic' | 'docs'>('docs');
   const [isCheckingGraph, setIsCheckingGraph] = useState(false);
   const [isGraphCollapsed, setIsGraphCollapsed] = useState(false);
+  const [mobileActiveTab, setMobileActiveTab] = useState<'content' | 'chat'>('content');
 
   // Mode switcher: 'teach' = Socratic Graph Exploration, 'review' = Active Recall & Flashcards
   const [studyTab, setStudyTab] = useState<'teach' | 'review'>('teach');
@@ -212,7 +213,7 @@ export default function StudyMode() {
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="e.g., Machine Learning, Quantum Physics"
-                  className="w-full bg-[#111111] border border-[#1A1A1A] rounded-xl px-4 py-3 text-sm text-white placeholder:text-[#555555] focus:outline-none focus:border-[#333333] transition-all"
+                  className="w-full bg-[#111111] border border-[#1A1A1A] rounded-xl px-4 py-3 text-sm text-white placeholder:text-[#888888] focus:outline-none focus:border-[#333333] transition-all"
                   disabled={isLoading}
                 />
               ) : (
@@ -340,7 +341,7 @@ export default function StudyMode() {
       </header>
 
       {/* Main Workspace Area */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative w-full">
         
         {/* =========================================================================
             TEACH MODE (Socratic Graph & Interactive Concept Progression)
@@ -348,7 +349,7 @@ export default function StudyMode() {
         {studyTab === 'teach' && (
           <>
             {/* Left Graph & Concept Details */}
-            <div className="flex-1 flex flex-col overflow-hidden border-r border-[#1A1A1A]">
+            <div className={`flex-1 flex-col overflow-hidden lg:border-r border-[#1A1A1A] ${mobileActiveTab === 'content' ? 'flex' : 'hidden lg:flex'}`}>
               {!isGraphCollapsed && (
                 <div className="flex-1 relative bg-[#050505]">
                   <KnowledgeGraph onNodeClick={handleNodeClick} />
@@ -391,7 +392,7 @@ export default function StudyMode() {
             </div>
 
             {/* Right Panel: Socratic Tutor Chat */}
-            <div className={`${isGraphCollapsed ? 'w-full' : 'w-[450px] shrink-0'} border-l border-[#1A1A1A]`}>
+            <div className={`lg:border-l border-[#1A1A1A] flex-col ${mobileActiveTab === 'chat' ? 'flex-1 flex' : 'hidden lg:flex'} ${isGraphCollapsed ? 'lg:flex-1 lg:w-full' : 'lg:w-[450px] shrink-0'}`}>
               <TutorChat key={activeNodeId} nodeId={activeNodeId} mode="teach" isMassive={isGraphCollapsed} />
             </div>
           </>
@@ -401,10 +402,9 @@ export default function StudyMode() {
             REVIEW MODE (Active Recall, Flashcards & Concept Mastery Audit)
            ========================================================================= */}
         {studyTab === 'review' && (
-          <div className="flex-1 flex overflow-hidden">
-            
+          <>
             {/* Left 60%: Active Recall Flashcards */}
-            <div className="flex-1 overflow-y-auto p-8 bg-[#050505] flex flex-col justify-between">
+            <div className={`flex-1 overflow-y-auto p-4 md:p-8 bg-[#050505] flex-col justify-between ${mobileActiveTab === 'content' ? 'flex' : 'hidden lg:flex'}`}>
               
               {/* Mastery Header Progress */}
               <div className="max-w-2xl mx-auto w-full mb-8">
@@ -572,7 +572,7 @@ export default function StudyMode() {
                             ? 'bg-white text-black border-white'
                             : isM
                               ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                              : 'bg-[#0A0A0A] text-[#666666] border-[#1A1A1A] hover:text-white'
+                              : 'bg-[#0A0A0A] text-[#A3A3A3] border-[#1A1A1A] hover:text-white'
                         }`}
                         title={n.label}
                       >
@@ -586,20 +586,42 @@ export default function StudyMode() {
             </div>
 
             {/* Right 40%: Targeted Review Chat */}
-            <div className="w-[450px] shrink-0 border-l border-[#1A1A1A]">
+            <div className={`lg:w-[450px] shrink-0 lg:border-l border-[#1A1A1A] flex-col ${mobileActiveTab === 'chat' ? 'flex-1 flex' : 'hidden lg:flex'}`}>
               <TutorChat key={activeNodeId} nodeId={activeNodeId} mode="review" />
             </div>
 
-          </div>
+          </>
         )}
 
       </div>
 
       {error && (
-        <div className="fixed bottom-6 right-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 font-medium text-xs max-w-md z-50">
+        <div className="fixed bottom-20 lg:bottom-6 right-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 font-medium text-xs max-w-md z-50">
           {error}
         </div>
       )}
+
+      {/* Mobile Tab Bar */}
+      <div className="lg:hidden flex items-center justify-between border-t border-[#1A1A1A] bg-[#0A0A0A] p-2 shrink-0 pb-safe">
+        <button
+          onClick={() => setMobileActiveTab('content')}
+          className={`flex-1 py-3 text-xs font-semibold rounded-lg flex justify-center items-center gap-2 transition-all ${
+            mobileActiveTab === 'content' ? 'bg-[#111111] text-white shadow-sm border border-[#1A1A1A]' : 'text-[#888888] hover:text-white'
+          }`}
+        >
+          {studyTab === 'teach' ? <BookOpen className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+          {studyTab === 'teach' ? 'Graph & Info' : 'Flashcard'}
+        </button>
+        <button
+          onClick={() => setMobileActiveTab('chat')}
+          className={`flex-1 py-3 text-xs font-semibold rounded-lg flex justify-center items-center gap-2 transition-all ${
+            mobileActiveTab === 'chat' ? 'bg-[#111111] text-white shadow-sm border border-[#1A1A1A]' : 'text-[#888888] hover:text-white'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          Tutor Chat
+        </button>
+      </div>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import SankeyPipeline from '../../components/analytics/SankeyPipeline';
 import VectorTreemap from '../../components/analytics/VectorTreemap';
 import VectorSpace3D from '../../components/analytics/VectorSpace3D';
 import IntentRadar from '../../components/analytics/IntentRadar';
-import './AnalyticsDashboard.css';
+import { Loader2, Brain, Box, Activity, Target } from 'lucide-react';
 
 export default function AnalyticsDashboard() {
   const [data, setData] = useState<any>(null);
@@ -46,111 +46,167 @@ export default function AnalyticsDashboard() {
 
   if (loading || !data) {
     return (
-      <div className="analytics-dashboard dashboard-loading">
-        <div className="spinner"></div>
-        <div>Loading analytics engine...</div>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-[#888888]">
+        <Loader2 className="w-8 h-8 animate-spin mb-4" />
+        <div className="text-sm font-medium tracking-wide">Loading intelligence engine...</div>
       </div>
     );
   }
 
   return (
-    <div className="analytics-dashboard">
-      <div className="dashboard-header">
-        <div className="header-main">
-          <h1>Analytics Command Center</h1>
-          <p className="subtitle">Real-time intelligence from CobbleAI's semantic engine</p>
-        </div>
-        <div className="course-filter">
-          <select 
-            value={selectedCourse} 
-            onChange={(e) => setSelectedCourse(e.target.value)}
-          >
-            <option value="">All Courses (Global View)</option>
-            {courses.map(c => (
-              <option key={c.id} value={c.id}>{c.title}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Quick Stats Header */}
-      <div className="stats-row">
-        <div className="stat-card">
-          <span className="stat-label">🧠 Knowledge Graph</span>
-          <span className="stat-value">{data.content?.knowledge_graph?.nodes?.length || 0}</span>
-          <span className="stat-trend">Concepts extracted</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">📦 Total Ingestion</span>
-          <span className="stat-value">{data.content?.total_docs || 0}</span>
-          <span className="stat-trend">{data.content?.total_chunks || 0} Chunks</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">📡 Intent Signals</span>
-          <span className="stat-value">{data.engagement?.intent_radar?.reduce((s: number, r: any) => s + (r.count || 0), 0) || 0}</span>
-          <span className="stat-trend">Total interactions</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">🎯 Active Modes</span>
-          <span className="stat-value">{data.engagement?.intent_radar?.length || 0}</span>
-          <span className="stat-trend">Intent categories</span>
-        </div>
-      </div>
-
-      {/* Advanced Telemetry Grid */}
-      <div className="advanced-layout">
-        {/* Row 1: Graph (Span 2) */}
-        <div className="chart-section span-2" style={{ height: '550px' }}>
-          <h3>Brain Visualizer</h3>
-          <div className="chart-container">
-            <KnowledgeGraphViewer data={data.content?.knowledge_graph} />
+    <div className="min-h-screen bg-black text-white p-8 lg:p-12 relative overflow-hidden">
+      
+      <div className="max-w-7xl mx-auto space-y-10 relative z-10">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2 border-b border-[#1A1A1A]">
+          <div>
+            <h1 className="text-4xl font-outfit font-light text-white tracking-tight mb-2">
+              Intelligence Center
+            </h1>
+            <p className="text-sm text-[#888888] font-medium tracking-wide">
+              Real-time telemetry and semantic insights.
+            </p>
+          </div>
+          
+          <div className="w-full md:w-64">
+            <select 
+              value={selectedCourse} 
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              className="w-full bg-[#0A0A0A] border border-[#1A1A1A] text-white text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-[#333333] transition-all appearance-none font-medium"
+            >
+              <option value="">Global Network (All Courses)</option>
+              {courses.map(c => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Row 2: Vector Space 3D (Span 2) - Showstopper */}
-        <div className="chart-section span-2" style={{ height: '550px' }}>
-          <h3>Semantic Vector Space (t-SNE)</h3>
-          <div className="chart-container">
-             <VectorSpace3D data={data.content?.vector_space_3d} />
+        {/* Quick Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col justify-between hover:border-[#333333] transition-colors">
+            <div className="flex justify-between items-start text-[#888888] mb-4">
+              <span className="text-[10px] font-bold uppercase tracking-widest">Knowledge Graph</span>
+              <Brain size={16} />
+            </div>
+            <div>
+              <span className="block text-3xl font-light text-white mb-1">{data.content?.knowledge_graph?.nodes?.length || 0}</span>
+              <span className="text-xs text-[#888888]">Concepts extracted</span>
+            </div>
+          </div>
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col justify-between hover:border-[#333333] transition-colors">
+            <div className="flex justify-between items-start text-[#888888] mb-4">
+              <span className="text-[10px] font-bold uppercase tracking-widest">Total Ingestion</span>
+              <Box size={16} />
+            </div>
+            <div>
+              <span className="block text-3xl font-light text-white mb-1">{data.content?.total_docs || 0}</span>
+              <span className="text-xs text-[#888888]">{data.content?.total_chunks || 0} Chunks processed</span>
+            </div>
+          </div>
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col justify-between hover:border-[#333333] transition-colors">
+            <div className="flex justify-between items-start text-[#888888] mb-4">
+              <span className="text-[10px] font-bold uppercase tracking-widest">Intent Signals</span>
+              <Activity size={16} />
+            </div>
+            <div>
+              <span className="block text-3xl font-light text-white mb-1">{data.engagement?.intent_radar?.reduce((s: number, r: any) => s + (r.count || 0), 0) || 0}</span>
+              <span className="text-xs text-[#888888]">Total telemetry events</span>
+            </div>
+          </div>
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col justify-between hover:border-[#333333] transition-colors">
+            <div className="flex justify-between items-start text-[#888888] mb-4">
+              <span className="text-[10px] font-bold uppercase tracking-widest">Active Modes</span>
+              <Target size={16} />
+            </div>
+            <div>
+              <span className="block text-3xl font-light text-white mb-1">{data.engagement?.intent_radar?.length || 0}</span>
+              <span className="text-xs text-[#888888]">Intent categories mapped</span>
+            </div>
           </div>
         </div>
 
-        {/* Row 3: Treemap (Span 2) */}
-        <div className="chart-section span-2" style={{ height: '450px' }}>
-          <h3>Knowledge Hierarchy</h3>
-          <div className="chart-container">
-            <VectorTreemap data={data.content?.treemap} />
+        {/* Telemetry Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Brain Visualizer (Full Width) */}
+          <div className="lg:col-span-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '600px' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Brain Visualizer</h3>
+            </div>
+            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
+              <KnowledgeGraphViewer data={data.content?.knowledge_graph} />
+            </div>
           </div>
-        </div>
 
-        {/* Row 4: Pipeline & Telemetry (Split) */}
-        <div className="chart-section" style={{ height: '400px' }}>
-          <h3>RAG Pipeline Flow</h3>
-          <div className="chart-container">
-            <SankeyPipeline data={data.content?.sankey_flow} />
+          {/* Vector Space 3D (Full Width) */}
+          <div className="lg:col-span-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '600px' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
+              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Semantic Vector Space</h3>
+            </div>
+            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
+               <VectorSpace3D data={data.content?.vector_space_3d} />
+            </div>
           </div>
-        </div>
 
-        <div className="chart-section row-2">
-          <h3>System Telemetry</h3>
-          <div className="chart-container">
-            <TelemetryCluster data={data.telemetry} />
+          {/* Knowledge Hierarchy */}
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '450px' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Knowledge Hierarchy</h3>
+            </div>
+            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
+              <VectorTreemap data={data.content?.treemap} />
+            </div>
           </div>
-        </div>
 
-        {/* Row 5: Intent & Heatmap (Split) */}
-        <div className="chart-section" style={{ height: '400px' }}>
-          <h3>Student Intent Profile</h3>
-          <div className="chart-container">
-            <IntentRadar data={data.engagement?.intent_radar} />
+          {/* RAG Pipeline Flow */}
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '450px' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Pipeline Flow</h3>
+            </div>
+            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
+              <SankeyPipeline data={data.content?.sankey_flow} />
+            </div>
           </div>
-        </div>
 
-        <div className="chart-section span-2" style={{ height: '450px' }}>
-          <h3>Engagement Heatmap</h3>
-          <div className="chart-container">
-            <StudyHeatmap data={data.engagement?.study_heatmap} />
+          {/* System Telemetry */}
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '450px' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></div>
+              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">System Telemetry</h3>
+            </div>
+            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
+              <TelemetryCluster data={data.telemetry} />
+            </div>
           </div>
+
+          {/* Intent Profile */}
+          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '450px' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></div>
+              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Intent Profile</h3>
+            </div>
+            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505] flex items-center justify-center p-4">
+              <IntentRadar data={data.engagement?.intent_radar} />
+            </div>
+          </div>
+
+          {/* Engagement Heatmap (Full Width) */}
+          <div className="lg:col-span-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '500px' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
+              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Global Heatmap</h3>
+            </div>
+            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
+              <StudyHeatmap data={data.engagement?.study_heatmap} />
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

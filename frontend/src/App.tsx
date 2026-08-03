@@ -9,6 +9,7 @@ import StudentAuthFlow from './pages/auth/StudentAuthFlow';
 import ProfessorAuthFlow from './pages/auth/ProfessorAuthFlow';
 import StudentDashboard from './pages/student/StudentDashboard';
 import ProfessorDashboard from './pages/professor/ProfessorDashboard';
+import AnalyticsDashboard from './pages/professor/AnalyticsDashboard';
 import MyClasses from './pages/professor/MyClasses';
 import Assignments from './pages/student/Assignments';
 import CourseDetail from './pages/common/CourseDetail';
@@ -156,8 +157,8 @@ export default function App() {
           <Route path="dashboard" element={<ProfessorDashboard />} />
           <Route path="classes" element={<MyClasses />} />
           <Route path="students" element={<Navigate to="/professor/classes?tab=students" replace />} />
-          <Route path="assignments" element={<Assignments />} />
-          <Route path="analytics" element={<ProfessorDashboard />} />
+          {/* TODO (Phase 2): Build actual Professor assignment management/grading hub */}
+          <Route path="analytics" element={<AnalyticsDashboard />} />
           
           {/* Course routes */}
           <Route path="courses/:courseId" element={<CourseDetail />} />
@@ -178,6 +179,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="/student/dashboard" replace />} />
           <Route path="dashboard" element={<StudentDashboard />} />
+          <Route path="assignments" element={<Assignments />} />
           <Route path="chat" element={<Chat />} />
           
           {/* Course routes */}

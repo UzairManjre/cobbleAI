@@ -49,8 +49,11 @@ class TutorService:
                 avg_relevance_score=sum(s.get("relevance_score", 0) for s in sources) / max(len(sources), 1),
                 led_to_successful_answer=True,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            from fastapi import HTTPException
+            logging.error(f"An error occurred: {e}")
+            raise HTTPException(status_code=500, detail="An error occurred")
 
     async def _track_llm(self, user_id, session_id, question, answer, latency_ms, sources):
         """Fire-and-forget LLM tracking."""
@@ -69,8 +72,11 @@ class TutorService:
                 rag_retrieved_count=len(sources),
                 rag_success=len(sources) > 0,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            from fastapi import HTTPException
+            logging.error(f"An error occurred: {e}")
+            raise HTTPException(status_code=500, detail="An error occurred")
 
     async def answer_question(
         self,

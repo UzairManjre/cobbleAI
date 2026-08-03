@@ -151,18 +151,15 @@ class StudyPlanService:
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid UUID format")
 
-        plan = await StudyPlan.find_one(
-            StudyPlan.course_id == course_uuid,
-            StudyPlan.student_id == user.id,
-            StudyPlan.status == "active"
-        )
+        from app.repositories.study_plan_repository import StudyPlanRepository, StudyProgressRepository
+        
+        plan_repo = StudyPlanRepository()
+        plan = await plan_repo.find_active_plan(course_uuid, user.id)
         if not plan:
             return {"study_plan": None, "progress": None}
 
-        progress = await StudyProgress.find_one(
-            StudyProgress.study_plan_id == plan.id,
-            StudyProgress.student_id == user.id
-        )
+        progress_repo = StudyProgressRepository()
+        progress = await progress_repo.find_by_study_plan_and_student(plan.id, user.id)
         return {"study_plan": plan, "progress": progress}
 
     @staticmethod

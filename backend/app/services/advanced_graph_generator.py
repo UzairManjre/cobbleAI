@@ -455,9 +455,36 @@ class AdvancedGraphGenerator:
         except json.JSONDecodeError as e:
             print(f"  JSON parse error: {e}")
             print(f"Cleaned JSON string (first 100 chars): {json_str[:100]}")
-            return {}  # Return empty dict instead of None to prevent AttributeError
-            # Final attempt: try to find the inner content if the structure is nested
-            return {"concepts": [], "relationships": []}
+            
+            # Fallback: Extract concepts using regex if JSON is truncated
+            concepts = []
+            rels = []
+            
+            # Extract concepts
+            concept_matches = re.finditer(r'\{\s*"name"\s*:\s*"([^"]+)"\s*,\s*"description"\s*:\s*"([^"]+)"\s*(?:,\s*"category"\s*:\s*"([^"]+)")?\s*(?:,\s*"source_docs"\s*:\s*\[([^\]]*)\])?\s*\}', json_str)
+            for m in concept_matches:
+                concepts.append({
+                    "name": m.group(1),
+                    "description": m.group(2),
+                    "category": m.group(3) or "concept",
+                    "source_docs": [d.strip(' "\n') for d in (m.group(4) or "").split(",")] if m.group(4) else []
+                })
+            
+            # Extract relationships
+            rel_matches = re.finditer(r'\{\s*"from"\s*:\s*"([^"]+)"\s*,\s*"to"\s*:\s*"([^"]+)"\s*,\s*"relation"\s*:\s*"([^"]+)"\s*(?:,\s*"strength"\s*:\s*([0-9.]+))?\s*\}', json_str)
+            for m in rel_matches:
+                rels.append({
+                    "from": m.group(1),
+                    "to": m.group(2),
+                    "relation": m.group(3),
+                    "strength": float(m.group(4) or "0.8")
+                })
+                
+            if concepts or rels:
+                print(f"  Salvaged {len(concepts)} concepts and {len(rels)} relationships from truncated JSON via regex fallback")
+                return {"concepts": concepts, "relationships": rels}
+                
+            return {}  # Return empty dict if fallback also fails
     
     def _assign_uuids(self, graph: Dict) -> Dict:
         """Assign UUIDs to nodes and edges."""

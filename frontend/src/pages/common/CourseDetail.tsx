@@ -668,16 +668,19 @@ export default function CourseDetail() {
                           <div className="overflow-hidden">
                             <span className="block font-medium text-sm text-white truncate">{student.name || student.email || "Unknown Student"}</span>
                             <span className="block text-[10px] text-[#888888]">
-                              Enrolled: {student.enrolled_at ? new Date(student.enrolled_at).toLocaleDateString() : 'N/A'}
+                              Enrolled: {student.enrolled_at ? new Date(student.enrolled_at).toLocaleString(undefined, {
+                                month: 'short', day: 'numeric', year: 'numeric',
+                                hour: 'numeric', minute: '2-digit', hour12: true
+                              }) : 'N/A'}
                             </span>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <span className={`block text-xs font-medium ${student.flagIcon ? 'text-red-500' : 'text-[#888888]'}`}>
+                          <span className={`block text-[11px] font-medium px-2 py-0.5 rounded-full inline-block mb-1 ${student.flagIcon ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-[#1A1A1A] text-[#A3A3A3] border border-[#333333]'}`}>
                             {student.status}
                           </span>
-                          <span className="text-[10px] text-[#888888]">
-                            {student.progress}% Done
+                          <span className="block text-[10px] text-[#888888] font-medium">
+                            {student.progress}% Completed
                           </span>
                         </div>
                       </div>

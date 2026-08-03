@@ -288,13 +288,18 @@ class GraphService:
             task = asyncio.create_task(run_generator())
             
             while True:
-                event = await q.get()
-                if event is None:
-                    break
-                
-                # Format as Server-Sent Event with event type
-                event_type = event.get("type", "message")
-                yield f"event: {event_type}\ndata: {json.dumps(event)}\n\n"
+                try:
+                    # Wait for an event, but timeout every 15s to send a keep-alive
+                    event = await asyncio.wait_for(q.get(), timeout=15.0)
+                    if event is None:
+                        break
+                    
+                    # Format as Server-Sent Event with event type
+                    event_type = event.get("type", "message")
+                    yield f"event: {event_type}\ndata: {json.dumps(event)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send a keep-alive ping to prevent proxy/browser timeouts
+                    yield ": keep-alive\n\n"
                 
             await task
 

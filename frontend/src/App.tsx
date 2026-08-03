@@ -18,6 +18,7 @@ import Chat from './pages/common/Chat';
 import StudyMode from './pages/student/StudyMode';
 import StudyPlan from './pages/student/StudyPlan';
 import ProfessorTests from './pages/professor/ProfessorTests';
+import GradingDashboard from './pages/professor/GradingDashboard';
 import TakeTest from './pages/student/TakeTest';
 import AppLayout from './components/layout/AppLayout';
 import { useAuthStore } from './store/authStore';
@@ -134,6 +135,15 @@ export default function App() {
           }
         />
 
+        <Route
+          path="/course/:courseId/tests/:testId/grading"
+          element={
+            <ProtectedRoute allowedRole="professor">
+              <CourseSubRouteRedirect subPath="tests/:testId/grading" />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Test route */}
         <Route
           path="/tests/:testId"
@@ -166,6 +176,7 @@ export default function App() {
           <Route path="courses/:courseId/study" element={<StudyMode />} />
           <Route path="courses/:courseId/plan" element={<StudyPlan />} />
           <Route path="courses/:courseId/tests" element={<ProfessorTests />} />
+          <Route path="courses/:courseId/tests/:testId/grading" element={<GradingDashboard />} />
         </Route>
 
         {/* Student Layout with Sidebar/Topbar - ALL student routes */}

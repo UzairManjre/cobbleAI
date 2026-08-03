@@ -229,3 +229,72 @@ async def get_assignment_regrade_requests(id: uuid.UUID, user: User = Depends(re
     # In Beanie, we can use the `$in` operator
     rrs = await RegradeRequest.find({"grading_draft_id": {"$in": draft_ids}}).to_list()
     return rrs
+
+@router.get("/assignments/{id}/grading-overview")
+async def get_grading_overview(id: uuid.UUID, user: User = Depends(require_role("professor"))):
+    await _verify_assignment_ownership(id, user)
+    
+    # 1. Fetch rubric
+    rubric = await Rubric.find_one({"assignment_id": id})
+    
+    # 2. Fetch all test attempts
+    attempts = await TestAttempt.find({"test_id": id}).to_list()
+    
+    # 3. Fetch all grading drafts if rubric exists
+    drafts_by_submission = {}
+    if rubric:
+        drafts = await GradingDraft.find({"rubric_id": rubric.id}).to_list()
+        drafts_by_submission = {d.submission_id: d for d in drafts}
+        
+    # 4. Fetch user details for all attempts
+    student_ids = list(set([a.student_id for a in attempts]))
+    students = await User.find({"_id": {"$in": student_ids}}).to_list()
+    student_map = {s.id: s for s in students}
+    
+    submissions = []
+    for a in attempts:
+        student = student_map.get(a.student_id)
+        draft = drafts_by_submission.get(a.id)
+        
+        submissions.append({
+            "attempt": a,
+            "student": {
+                "id": str(student.id) if student else str(a.student_id),
+                "name": student.name if student else "Unknown",
+                "email": student.email if student else ""
+            },
+            "draft": draft
+        })
+        
+    return {
+        "rubric": rubric,
+        "submissions": submissions
+    }
+
+@router.get("/assignments/{id}/submissions/{attempt_id}/review")
+async def get_submission_review(id: uuid.UUID, attempt_id: uuid.UUID, user: User = Depends(require_role("professor"))):
+    await _verify_assignment_ownership(id, user)
+    
+    attempt = await TestAttempt.get(attempt_id)
+    if not attempt or attempt.test_id != id:
+        raise HTTPException(status_code=404, detail="Submission not found")
+        
+    rubric = await Rubric.find_one({"assignment_id": id})
+    
+    draft = None
+    if rubric:
+        draft = await GradingDraft.find_one({"submission_id": attempt_id, "rubric_id": rubric.id})
+        
+    student = await User.get(attempt.student_id)
+    
+    return {
+        "attempt": attempt,
+        "student": {
+            "id": str(student.id) if student else str(attempt.student_id),
+            "name": student.name if student else "Unknown",
+            "email": student.email if student else ""
+        },
+        "rubric": rubric,
+        "draft": draft
+    }
+

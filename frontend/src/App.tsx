@@ -20,6 +20,10 @@ import StudyPlan from './pages/student/StudyPlan';
 import ProfessorTests from './pages/professor/ProfessorTests';
 import GradingDashboard from './pages/professor/GradingDashboard';
 import TakeTest from './pages/student/TakeTest';
+import TestResult from './pages/student/TestResult';
+import LectureView from './pages/common/LectureView';
+import ReviewQueue from './pages/professor/ReviewQueue';
+import CourseInsights from './pages/professor/CourseInsights';
 import AppLayout from './components/layout/AppLayout';
 import { useAuthStore } from './store/authStore';
 import { ToastProvider } from './components/ui/ToastProvider';
@@ -67,6 +71,7 @@ export default function App() {
         {/* Public Routes */}
         <Route path="/" element={<NewLanding />} />
         <Route path="/role-select" element={<LandingPage />} />
+        <Route path="/login" element={<Navigate to="/role-select" replace />} />
         <Route path="/login/student" element={<StudentAuthFlow initialStep="welcome" />} />
         <Route path="/login/professor" element={<ProfessorAuthFlow initialStep="welcome" />} />
         <Route path="/signup/student" element={<StudentAuthFlow initialStep="welcome" />} />
@@ -153,6 +158,14 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/tests/:testId/result/:attemptId"
+          element={
+            <ProtectedRoute allowedRole="student">
+              <TestResult />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Shared Layout with Sidebar/Topbar - ALL professor routes */}
         <Route
@@ -174,9 +187,11 @@ export default function App() {
           <Route path="courses/:courseId" element={<CourseDetail />} />
           <Route path="courses/:courseId/map" element={<MindMap />} />
           <Route path="courses/:courseId/study" element={<StudyMode />} />
-          <Route path="courses/:courseId/plan" element={<StudyPlan />} />
           <Route path="courses/:courseId/tests" element={<ProfessorTests />} />
           <Route path="courses/:courseId/tests/:testId/grading" element={<GradingDashboard />} />
+          <Route path="courses/:courseId/lectures/:lectureId" element={<LectureView />} />
+          <Route path="courses/:courseId/review" element={<ReviewQueue />} />
+          <Route path="courses/:courseId/insights" element={<CourseInsights />} />
         </Route>
 
         {/* Student Layout with Sidebar/Topbar - ALL student routes */}
@@ -198,7 +213,10 @@ export default function App() {
           <Route path="courses/:courseId/map" element={<MindMap />} />
           <Route path="courses/:courseId/study" element={<StudyMode />} />
           <Route path="courses/:courseId/plan" element={<StudyPlan />} />
+          <Route path="courses/:courseId/lectures/:lectureId" element={<LectureView />} />
         </Route>
+        {/* Unknown addresses go home instead of rendering a blank page */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
     </>

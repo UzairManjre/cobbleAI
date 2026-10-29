@@ -9,10 +9,9 @@ class DocumentRepository(BaseRepository[DocumentModel]):
         super().__init__(model=DocumentModel)
         
     async def update_status(self, doc_id: uuid.UUID, status: str, error: str = None, chunks: int = None) -> None:
-        update_data = {
-            "status": status,
-            "processed_at": datetime.now(timezone.utc)
-        }
+        update_data = {"status": status}
+        if status in ("ready", "failed"):
+            update_data["processed_at"] = datetime.now(timezone.utc)
         if error is not None:
             update_data["error_message"] = error
         if chunks is not None:

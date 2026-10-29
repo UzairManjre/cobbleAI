@@ -167,7 +167,7 @@ export default function StudyPlanView() {
     if (!token || !plan) return;
 
     try {
-      const res = await studyPlansApi.completeTopic(plan.id, nodeId);
+      const res = await studyPlansApi.completeTopic(courseId!, nodeId);
       setProgress(res.data.progress);
     } catch (err) {
       console.error('Failed to complete topic:', err);
@@ -178,7 +178,7 @@ export default function StudyPlanView() {
     if (!token || !plan) return;
 
     try {
-      const res = await studyPlansApi.completeExercise(plan.id, exerciseId);
+      const res = await studyPlansApi.completeExercise(courseId!, exerciseId);
       setProgress(res.data.progress);
     } catch (err) {
       console.error('Failed to complete exercise:', err);

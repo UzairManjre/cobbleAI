@@ -1,0 +1,16 @@
+# S1 fusion-weight sweep: retrieval-only (no generation), one run per combination.
+# Tune on the dev split only; report the chosen setting once on test.
+name: s1_fusion_sweep
+study: S1
+gold: [eval/gold/example.jsonl]
+split: dev
+retrieval:
+  preset: hybrid
+  overrides: {query_expansion: false}
+sweep:
+  w_bm25: [0.0, 0.2, 0.35, 0.5]
+  alpha_hybrid_vs_rerank: [0.0, 0.2, 0.5]
+generation:
+  enabled: false
+judge:
+  enabled: false

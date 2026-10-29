@@ -4,7 +4,17 @@ import { useState, useEffect, useRef } from 'react';
 import { coursesApi, documentsApi, graphsApi } from '../../api';
 import { useGraphStore } from '../../store/graphStore';
 import { useToastStore } from '../../store/toastStore';
-import { ArrowLeft, Upload, Sparkles, FileText, Trash2, Loader2, BookOpen, Users, Flag, Map, Calendar, Zap, LayoutDashboard } from 'lucide-react';
+import { ArrowLeft, Upload, Sparkles, FileText, Trash2, Loader2, BookOpen, Users, Map, Calendar, Zap, LayoutDashboard, PlayCircle, MessageSquare, BarChart3, ClipboardCheck } from 'lucide-react';
+import TutorPolicyCard from '../../components/tutor/TutorPolicyCard';
+import CourseFAQ from '../../components/insights/CourseFAQ';
+
+const LECTURE_STAGES: Record<string, string> = {
+  downloading: 'Preparing',
+  transcribing: 'Transcribing',
+  frames: 'Reading slides',
+  chapters: 'Writing chapters',
+  indexing: 'Indexing',
+};
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 
@@ -38,6 +48,7 @@ export default function CourseDetail() {
   const [course, setCourse] = useState<any>(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [students, setStudents] = useState<any[]>([]);
@@ -123,14 +134,17 @@ export default function CourseDetail() {
     if (!files || files.length === 0 || !token) return;
 
     setIsUploading(true);
+    setUploadProgress(0);
     try {
-      await documentsApi.upload(courseId || '', files);
+      await documentsApi.upload(courseId || '', files, setUploadProgress);
       fetchDocuments();
     } catch (err: any) {
       console.error('Upload error:', err);
-      addToast(err.response?.data?.detail || 'Upload failed', 'error');
+      // documentsApi.upload throws Error(detail) from the server response
+      addToast(err.response?.data?.detail || err.message || 'Upload failed', 'error');
     } finally {
       setIsUploading(false);
+      setUploadProgress(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -261,7 +275,7 @@ export default function CourseDetail() {
     if (!confirm('This will remove duplicate documents. Continue?')) return;
 
     try {
-      const res = await documentsApi.cleanupDuplicates();
+      const res = await documentsApi.cleanupDuplicates(courseId!);
       addToast(res.data.message, 'success');
       fetchDocuments();
     } catch (err: any) {
@@ -496,13 +510,46 @@ export default function CourseDetail() {
             <span className="text-sm font-medium text-white">Visual Map</span>
           </div>
 
-          <div
-            onClick={() => navigate(`/${role}/courses/${courseId}/plan`)}
-            className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
-          >
-            <Calendar className="w-6 h-6 text-[#888888] group-hover:text-purple-500 mb-3 transition-colors" />
-            <span className="text-sm font-medium text-white">Study Plan</span>
-          </div>
+          {role === 'student' && (
+            /* Study plans are personal to each student; there is no professor version */
+            <div
+              onClick={() => navigate(`/student/courses/${courseId}/plan`)}
+              className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
+            >
+              <Calendar className="w-6 h-6 text-[#888888] group-hover:text-purple-500 mb-3 transition-colors" />
+              <span className="text-sm font-medium text-white">Study Plan</span>
+            </div>
+          )}
+
+          {role === 'student' && (
+            <div
+              onClick={() => navigate(`/student/chat?course=${courseId}`)}
+              className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
+            >
+              <MessageSquare className="w-6 h-6 text-[#888888] group-hover:text-emerald-500 mb-3 transition-colors" />
+              <span className="text-sm font-medium text-white">Ask the Course</span>
+            </div>
+          )}
+
+          {role === 'professor' && (
+            <div
+              onClick={() => navigate(`/professor/courses/${courseId}/insights`)}
+              className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
+            >
+              <BarChart3 className="w-6 h-6 text-[#888888] group-hover:text-emerald-500 mb-3 transition-colors" />
+              <span className="text-sm font-medium text-white">Course Insights</span>
+            </div>
+          )}
+
+          {role === 'professor' && (
+            <div
+              onClick={() => navigate(`/professor/courses/${courseId}/review`)}
+              className="bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] rounded-2xl p-5 cursor-pointer transition-colors group flex flex-col items-center text-center justify-center min-h-[120px]"
+            >
+              <ClipboardCheck className="w-6 h-6 text-[#888888] group-hover:text-emerald-500 mb-3 transition-colors" />
+              <span className="text-sm font-medium text-white">Review AI Grades</span>
+            </div>
+          )}
 
           <div
             onClick={() => navigate(`/${role}/courses/${courseId}/study`)}
@@ -529,7 +576,7 @@ export default function CourseDetail() {
                       ref={fileInputRef}
                       onChange={handleUpload}
                       className="hidden"
-                      accept=".pdf,.docx,.pptx"
+                      accept=".pdf,.docx,.pptx,.mp4,.webm,.mov,.mp3,.m4a,.wav"
                       multiple
                     />
                     <Button
@@ -538,7 +585,7 @@ export default function CourseDetail() {
                       variant="outline"
                     >
                       {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload size={14} />}
-                      <span>{isUploading ? 'Uploading...' : 'Upload Files'}</span>
+                      <span>{isUploading ? `Uploading${uploadProgress !== null ? ` ${Math.round(uploadProgress * 100)}%` : '...'}` : 'Upload Files'}</span>
                     </Button>
                   </>
                 )}
@@ -553,16 +600,32 @@ export default function CourseDetail() {
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-white truncate max-w-[200px] md:max-w-md">{doc.filename}</h4>
-                        <p className="text-[10px] text-[#888888] mt-1">Added {new Date(doc.created_at).toLocaleDateString()}</p>
+                        <p className="text-[10px] text-[#888888] mt-1">
+                          {doc.media_type === 'lecture' ? 'Lecture recording · ' : ''}Added {new Date(doc.created_at).toLocaleDateString()}
+                          {doc.media_type === 'lecture' && doc.status === 'processing' && doc.stage && (
+                            <span className="ml-2 text-purple-400">{LECTURE_STAGES[doc.stage] || doc.stage}{doc.progress ? ` ${Math.round(doc.progress * 100)}%` : ''}</span>
+                          )}
+                        </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-full border ${doc.status === 'processed' || doc.status === 'completed'
+                      {doc.media_type === 'lecture' && (doc.status === 'ready' || role === 'professor') && (
+                        <button
+                          onClick={() => navigate(`/${role}/courses/${courseId}/lectures/${doc.id || doc._id}`)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest rounded-full border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                          title="Open the lecture: video, transcript, chapters and lecture chat"
+                        >
+                          <PlayCircle size={12} /> Open
+                        </button>
+                      )}
+                      <span title={doc.status === 'failed' ? doc.error_message || undefined : undefined} className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-full border ${doc.status === 'ready'
                           ? 'text-blue-500 border-blue-500/30'
                           : doc.status === 'processing'
                             ? 'text-purple-500 border-purple-500/30 animate-pulse'
-                            : 'text-orange-500 border-orange-500/30'
+                            : doc.status === 'failed'
+                              ? 'text-red-500 border-red-500/30'
+                              : 'text-orange-500 border-orange-500/30'
                         }`}>
                         {doc.status}
                       </span>
@@ -584,7 +647,7 @@ export default function CourseDetail() {
                     <FileText size={32} className="mb-3 opacity-50" />
                     <p className="text-sm font-medium text-white mb-1">No materials added</p>
                     {role === 'professor' && (
-                      <span className="text-xs">Upload syllabus or lectures to build the AI map.</span>
+                      <span className="text-xs">Upload slides, notes or lecture recordings to build the AI map.</span>
                     )}
                   </div>
                 )}
@@ -621,6 +684,9 @@ export default function CourseDetail() {
                 </div>
               </div>
             </Card>
+
+            {role === 'professor' && courseId && <TutorPolicyCard courseId={courseId} />}
+            {role === 'student' && courseId && <CourseFAQ courseId={courseId} />}
 
             {/* Student Access Card */}
             {role === 'professor' && (

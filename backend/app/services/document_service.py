@@ -16,6 +16,22 @@ ALLOWED_TYPES = {
     "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx"
 }
 MAX_SIZE = 50 * 1024 * 1024  # 50 MB
+# Lecture recordings, identified by extension and checked against the browser's MIME type
+MEDIA_EXTENSIONS = {"mp4", "webm", "mov", "mp3", "m4a", "wav"}
+MEDIA_CONTENT_TYPES = {
+    "mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime",
+    "mp3": "audio/mpeg", "m4a": "audio/mp4", "wav": "audio/wav",
+}
+
+
+def _classify_upload(filename: str, content_type: str | None):
+    """(file_type, media_type, stored content type) or None when the file is not accepted."""
+    if content_type in ALLOWED_TYPES:
+        return ALLOWED_TYPES[content_type], "document", content_type
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext in MEDIA_EXTENSIONS and (content_type or "").split("/")[0] in ("video", "audio", "application"):
+        return ext, "lecture", MEDIA_CONTENT_TYPES[ext]
+    return None
 
 class DocumentService:
     @staticmethod
@@ -41,13 +57,18 @@ class DocumentService:
         for file in files:
             # Prevent path traversal by getting just the base filename
             file.filename = secure_filename(file.filename or "unnamed")
-            if file.content_type not in ALLOWED_TYPES:
-                raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename}. Allowed: PDF, DOCX, PPTX")
+            kind = _classify_upload(file.filename, file.content_type)
+            if kind is None:
+                raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename}. Allowed: PDF, DOCX, PPTX, or lecture recordings (MP4, WEBM, MOV, MP3, M4A, WAV)")
+            file_extension, media_type, stored_content_type = kind
+            if media_type == "lecture" and not settings.LECTURE_PIPELINE:
+                raise HTTPException(status_code=400, detail="Lecture recording processing is disabled on this server")
 
             file.file.seek(0, 2)
             size = file.file.tell()
-            if size > MAX_SIZE:
-                raise HTTPException(status_code=400, detail=f"File size exceeds 50MB limit for {file.filename}")
+            limit = settings.MAX_MEDIA_SIZE_MB * 1024 * 1024 if media_type == "lecture" else MAX_SIZE
+            if size > limit:
+                raise HTTPException(status_code=400, detail=f"File size exceeds {limit // (1024 * 1024)}MB limit for {file.filename}")
             file.file.seek(0)
 
             existing_doc = await DocumentModel.find_one(
@@ -61,14 +82,16 @@ class DocumentService:
 
             doc_id = uuid.uuid4()
             s3 = get_s3_client()
-            file_extension = ALLOWED_TYPES[file.content_type]
-            s3_key = f"courses/{course_id}/documents/{doc_id}.{file_extension}"
+            folder = "lectures" if media_type == "lecture" else "documents"
+            s3_key = f"courses/{course_id}/{folder}/{doc_id}.{file_extension}"
 
-            s3.upload_fileobj(
+            # Streams from the spooled upload file, so large recordings are never held in memory
+            await asyncio.to_thread(
+                s3.upload_fileobj,
                 file.file,
                 S3_BUCKET,
                 s3_key,
-                ExtraArgs={"ContentType": file.content_type}
+                ExtraArgs={"ContentType": stored_content_type},
             )
 
             doc = DocumentModel(
@@ -77,7 +100,10 @@ class DocumentService:
                 course_id=course_uuid,
                 s3_path=s3_key,
                 status="pending",
-                file_type=file_extension
+                file_type=file_extension,
+                file_size_bytes=size,
+                media_type=media_type,
+                content_type=stored_content_type,
             )
             await doc.insert()
             uploaded_docs.append(doc)
@@ -91,130 +117,22 @@ class DocumentService:
                 user_role=user.role,
                 course_id=course_uuid,
                 document_id=doc_id,
-                payload={"filename": file.filename, "file_type": file_extension, "size_bytes": size}
+                payload={"filename": file.filename, "file_type": file_extension, "size_bytes": size, "media_type": media_type}
             )
 
-            # Trigger async processing using celery
-            from app.worker import process_document
-            process_document.delay(str(doc_id))
+            # Trigger async processing using celery (recordings go to the long-running media queue)
+            if media_type == "lecture":
+                from app.tasks.media import process_lecture
+                process_lecture.delay(str(doc_id))
+            else:
+                from app.worker import process_document
+                process_document.delay(str(doc_id))
 
         return {
             "message": f"Successfully uploaded {len(uploaded_docs)} documents",
             "uploaded": [d.filename for d in uploaded_docs],
             "skipped": len(files) - len(uploaded_docs)
         }
-
-    @staticmethod
-    async def process_document_sync(doc_id: str):
-        """Process document synchronously (designed to run in celery/thread pool)"""
-        import sys
-        import os
-        from app.services.pdf_extractor import extract_text
-        from app.services.chunking import split_into_chunks, embed_and_store
-        from motor.motor_asyncio import AsyncIOMotorClient
-        from app.core.config import settings
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        async def process():
-            client = AsyncIOMotorClient(settings.MONGO_URI, uuidRepresentation="standard")
-            db = client.get_default_database()
-            
-            try:
-                doc_uuid = uuid.UUID(doc_id)
-                doc = await db["documents"].find_one({"_id": doc_uuid})
-
-                if not doc:
-                    return
-
-                await db["documents"].update_one(
-                    {"_id": doc_uuid},
-                    {"$set": {"status": "processing"}}
-                )
-
-                try:
-                    proc_start = time.time()
-                    s3 = get_s3_client()
-                    s3_key = doc.get("s3_path") or doc.get("s3_key")
-                    response = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
-                    file_bytes = response['Body'].read()
-
-                    file_type = doc.get("file_type", "pdf")
-                    raw_text = extract_text(file_type, file_bytes)
-                    chunks = split_into_chunks(raw_text)
-
-                    course_id_raw = doc.get("course_id", "")
-                    course_id = str(uuid.UUID(bytes=course_id_raw)) if isinstance(course_id_raw, bytes) else str(course_id_raw)
-                    doc_id_str = str(uuid.UUID(bytes=doc_id)) if isinstance(doc_id, bytes) else str(doc_id)
-                    filename = doc.get("filename")
-
-                    pushed_count = embed_and_store(chunks, course_id, doc_id_str, filename)
-                    processing_time_ms = int((time.time() - proc_start) * 1000)
-
-                    await db["documents"].update_one(
-                        {"_id": doc_uuid},
-                        {"$set": {
-                            "status": "ready",
-                            "chunk_count": pushed_count,
-                            "processed_at": datetime.now(timezone.utc)
-                        }}
-                    )
-
-                    safe_track_event(
-                        event_type="document_processed",
-                        event_category="document",
-                        user_id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
-                        user_role="system",
-                        course_id=doc.get("course_id"),
-                        document_id=doc_uuid,
-                        payload={
-                            "filename": doc.get("filename", "unknown"),
-                            "file_type": file_type,
-                            "char_count": len(raw_text),
-                            "chunk_count": pushed_count,
-                            "processing_time_ms": processing_time_ms,
-                        },
-                    )
-
-                    pending_count = await db["documents"].count_documents({
-                        "course_id": doc.get("course_id"),
-                        "status": "pending"
-                    })
-                    
-                    if pending_count == 0:
-                        from app.services.graph_service import GraphService
-                        asyncio.create_task(GraphService.generate_graph_for_course(course_id))
-
-                except Exception as e:
-                    processing_time_ms = int((time.time() - proc_start) * 1000)
-                    await db["documents"].update_one(
-                        {"_id": doc_uuid},
-                        {"$set": {
-                            "status": "failed",
-                            "error_message": str(e),
-                            "processed_at": datetime.now(timezone.utc)
-                        }}
-                    )
-
-                    safe_track_event(
-                        event_type="document_failed",
-                        event_category="document",
-                        user_id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
-                        user_role="system",
-                        course_id=doc.get("course_id"),
-                        document_id=doc_uuid,
-                        payload={
-                            "filename": doc.get("filename", "unknown"),
-                            "file_type": file_type,
-                            "error": str(e),
-                            "processing_time_ms": processing_time_ms,
-                        },
-                    )
-            finally:
-                client.close()
-        
-        loop.run_until_complete(process())
 
     @staticmethod
     async def list_documents(course_id: str, user: User):
@@ -287,25 +205,22 @@ class DocumentService:
             print(f"Error deleting from S3: {e}")
             
         try:
-            from app.core.config import settings
-            from qdrant_client import QdrantClient
-            from qdrant_client.http import models as rest
-            
-            qdrant = QdrantClient(url=settings.QDRANT_URL)
-            qdrant.delete(
-                collection_name="cobble_chunks",
-                points_selector=rest.Filter(
-                    must=[
-                        rest.FieldCondition(
-                            key="document_id",
-                            match=rest.MatchValue(value=doc_id)
-                        )
-                    ]
-                )
-            )
+            from app.core.qdrant import delete_document_vectors
+            delete_document_vectors(str(doc.course_id), str(doc.id))
         except Exception as e:
             print(f"Error deleting from Qdrant: {e}")
-            
+
+        if doc.media_type == "lecture":
+            from app.models.lecture import LectureChapter, LectureFrame, LectureTranscript
+            for frame in await LectureFrame.find(LectureFrame.doc_id == doc.id).to_list():
+                try:
+                    s3.delete_object(Bucket=S3_BUCKET, Key=frame.s3_key)
+                except Exception as e:
+                    print(f"Error deleting frame from S3: {e}")
+            await LectureFrame.find(LectureFrame.doc_id == doc.id).delete()
+            await LectureChapter.find(LectureChapter.doc_id == doc.id).delete()
+            await LectureTranscript.find(LectureTranscript.doc_id == doc.id).delete()
+
         await doc.delete()
         course.docs_count = max(0, course.docs_count - 1)
         await course.save()        
@@ -349,9 +264,11 @@ class DocumentService:
             return {"message": "No duplicate documents found", "deleted_count": 0}
 
         s3 = get_s3_client()
+        from app.core.qdrant import delete_document_vectors
         for doc in to_delete:
             try:
                 s3.delete_object(Bucket=S3_BUCKET, Key=doc.s3_path)
+                delete_document_vectors(str(doc.course_id), str(doc.id))
                 await doc.delete()
             except Exception as e:
                 print(f"Error deleting duplicate {doc.id}: {e}")

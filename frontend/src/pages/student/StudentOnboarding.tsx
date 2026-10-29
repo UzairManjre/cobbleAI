@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { authApi, coursesApi } from '../../api';
+import { consentApi } from '../../api/consent';
+import { ConsentChoice } from '../../components/common/ResearchConsent';
 
 export default function StudentOnboarding() {
   const navigate = useNavigate();
@@ -10,6 +12,12 @@ export default function StudentOnboarding() {
   const [name, setName] = useState('');
   const [classCode, setClassCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [consentText, setConsentText] = useState('');
+  const [consent, setConsent] = useState<boolean | null>(null); // nothing pre-selected: opt-in only
+
+  useEffect(() => {
+    consentApi.get().then(res => setConsentText(res.data.text)).catch(() => undefined);
+  }, []);
 
   const handleJoin = async () => {
     setIsLoading(true);
@@ -20,7 +28,16 @@ export default function StudentOnboarding() {
         has_onboarded: true
       });
 
-      // 2. Join class if code provided
+      // 2. Record the research decision, if one was made (undecided students are asked again later)
+      if (consent !== null) {
+        try {
+          await consentApi.set(consent);
+        } catch (err) {
+          console.warn('Failed to save research consent:', err);
+        }
+      }
+
+      // 3. Join class if code provided
       if (classCode) {
         try {
           await coursesApi.join(classCode);
@@ -30,7 +47,7 @@ export default function StudentOnboarding() {
         }
       }
 
-      // 3. Update local state
+      // 4. Update local state
       setAuth(token!, role!, true);
       navigate('/student/dashboard');
     } catch (err) {
@@ -73,6 +90,8 @@ export default function StudentOnboarding() {
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[var(--accent)]/50 transition-colors font-mono"
             />
           </div>
+
+          {consentText && <ConsentChoice text={consentText} value={consent} onChange={setConsent} disabled={isLoading} />}
         </div>
 
         {/* Footer */}

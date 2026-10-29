@@ -7,6 +7,7 @@ import SpriteText from 'three-spritetext';
 import * as THREE from 'three';
 import { ArrowLeft, Map as MapIcon, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { escapeHtml } from '../../utils/html';
 
 export default function MindMap() {
   const { courseId } = useParams();
@@ -170,10 +171,10 @@ export default function MindMap() {
         
         nodeLabel={(node: any) => `
           <div style="background: #ffffff; padding: 16px; border-radius: 12px; border: 3px solid #0a0a0a; box-shadow: 4px 4px 0px #0a0a0a; font-family: 'Outfit', sans-serif;">
-            <div style="color: #0a0a0a; font-weight: 800; font-size: 16px; margin-bottom: 8px;">${node.label}</div>
-            <div style="color: rgba(10,10,10,0.7); font-weight: 600; font-size: 12px; max-width: 220px; line-height: 1.4;">${node.description}</div>
+            <div style="color: #0a0a0a; font-weight: 800; font-size: 16px; margin-bottom: 8px;">${escapeHtml(node.label)}</div>
+            <div style="color: rgba(10,10,10,0.7); font-weight: 600; font-size: 12px; max-width: 220px; line-height: 1.4;">${escapeHtml(node.description)}</div>
             <div style="margin-top: 12px; display: flex; gap: 6px;">
-                <span style="background: ${node.color}20; border: 2px solid ${node.color}; color: ${node.color}; font-size: 10px; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; font-weight: 800;">${node.difficulty || 'intermediate'}</span>
+                <span style="background: ${node.color}20; border: 2px solid ${node.color}; color: ${node.color}; font-size: 10px; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; font-weight: 800;">${escapeHtml(node.difficulty || 'intermediate')}</span>
             </div>
           </div>
         `}

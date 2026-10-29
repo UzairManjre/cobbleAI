@@ -1,5 +1,5 @@
-import { Clock, FileText, BarChart3, Play, Eye, Sparkles } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Clock, FileText, BarChart3, Play, Eye, Sparkles, ClipboardCheck, Send } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 
 interface TestCardProps {
   test: any;
@@ -8,10 +8,12 @@ interface TestCardProps {
   onPreview: (testId: string) => void;
   onGenerate: (testId: string) => void;
   onPublish: (testId: string) => void;
+  onReleaseResults?: (testId: string) => void;
 }
 
-export function TestCard({ test, role, isGenerating, onPreview, onGenerate, onPublish }: TestCardProps) {
+export function TestCard({ test, role, isGenerating, onPreview, onGenerate, onPublish, onReleaseResults }: TestCardProps) {
   const navigate = useNavigate();
+  const { courseId } = useParams();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -113,6 +115,16 @@ export function TestCard({ test, role, isGenerating, onPreview, onGenerate, onPu
               </button>
             )}
 
+            {test.status === "published" && test.test_type === "assignment" && courseId && (
+              <button
+                onClick={() => navigate(`/professor/courses/${courseId}/tests/${test.id}/grading`)}
+                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-black border-2 border-[#0A0A0A] rounded-xl text-sm font-extrabold shadow-[3px_3px_0_#000] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 transition-all font-['Outfit']"
+              >
+                <ClipboardCheck className="w-4 h-4 stroke-[2.5]" />
+                Grade Submissions
+              </button>
+            )}
+
             {test.status === "draft" && (test.question_count || test.questions?.length || 0) > 0 && (
               <button
                 onClick={() => onPublish(test.id)}
@@ -121,6 +133,20 @@ export function TestCard({ test, role, isGenerating, onPreview, onGenerate, onPu
                 <Play className="w-4 h-4 fill-white" />
                 Publish Test
               </button>
+            )}
+
+            {test.status === "published" && onReleaseResults && (
+              test.show_results_immediately || test.results_released ? (
+                <span className="text-xs font-extrabold text-emerald-700 font-['Outfit']">Results visible to students</span>
+              ) : (
+                <button
+                  onClick={() => onReleaseResults(test.id)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-black border-2 border-[#0A0A0A] rounded-xl text-sm font-extrabold shadow-[3px_3px_0_#000] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 transition-all font-['Outfit']"
+                >
+                  <Send className="w-4 h-4 stroke-[2.5]" />
+                  Release Results
+                </button>
+              )
             )}
           </>
         )}

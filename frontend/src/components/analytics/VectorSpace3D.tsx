@@ -30,17 +30,9 @@ const COURSE_COLORS = [
 ];
 
 export default function VectorSpace3D({ data }: Props) {
-  if (!data || data.length === 0) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: '14px' }}>
-        No vector embeddings to visualize yet.
-      </div>
-    );
-  }
-
   const traces = useMemo(() => {
     const courseGroups: Record<string, VectorPoint[]> = {};
-    data.forEach(p => {
+    (data || []).forEach(p => {
       if (!courseGroups[p.course]) courseGroups[p.course] = [];
       courseGroups[p.course].push(p);
     });
@@ -62,6 +54,14 @@ export default function VectorSpace3D({ data }: Props) {
       },
     }));
   }, [data]);
+
+  if (!data || data.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: '14px' }}>
+        No vector embeddings to visualize yet.
+      </div>
+    );
+  }
 
   return (
     <Plot

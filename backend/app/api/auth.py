@@ -82,13 +82,13 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](get_user_manager, [auth_backend])
 
 current_active_user = fastapi_users.current_user(active=True)
 
-def require_role(role: str):
+def require_role(*roles: str):
     async def role_checker(user: User = Depends(current_active_user)):
         from fastapi import HTTPException
-        if user.role != role:
+        if user.role not in roles:
             raise HTTPException(
                 status_code=403,
-                detail=f"Only {role}s are allowed to access this resource."
+                detail=f"Only {' or '.join(r + 's' for r in roles)} are allowed to access this resource."
             )
         return user
     return role_checker

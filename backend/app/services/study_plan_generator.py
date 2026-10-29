@@ -196,8 +196,10 @@ class StudyPlanGenerator:
             if not plan_data:
                 raise ValueError("LLM did not return valid JSON")
 
-            # Build full plan from LLM ordering + backend-generated content
-            return self._build_full_plan(plan_data, graph_nodes, graph_edges, course_title, document_filenames)
+            # Build full plan from LLM ordering + backend-generated content; drop topics whose node id
+            # the model invented and fill defaults
+            return self._validate_plan(
+                self._build_full_plan(plan_data, graph_nodes, graph_edges, course_title, document_filenames), graph_nodes)
 
         except Exception as e:
             print(f"   LLM generation failed, using fallback: {e}")

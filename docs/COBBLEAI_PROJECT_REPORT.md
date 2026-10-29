@@ -842,6 +842,8 @@ backend/
   3. Weighted merge: `S_final = 0.3 * S_cosine + 0.7 * S_cross`
   4. Top-k injection: Take top 5, format into prompt context
 
+> **Correction (CobbleAI 2.0):** the v1 code actually used `S_final = 0.2 × S_cosine + 0.8 × raw cross-encoder logit` (`rag.py`), not 0.3/0.7. The 2.0 retriever is described in [COBBLEAI_2_0.md](COBBLEAI_2_0.md); its `v1` preset reproduces the 0.2/0.8 scoring for comparison.
+
 #### Chunking Service (`services/chunking.py`)
 - Sentence-level splitting using NLTK
 - Sliding window: 400 words chunk size, 80 words overlap

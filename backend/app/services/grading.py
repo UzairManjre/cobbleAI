@@ -59,7 +59,9 @@ class GradingService:
                 f"{{\n"
                 f"  \"suggested_score\": <float between 0 and {criterion.max_points}>,\n"
                 f"  \"suggested_feedback\": \"<direct constructive feedback for the student>\",\n"
-                f"  \"ai_reasoning\": \"<private reasoning for the professor justifying the score>\"\n"
+                f"  \"ai_reasoning\": \"<private reasoning for the professor justifying the score>\",\n"
+                f"  \"evidence_quote\": \"<exact words from the submission that most support the score>\",\n"
+                f"  \"confidence\": <0 to 1: how likely an instructor would give the same score>\n"
                 f"}}"
             )
             
@@ -78,11 +80,18 @@ class GradingService:
                     clean_resp = clean_resp[:-3]
                     
                 data = json.loads(clean_resp.strip())
+                # Never trust the model to respect the scale
+                score = max(0.0, min(float(data["suggested_score"]), float(criterion.max_points)))
+                quote = str(data.get("evidence_quote") or "").strip()
+                from app.services.graph_provenance import quote_score
                 evaluations.append(CriterionDraft(
                     criterion_id=criterion.id,
-                    suggested_score=data["suggested_score"],
+                    suggested_score=score,
                     suggested_feedback=data["suggested_feedback"],
-                    ai_reasoning=data["ai_reasoning"]
+                    ai_reasoning=data["ai_reasoning"],
+                    # Only keep a quote that really appears in the submission
+                    evidence_quote=quote[:400] if quote and quote_score(quote, submission_text) >= 0.8 else None,
+                    confidence=min(1.0, max(0.0, float(data["confidence"]))) if data.get("confidence") is not None else None,
                 ))
             except Exception as e:
                 # Fallback on parsing error
@@ -90,7 +99,8 @@ class GradingService:
                     criterion_id=criterion.id,
                     suggested_score=0.0,
                     suggested_feedback="Failed to generate feedback due to system error.",
-                    ai_reasoning=f"LLM parsing failed: {str(e)} | Raw output: {response}"
+                    ai_reasoning=f"LLM parsing failed: {str(e)} | Raw output: {response}",
+                    confidence=0.0,  # an unparsed draft must be graded by the instructor
                 ))
                 
         return evaluations

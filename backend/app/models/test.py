@@ -21,6 +21,8 @@ class Question(BaseModel):
     marks: float = 1.0
     difficulty: str = "medium"  # easy, medium, hard
     topic: Optional[str] = None  # Related graph node label
+    node_id: Optional[str] = None  # Graph node the question assesses (mastery updates)
+    cognitive_level: Optional[str] = None  # Bloom: remember | understand | apply | analyze | evaluate | create
     
     # MCQ specific
     options: List[MCQOption] = []
@@ -34,6 +36,7 @@ class Question(BaseModel):
     
     # Metadata
     explanation: Optional[str] = None  # Explanation of correct answer
+    rubric: List[str] = []  # Key points a full-marks answer covers (grader v2); derived from explanation if empty
     hints: List[str] = []
     document_references: List[str] = []  # Related filenames
 
@@ -57,6 +60,7 @@ class Test(Document):
     shuffle_questions: bool = False
     shuffle_options: bool = False
     show_results_immediately: bool = False
+    results_released: bool = False  # set by the instructor's "release results"; later submissions are released too
     allow_retakes: bool = False
     max_attempts: int = 1
     
@@ -96,6 +100,17 @@ class Answer(BaseModel):
     marks_awarded: Optional[float] = None
     graded_by: Optional[str] = None  # auto, professor_id
     feedback: Optional[str] = None  # For manual grading
+    confidence: Optional[int] = None  # Student's confidence check-in, 1 (guessing) - 4 (certain)
+
+    # Grader v2: the AI score is kept separate from the instructor's final score for agreement reporting
+    ai_score: Optional[float] = None
+    ai_feedback: Optional[str] = None
+    ai_rationale: Optional[str] = None
+    grade_confidence: Optional[float] = None  # 0-1; below GRADER_REVIEW_THRESHOLD -> instructor review
+    evidence: List[Dict[str, Any]] = []  # student-answer spans and course sources the grade relies on
+    review_status: Optional[str] = None  # auto | needs_review | approved | overridden
+    reviewed_by: Optional[uuid.UUID] = None
+    reviewed_at: Optional[datetime] = None
 
 class TestAttempt(Document):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)

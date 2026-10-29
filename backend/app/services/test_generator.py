@@ -46,6 +46,7 @@ Return ONLY valid JSON with this structure:
       "type": "mcq",
       "question_text": "Clear, unambiguous question?",
       "difficulty": "medium",
+      "cognitive_level": "apply",
       "marks": 2,
       "topic": "Topic Name",
       "options": [
@@ -68,15 +69,18 @@ Return ONLY valid JSON with this structure:
       "type": "short_answer",
       "question_text": "Explain the difference between X and Y",
       "difficulty": "medium",
+      "cognitive_level": "understand",
       "marks": 5,
       "topic": "Topic Name",
       "explanation": "Expected answer should mention...",
+      "rubric": ["Key point 1 a full-marks answer makes", "Key point 2"],
       "hints": []
     }},
     {{
       "type": "true_false",
       "question_text": "Statement here",
       "difficulty": "easy",
+      "cognitive_level": "remember",
       "marks": 1,
       "topic": "Topic Name",
       "correct_answer": true,
@@ -96,6 +100,9 @@ Return ONLY valid JSON with this structure:
 6. **Progressive Difficulty**: Start easy, end hard
 7. **Return ONLY JSON** - no markdown, no explanations
 8. **Verify Count**: Before returning, COUNT your questions to ensure you have exactly {question_count}
+9. **Cognitive Level**: Tag every question with "cognitive_level" from Bloom's taxonomy: remember, understand, apply, analyze, evaluate or create
+10. **Rubric**: For short-answer questions, list the key points a full-marks answer must make in "rubric"
+11. **Topic**: Set "topic" to the one name from Topics Covered that the question assesses, copied exactly
 """
 
 MOCK_TEST_PROMPT = """You are creating a personalized practice test (mock test) for a student. This is for learning, not grading.
@@ -140,6 +147,9 @@ Focus on **learning value** over difficulty. Make explanations educational.
 Return ONLY JSON.
 
 """
+
+COGNITIVE_LEVELS = ("remember", "understand", "apply", "analyze", "evaluate", "create")
+
 
 class TestGenerator:
     def __init__(self):
@@ -312,6 +322,8 @@ class TestGenerator:
                 options=options,
                 correct_answer=q_data.get("correct_answer"),
                 explanation=q_data.get("explanation"),
+                rubric=[str(p) for p in (q_data.get("rubric") or []) if str(p).strip()][:8],
+                cognitive_level=q_data.get("cognitive_level") if q_data.get("cognitive_level") in COGNITIVE_LEVELS else None,
                 hints=q_data.get("hints", []),
                 document_references=q_data.get("document_references", [])
             )
@@ -371,7 +383,7 @@ Return JSON:
             response = await self.adapter.generate_full_response(
                 system="You are a fair grader. Be constructive. Return only JSON.",
                 messages=[{"role": "user", "content": evaluation_prompt}],
-                max_tokens=512
+                max_tokens=512, think=False,
             )
             
             result = self._extract_json(response)

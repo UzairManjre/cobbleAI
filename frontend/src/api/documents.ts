@@ -2,7 +2,7 @@ import api from './client';
 
 // Documents API
 export const documentsApi = {
-  upload: async (courseId: string, files: FileList) => {
+  upload: async (courseId: string, files: FileList, onProgress?: (fraction: number) => void) => {
     const formData = new FormData();
     formData.append('course_id', courseId);
     for (let i = 0; i < files.length; i++) {
@@ -21,25 +21,24 @@ export const documentsApi = {
     const baseUrl = API_URL || '';
     const url = `${baseUrl}/api/${role}/documents/upload`;
     
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${state.token}`
-        // Do NOT set Content-Type here, let the browser set it with the correct boundary!
-      },
-      body: formData
+    // XHR (not fetch) so large lecture recordings can report upload progress.
+    // Content-Type is left to the browser so the multipart boundary is correct.
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.setRequestHeader('Authorization', `Bearer ${state.token}`);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total);
+      };
+      xhr.onload = () => {
+        let data: { detail?: string } | null = null;
+        try { data = JSON.parse(xhr.responseText); } catch { data = null; }
+        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+        else reject(new Error((data && typeof data.detail === 'string' && data.detail) || 'Upload failed'));
+      };
+      xhr.onerror = () => reject(new Error('Upload failed: network error'));
+      xhr.send(formData);
     });
-    
-    if (!response.ok) {
-      let errorDetail = 'Upload failed';
-      try {
-        const errorData = await response.json();
-        errorDetail = errorData.detail || errorDetail;
-      } catch (e) {}
-      throw new Error(errorDetail);
-    }
-    
-    return response.json();
   },
   
   list: (courseId: string) => {
@@ -50,12 +49,11 @@ export const documentsApi = {
     return api.delete(`/documents/${docId}`);
   },
   
-  processAllPending: () => {
-    return api.post('/documents/process-all-pending');
-  },
-  
-  cleanupDuplicates: () => {
-    return api.post('/documents/cleanup-duplicates');
+  // The backend takes the course as a form field
+  cleanupDuplicates: (courseId: string) => {
+    const form = new FormData();
+    form.append('course_id', courseId);
+    return api.post('/documents/cleanup-duplicates', form);
   },
 };
 

@@ -129,8 +129,8 @@ class GraphService:
         return {
             "graph_id": str(graph.id),
             "session_id": str(session.id),
-            "nodes": graph_data["nodes"],
-            "edges": graph_data["edges"]
+            "nodes": graph.nodes_as_dicts(),
+            "edges": graph.edges_as_dicts()
         }
 
     @staticmethod
@@ -149,22 +149,8 @@ class GraphService:
         )
 
         try:
-            from app.models.document import DocumentModel
-            from app.services.document_service import DocumentService
-            
-            pending_docs = await DocumentModel.find(
-                DocumentModel.course_id == course_id,
-                DocumentModel.status == "pending"
-            ).to_list()
-
-            if pending_docs:
-                for doc in pending_docs:
-                    loop = asyncio.get_event_loop()
-                    from concurrent.futures import ThreadPoolExecutor
-                    executor = ThreadPoolExecutor(max_workers=1)
-                    await loop.run_in_executor(executor, DocumentService.process_document_sync, str(doc.id))
-                    executor.shutdown(wait=False)
-
+            # Documents still pending are processed by the Celery worker; the graph
+            # is built from the documents that are ready now.
             generator = AdvancedGraphGenerator()
             graph_data = await generator.generate_from_course(str(course_id))
 
@@ -207,8 +193,8 @@ class GraphService:
             return {
                 "graph_id": str(graph.id),
                 "session_id": str(session.id),
-                "nodes": graph_data["nodes"],
-                "edges": graph_data["edges"],
+                "nodes": graph.nodes_as_dicts(),
+                "edges": graph.edges_as_dicts(),
                 "source": "advanced_documents",
                 "nodes_count": len(graph_data["nodes"]),
                 "edges_count": len(graph_data["edges"])
@@ -312,25 +298,23 @@ class GraphService:
             raise HTTPException(status_code=404, detail="Graph not found")
 
         if graph.course_id:
-            course = await Course.get(graph.course_id)
-            if user.role == "professor" and (not course or course.professor_id != user.id):
-                raise HTTPException(status_code=403, detail="Not your course's graph")
+            from app.services.access import ensure_course_access
+            await ensure_course_access(user, graph.course_id)
+        elif graph.created_by != user.id:
+            raise HTTPException(status_code=403, detail="Not your graph")
 
         return {
             "id": str(graph.id),
             "topic": graph.topic,
-            "nodes": graph.nodes,
-            "edges": graph.edges,
+            "nodes": graph.nodes_as_dicts(),
+            "edges": graph.edges_as_dicts(),
             "created_at": graph.created_at.isoformat()
         }
 
     @staticmethod
     async def get_course_graphs(course_id: uuid.UUID, user: User) -> List[Dict[str, Any]]:
-        course = await Course.get(course_id)
-        if not course:
-            raise HTTPException(status_code=404, detail="Course not found")
-        if user.role == "professor" and course.professor_id != user.id:
-            raise HTTPException(status_code=403, detail="Not your course")
+        from app.services.access import ensure_course_access
+        await ensure_course_access(user, course_id)
 
         graphs = await KnowledgeGraph.find(
             KnowledgeGraph.course_id == course_id
@@ -339,8 +323,8 @@ class GraphService:
             {
                 "id": str(graph.id),
                 "topic": graph.topic,
-                "nodes": graph.nodes,
-                "edges": graph.edges,
+                "nodes": graph.nodes_as_dicts(),
+                "edges": graph.edges_as_dicts(),
                 "created_at": graph.created_at.isoformat(),
                 "nodes_count": len(graph.nodes),
                 "edges_count": len(graph.edges)
@@ -350,11 +334,8 @@ class GraphService:
 
     @staticmethod
     async def get_course_graph_status(course_id: uuid.UUID, user: User) -> Dict[str, Any]:
-        course = await Course.get(course_id)
-        if not course:
-            raise HTTPException(status_code=404, detail="Course not found")
-        if user.role == "professor" and course.professor_id != user.id:
-            raise HTTPException(status_code=403, detail="Not your course")
+        from app.services.access import ensure_course_access
+        await ensure_course_access(user, course_id)
 
         from app.models.document import DocumentModel
 

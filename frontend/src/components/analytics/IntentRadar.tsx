@@ -13,10 +13,10 @@ interface Props {
 }
 
 export default function IntentRadar({ data }: Props) {
-  if (!data || data.length === 0) {
+  if (!data || data.length === 0 || data.every(d => !d.count)) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: '14px' }}>
-        No chat data available for intent analysis.
+        Not measured yet: no tutor chats recorded for this selection.
       </div>
     );
   }

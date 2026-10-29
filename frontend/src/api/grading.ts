@@ -71,23 +71,23 @@ export interface SubmissionReviewResponse {
 
 export const gradingApi = {
   createRubric: (assignmentId: string, criteria: Omit<RubricCriterion, 'id'>[]) => 
-    client.post<Rubric>(`/professor/grading/assignments/${assignmentId}/rubric`, { criteria }).then(res => res.data),
+    client.post<Rubric>(`/api/professor/grading/assignments/${assignmentId}/rubric`, { criteria }).then(res => res.data),
 
   triggerDraft: (submissionId: string, submission_text: string) =>
-    client.post<GradingDraft>(`/professor/grading/submissions/${submissionId}/draft`, { submission_text }).then(res => res.data),
+    client.post<GradingDraft>(`/api/professor/grading/submissions/${submissionId}/draft`, { submission_text }).then(res => res.data),
 
   overrideDraft: (draftId: string, overrides: { criterion_id: string; override_score?: number; override_feedback?: string }[]) =>
-    client.patch<GradingDraft>(`/professor/grading/drafts/${draftId}`, { overrides }).then(res => res.data),
+    client.patch<GradingDraft>(`/api/professor/grading/drafts/${draftId}`, { overrides }).then(res => res.data),
 
   approveDraft: (draftId: string) =>
-    client.post<GradingDraft>(`/professor/grading/drafts/${draftId}/approve`).then(res => res.data),
+    client.post<GradingDraft>(`/api/professor/grading/drafts/${draftId}/approve`).then(res => res.data),
 
   publishAssignmentDrafts: (assignmentId: string) =>
-    client.post<{ status: string; published_count: number }>(`/professor/grading/assignments/${assignmentId}/publish`).then(res => res.data),
+    client.post<{ status: string; published_count: number }>(`/api/professor/grading/assignments/${assignmentId}/publish`).then(res => res.data),
     
   getGradingOverview: (assignmentId: string) =>
-    client.get<GradingOverviewResponse>(`/professor/grading/assignments/${assignmentId}/grading-overview`).then(res => res.data),
+    client.get<GradingOverviewResponse>(`/api/professor/grading/assignments/${assignmentId}/grading-overview`).then(res => res.data),
     
   getSubmissionReview: (assignmentId: string, attemptId: string) =>
-    client.get<SubmissionReviewResponse>(`/professor/grading/assignments/${assignmentId}/submissions/${attemptId}/review`).then(res => res.data),
+    client.get<SubmissionReviewResponse>(`/api/professor/grading/assignments/${assignmentId}/submissions/${attemptId}/review`).then(res => res.data),
 };

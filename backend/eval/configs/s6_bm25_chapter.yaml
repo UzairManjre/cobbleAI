@@ -1,0 +1,11 @@
+# S6: + BM25 and the chapter-summary prior (the full lecture design)
+name: s6_bm25_chapter
+study: S6
+gold: [eval/gold/example.jsonl]
+qtypes: [lecture]   # same items as the other S6 conditions; unanswerable lecture items give the decline rate
+split: test
+retrieval:
+  preset: hybrid
+generation:
+  enabled: true
+  hint_level: full_answer

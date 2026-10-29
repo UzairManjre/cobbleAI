@@ -65,3 +65,54 @@ async def get_course_graph_status(
 ):
     """Check if a knowledge graph exists for a course."""
     return await GraphService.get_course_graph_status(course_id, user)
+
+
+#   Edge audit (Upgrade D): instructors judge a stratified sample of relations
+
+class EdgeVerdict(BaseModel):
+    status: str  # correct | incorrect | unreviewed
+    note: str | None = None
+
+
+async def _owned_graph(graph_id: uuid.UUID, user: User):
+    from app.models.graph import KnowledgeGraph
+    from app.services.access import ensure_course_owner
+    graph = await KnowledgeGraph.get(graph_id)
+    if not graph:
+        raise HTTPException(status_code=404, detail="Graph not found")
+    if graph.course_id:
+        await ensure_course_owner(user, graph.course_id)
+    elif graph.created_by != user.id:
+        raise HTTPException(status_code=403, detail="Not your graph")
+    return graph
+
+
+def _audit_item(graph, edge) -> dict:
+    from app.models.graph import edge_to_dict
+    labels = {n.id: n.label for n in graph.nodes}
+    return {**edge_to_dict(edge), "from_label": labels.get(edge.source, ""), "to_label": labels.get(edge.target, "")}
+
+
+@router.post("/{graph_id}/audit-sample")
+async def create_audit_sample(graph_id: uuid.UUID, n: int = 30, user: User = Depends(require_role("professor"))):
+    from app.services.graph_audit import stratified_sample
+    graph = await _owned_graph(graph_id, user)
+    sample = stratified_sample(graph, max(1, min(n, 200)))
+    await graph.save()
+    return {"items": [_audit_item(graph, e) for e in sample]}
+
+
+@router.patch("/{graph_id}/edges/{edge_id}/audit")
+async def judge_edge(graph_id: uuid.UUID, edge_id: str, req: EdgeVerdict, user: User = Depends(require_role("professor"))):
+    from app.services.graph_audit import record_verdict
+    graph = await _owned_graph(graph_id, user)
+    record_verdict(graph, edge_id, req.status, req.note, user.id)
+    await graph.save()
+    edge = next(e for e in graph.edges if e.id == edge_id)
+    return _audit_item(graph, edge)
+
+
+@router.get("/{graph_id}/audit-report")
+async def get_audit_report(graph_id: uuid.UUID, user: User = Depends(require_role("professor"))):
+    from app.services.graph_audit import audit_report
+    return audit_report(await _owned_graph(graph_id, user))

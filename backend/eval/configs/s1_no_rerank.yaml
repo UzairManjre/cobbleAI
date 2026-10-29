@@ -1,0 +1,14 @@
+# S1 retrieval and RAG ablation (RQ1). Same gold questions for every configuration.
+name: s1_no_rerank
+study: S1
+description: "Hybrid retrieval without the cross-encoder"
+gold: [eval/gold/example.jsonl]   # replace with eval/gold/<course>.jsonl
+split: test
+retrieval:
+  preset: no_rerank
+generation:
+  enabled: true
+  rag: true
+  hint_level: full_answer
+judge:
+  enabled: true

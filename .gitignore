@@ -63,3 +63,11 @@ graphify-out/
 .claude/
 backend/llm_outputs/
 .agents/
+
+# Evaluation harness outputs and licensed datasets (kept off the repo)
+backend/eval/runs/
+backend/eval/data/*
+!backend/eval/data/README.md
+# Anonymised research exports stay off git (they are participant data)
+backend/exports/
+celerybeat-schedule*

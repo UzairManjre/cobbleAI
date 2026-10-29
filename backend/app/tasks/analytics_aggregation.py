@@ -24,13 +24,22 @@ from app.core.config import settings
 def _get_motor_db():
     """Get Motor database client for async operations."""
     from motor.motor_asyncio import AsyncIOMotorClient
-    client = AsyncIOMotorClient(settings.MONGO_URI, uuidRepresentation="standard")
+    client = AsyncIOMotorClient(settings.MONGO_URI, uuidRepresentation="standard", tz_aware=True)
     return client[settings.DATABASE_NAME]
 
 
 def _get_sync_db():
     """Get sync PyMongo client for Celery tasks."""
-    return MongoClient(settings.MONGO_URI, uuidRepresentation="standard")[settings.DATABASE_NAME]
+    return MongoClient(settings.MONGO_URI, uuidRepresentation="standard", tz_aware=True)[settings.DATABASE_NAME]
+
+
+def _aware(dt):
+    """Mongo returns naive UTC datetimes; make them comparable with aware 'now'."""
+    if isinstance(dt, str):
+        dt = datetime.fromisoformat(dt)
+    if isinstance(dt, datetime) and dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def _uuid_to_bytes(uuid_obj):
@@ -111,10 +120,10 @@ def compute_daily_aggregates(self, target_date_str: Optional[str] = None):
                 {
                     "aggregate_type": "user_daily",
                     "user_id": stat["user_id"],
-                    "date": target_date,
+                    "date": day_start,
                 },
                 {
-                    "$setOnInsert": {"aggregate_type": "user_daily", "user_id": stat["user_id"], "date": target_date},
+                    "$setOnInsert": {"aggregate_type": "user_daily", "user_id": stat["user_id"], "date": day_start},
                     "$set": {
                         "metrics": {
                             "sessions_count": stat["sessions_count"],
@@ -156,10 +165,10 @@ def compute_daily_aggregates(self, target_date_str: Optional[str] = None):
                 {
                     "aggregate_type": "course_daily",
                     "course_id": stat["_id"]["course_id"],
-                    "date": target_date,
+                    "date": day_start,
                 },
                 {
-                    "$setOnInsert": {"aggregate_type": "course_daily", "course_id": stat["_id"]["course_id"], "date": target_date},
+                    "$setOnInsert": {"aggregate_type": "course_daily", "course_id": stat["_id"]["course_id"], "date": day_start},
                     "$set": {
                         "metrics": {
                             "unique_students": len(stat["unique_students"]),
@@ -191,26 +200,24 @@ def compute_daily_aggregates(self, target_date_str: Optional[str] = None):
                 "questions_asked": {"$sum": {"$cond": [{"$eq": ["$event_type", "question_asked"]}, 1, 0]}},
                 "unique_students": {"$addToSet": "$user_id"},
                 "node_label": {"$first": "$payload.node_label"},
-                "hour": {"$hour": "$timestamp"},
             }},
         ]
 
         node_stats = list(events.aggregate(node_pipeline))
         for stat in node_stats:
-            hour_dist_key = f"hour_{stat.get('hour', 0)}"
             aggregates.update_one(
                 {
                     "aggregate_type": "node_daily",
                     "graph_id": stat["_id"]["graph_id"],
                     "node_id": stat["_id"]["node_id"],
-                    "date": target_date,
+                    "date": day_start,
                 },
                 {
                     "$setOnInsert": {
                         "aggregate_type": "node_daily",
                         "graph_id": stat["_id"]["graph_id"],
                         "node_id": stat["_id"]["node_id"],
-                        "date": target_date,
+                        "date": day_start,
                     },
                     "$set": {
                         "metrics": {
@@ -250,9 +257,9 @@ def compute_daily_aggregates(self, target_date_str: Optional[str] = None):
         if global_stats:
             stat = global_stats[0]
             aggregates.update_one(
-                {"aggregate_type": "global_daily", "date": target_date},
+                {"aggregate_type": "global_daily", "date": day_start},
                 {
-                    "$setOnInsert": {"aggregate_type": "global_daily", "date": target_date},
+                    "$setOnInsert": {"aggregate_type": "global_daily", "date": day_start},
                     "$set": {
                         "metrics": {
                             "total_events": stat["total_events"],
@@ -420,7 +427,7 @@ def update_user_profiles(self):
             last_active_dt = stats.get("last_active")
             days_inactive = 999
             if last_active_dt:
-                days_inactive = (datetime.now(timezone.utc) - last_active_dt).days
+                days_inactive = (datetime.now(timezone.utc) - _aware(last_active_dt)).days
 
             if days_inactive > 14:
                 dropout_risk = "high"
@@ -633,7 +640,7 @@ def detect_dropout_risk(self):
             # Calculate days inactive
             days_inactive = 999
             if last_active:
-                days_inactive = (datetime.now(timezone.utc) - last_active).days
+                days_inactive = (datetime.now(timezone.utc) - _aware(last_active)).days
 
             # Determine risk level
             if days_inactive > 14:

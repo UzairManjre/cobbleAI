@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class CreateTestRequest(BaseModel):
@@ -29,6 +29,7 @@ class SubmitAnswerRequest(BaseModel):
     selected_option_id: Optional[str] = None
     selected_options: List[str] = []
     time_spent_seconds: int = 0
+    confidence: Optional[int] = Field(default=None, ge=1, le=4)
 
 class SubmitTestRequest(BaseModel):
     attempt_id: str

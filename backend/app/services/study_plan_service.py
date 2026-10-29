@@ -14,17 +14,22 @@ class StudyPlanService:
     async def generate_study_plan(user: User, req: GeneratePlanRequest) -> dict:
         try:
             course_uuid = uuid.UUID(req.course_id)
-            graph_uuid = uuid.UUID(req.graph_id)
+            graph_uuid = uuid.UUID(req.graph_id) if req.graph_id else None
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid UUID format")
 
-        course = await Course.get(course_uuid)
-        if not course:
-            raise HTTPException(status_code=404, detail="Course not found")
+        from app.services.access import ensure_course_access
+        course = await ensure_course_access(user, course_uuid)
 
-        graph = await KnowledgeGraph.get(graph_uuid)
+        if graph_uuid:
+            graph = await KnowledgeGraph.get(graph_uuid)
+        else:
+            graph = await KnowledgeGraph.find(
+                KnowledgeGraph.course_id == course_uuid
+            ).sort(-KnowledgeGraph.created_at).first_or_none()
         if not graph:
             raise HTTPException(status_code=404, detail="Knowledge graph not found")
+        graph_uuid = graph.id
         if str(graph.course_id) != str(course_uuid):
             raise HTTPException(status_code=400, detail="Graph does not belong to this course")
 
@@ -47,8 +52,8 @@ class StudyPlanService:
             plan_data = await generator.generate_plan(
                 course_title=course.title,
                 course_description="",
-                graph_nodes=graph.nodes,
-                graph_edges=graph.edges,
+                graph_nodes=graph.nodes_as_dicts(),
+                graph_edges=graph.edges_as_dicts(),
                 document_filenames=document_filenames
             )
         except Exception as e:
@@ -117,11 +122,14 @@ class StudyPlanService:
         }
 
     @staticmethod
-    async def delete_active_plan(user: User) -> dict:
-        plan = await StudyPlan.find_one(
-            StudyPlan.student_id == user.id,
-            StudyPlan.status == "active"
-        )
+    async def delete_active_plan(user: User, course_id: str | None = None) -> dict:
+        filters = [StudyPlan.student_id == user.id, StudyPlan.status == "active"]
+        if course_id:
+            try:
+                filters.append(StudyPlan.course_id == uuid.UUID(course_id))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid UUID format")
+        plan = await StudyPlan.find_one(*filters)
         if not plan:
             return {"message": "No active plan found"}
         if str(plan.student_id) != str(user.id):
@@ -223,3 +231,70 @@ class StudyPlanService:
             await progress.save()
 
         return {"progress": progress, "message": "Exercise marked as complete"}
+
+    #   Deep-dive plan for one topic (the StudyPlan page's "Deep Dive" button)
+
+    @staticmethod
+    def _topic_plan_view(tp: TopicStudyPlan) -> dict:
+        from fastapi.encoders import jsonable_encoder
+        return jsonable_encoder(tp)
+
+    @staticmethod
+    async def get_topic_plan(user: User, course_id: str, node_id: str) -> dict:
+        try:
+            course_uuid = uuid.UUID(course_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid UUID format")
+        from app.services.access import ensure_course_access
+        await ensure_course_access(user, course_uuid)
+        tp = await TopicStudyPlan.find(
+            TopicStudyPlan.course_id == course_uuid, TopicStudyPlan.student_id == user.id, TopicStudyPlan.node_id == node_id,
+        ).sort(-TopicStudyPlan.created_at).first_or_none()
+        return {"topic_plan": StudyPlanService._topic_plan_view(tp) if tp else None}
+
+    @staticmethod
+    async def generate_topic_plan(user: User, course_id: str, node_id: str) -> dict:
+        try:
+            course_uuid = uuid.UUID(course_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid UUID format")
+        from app.services.access import ensure_course_access
+        course = await ensure_course_access(user, course_uuid)
+        graph = await KnowledgeGraph.find(KnowledgeGraph.course_id == course_uuid).sort(-KnowledgeGraph.created_at).first_or_none()
+        node = graph.find_node(node_id) if graph else None
+        if not node:
+            raise HTTPException(status_code=404, detail="Topic not found in the course graph")
+        documents = await DocumentModel.find(DocumentModel.course_id == course_uuid, DocumentModel.status == "ready").to_list()
+        neighbors = graph.neighbors(node_id)
+        try:
+            data = await StudyPlanGenerator().generate_topic_plan(
+                topic_label=node.label, topic_description=node.description or "", course_title=course.title,
+                connected_topics=neighbors, document_filenames=[d.filename for d in documents],
+            )
+        except Exception:
+            raise HTTPException(status_code=502, detail="The topic plan could not be generated. Try again.")
+        exercises = []
+        for ex in data.get("exercises") or []:
+            if isinstance(ex, dict) and ex.get("title"):
+                try:
+                    exercises.append(Exercise(
+                        type=str(ex.get("type") or "reflection"), title=str(ex["title"]),
+                        description=str(ex.get("description") or ""), difficulty=str(ex.get("difficulty") or "medium"),
+                        solution=ex.get("solution"), hints=[str(h) for h in ex.get("hints") or []],
+                        estimated_time_minutes=int(ex.get("estimated_time_minutes") or 15),
+                    ))
+                except (TypeError, ValueError):
+                    continue
+        tp = TopicStudyPlan(
+            course_id=course_uuid, student_id=user.id, node_id=node_id,
+            title=str(data.get("title") or f"Deep Dive: {node.label}"),
+            description=str(data.get("description") or ""),
+            estimated_time_minutes=int(data.get("estimated_time_minutes") or 60),
+            learning_path=[s for s in data.get("learning_path") or [] if isinstance(s, dict)],
+            exercises=exercises,
+            related_documents=[str(d) for d in data.get("related_documents") or []][:20],
+            related_topics=[{"node_id": n["node_id"], "label": n["label"], "relation": n["relation"]} for n in neighbors],
+            self_check_questions=[q for q in data.get("self_check_questions") or [] if isinstance(q, dict)],
+        )
+        await tp.insert()
+        return {"topic_plan": StudyPlanService._topic_plan_view(tp)}

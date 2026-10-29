@@ -1,0 +1,14 @@
+# S1 retrieval and RAG ablation (RQ1). Same gold questions for every configuration.
+name: s1_full_v1
+study: S1
+description: "Full v1 pipeline (expansion + dense + 0.2/0.8 rerank fusion) — the S1 baseline"
+gold: [eval/gold/example.jsonl]   # replace with eval/gold/<course>.jsonl
+split: test
+retrieval:
+  preset: v1
+generation:
+  enabled: true
+  rag: true
+  hint_level: full_answer
+judge:
+  enabled: true

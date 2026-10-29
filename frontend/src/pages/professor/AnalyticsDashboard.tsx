@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { analyticsApi, coursesApi } from '../../api';
 import KnowledgeGraphViewer from '../../components/analytics/KnowledgeGraphViewer';
 import TelemetryCluster from '../../components/analytics/TelemetryCluster';
@@ -7,6 +8,7 @@ import SankeyPipeline from '../../components/analytics/SankeyPipeline';
 import VectorTreemap from '../../components/analytics/VectorTreemap';
 import VectorSpace3D from '../../components/analytics/VectorSpace3D';
 import IntentRadar from '../../components/analytics/IntentRadar';
+import ConfusionFlagsList from '../../components/analytics/ConfusionFlagsList';
 import { Loader2, Brain, Box, Activity, Target } from 'lucide-react';
 
 export default function AnalyticsDashboard() {
@@ -69,7 +71,12 @@ export default function AnalyticsDashboard() {
             </p>
           </div>
           
-          <div className="w-full md:w-64">
+          <div className="w-full md:w-64 space-y-2">
+            {selectedCourse && (
+              <Link to={`/professor/courses/${selectedCourse}/insights`} className="block text-right text-xs text-[#888888] hover:text-white">
+                Question insights, coverage gaps and reports →
+              </Link>
+            )}
             <select 
               value={selectedCourse} 
               onChange={(e) => setSelectedCourse(e.target.value)}
@@ -167,7 +174,7 @@ export default function AnalyticsDashboard() {
           <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '450px' }}>
             <div className="flex items-center gap-2 mb-6">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Pipeline Flow</h3>
+              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Tutor Answer Flow</h3>
             </div>
             <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
               <SankeyPipeline data={data.content?.sankey_flow} />
@@ -204,6 +211,17 @@ export default function AnalyticsDashboard() {
             </div>
             <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
               <StudyHeatmap data={data.engagement?.study_heatmap} />
+            </div>
+          </div>
+
+          {/* Concepts students struggle with, and why */}
+          <div className="lg:col-span-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '240px' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Concepts Students Struggle With</h3>
+            </div>
+            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
+              <ConfusionFlagsList flags={data.engagement?.confusion_flags} />
             </div>
           </div>
 

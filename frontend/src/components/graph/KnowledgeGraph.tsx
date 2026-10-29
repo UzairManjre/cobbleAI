@@ -170,14 +170,23 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
       position: { x: 0, y: 0 },
     }));
 
-    const initialEdges: Edge[] = graphEdges.map((edge) => ({
-      id: edge.id,
-      source: edge.from,
-      target: edge.to,
-      animated: true,
-      style: { stroke: '#333333', strokeWidth: 2 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: '#888888' },
-    }));
+    // Relation labels; relations not supported by the materials are dashed amber
+    const initialEdges: Edge[] = graphEdges.map((edge) => {
+      const unsupported = edge.supported === false;
+      return {
+        id: edge.id,
+        source: edge.from,
+        target: edge.to,
+        animated: !unsupported,
+        label: edge.relation.replace(/_/g, ' '),
+        labelStyle: { fill: unsupported ? '#F59E0B' : '#888888', fontSize: 10 },
+        labelBgStyle: { fill: '#050505' },
+        style: unsupported
+          ? { stroke: '#B45309', strokeWidth: 1.5, strokeDasharray: '6 4' }
+          : { stroke: '#333333', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: unsupported ? '#B45309' : '#888888' },
+      };
+    });
 
     return getLayoutedElements(initialNodes, initialEdges);
   }, [graphNodes, graphEdges]);

@@ -4,8 +4,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from app.models.grading import Rubric, RubricCriterion, GradingDraft, CriterionDraft
 from app.services.grading import grading_service
 
-# Mock Beanie's get_settings to bypass initialization error in tests
-patch('beanie.odm.documents.Document.get_settings', return_value=MagicMock(pymongo_collection=MagicMock())).start()
+# Beanie is initialised against mongomock by tests/conftest.py
 
 @pytest.fixture
 def sample_rubric():

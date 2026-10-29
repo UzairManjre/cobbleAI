@@ -30,6 +30,7 @@ export function CreateTestWizard({
     duration_minutes: 60,
     passing_percentage: 40,
     test_type: "assignment",
+    show_results_immediately: false,
     question_count: 10,
     question_types: ["mcq", "true_false", "short_answer"],
     selected_documents: [] as string[],
@@ -147,6 +148,17 @@ export function CreateTestWizard({
                 </div>
               </div>
             </div>
+            <label className="flex items-start gap-3 text-sm font-bold text-[#0A0A0A]/70 font-['Inter'] cursor-pointer">
+              <input type="checkbox" checked={newTest.show_results_immediately}
+                onChange={(e) => setNewTest({ ...newTest, show_results_immediately: e.target.checked })}
+                className="mt-0.5 w-4 h-4 accent-[#FF4D5B]" />
+              <span>
+                Show results right after submission
+                <span className="block text-xs font-medium text-[#0A0A0A]/45">
+                  Otherwise students see their score once you release results. AI grades you have not reviewed yet are held back either way.
+                </span>
+              </span>
+            </label>
             <div className="flex gap-3 pt-6 border-t-2 border-[#0A0A0A] font-['Outfit']">
               <button onClick={onClose} className="flex-1 py-3 bg-white hover:bg-gray-50 text-[#0A0A0A] border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[3px_3px_0_#000]">Cancel</button>
               <button onClick={handleNextToContent} disabled={!newTest.title} className="flex-1 py-3 disabled:opacity-50 text-white bg-[#FF4D5B] rounded-xl font-extrabold border-2 border-[#0A0A0A] shadow-[3px_3px_0_#000] flex items-center justify-center gap-2">

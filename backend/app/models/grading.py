@@ -26,6 +26,8 @@ class CriterionDraft(BaseModel):
     ai_reasoning: str
     override_score: Optional[float] = None
     override_feedback: Optional[str] = None
+    evidence_quote: Optional[str] = None  # verified quote from the submission supporting the score
+    confidence: Optional[float] = None  # model's 0-1 confidence; 0 when its output could not be parsed
 
 class EditHistoryRecord(BaseModel):
     timestamp: datetime = Field(default_factory=_utcnow)
@@ -54,5 +56,7 @@ class RegradeRequest(Document):
     student_comment: str
     status: Literal['pending', 'resolved_score_changed', 'resolved_score_maintained'] = 'pending'
     professor_reply: Optional[str] = None
+    resolved_at: Optional[datetime] = None
+    resolved_by_id: Optional[uuid.UUID] = None
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)

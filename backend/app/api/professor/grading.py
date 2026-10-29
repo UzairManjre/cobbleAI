@@ -84,10 +84,10 @@ async def override_draft(id: uuid.UUID, req: DraftPatchRequest, user: User = Dep
     for override in req.overrides:
         for c_eval in draft.criteria_evaluations:
             if str(c_eval.criterion_id) == str(override.criterion_id):
-                old_score = c_eval.override_score or c_eval.suggested_score
+                old_score = c_eval.override_score if c_eval.override_score is not None else c_eval.suggested_score
                 new_score = override.override_score if override.override_score is not None else old_score
                 
-                old_feedback = c_eval.override_feedback or c_eval.suggested_feedback
+                old_feedback = c_eval.override_feedback if c_eval.override_feedback is not None else c_eval.suggested_feedback
                 new_feedback = override.override_feedback if override.override_feedback is not None else old_feedback
                 
                 if new_score != old_score:
@@ -152,8 +152,14 @@ async def publish_assignment_drafts(id: uuid.UUID, user: User = Depends(require_
         draft.updated_at = datetime.now(timezone.utc)
         await draft.save()
         
-        # Trigger Phase 4 mastery state update here
-        # E.g., mastery_service.update_mastery(draft.submission_id, draft.total_score)
+        # Release the final rubric grade on the student's attempt
+        attempt = await TestAttempt.get(draft.submission_id)
+        if attempt:
+            attempt.total_marks_awarded = draft.total_score
+            max_total = sum(c.max_points for c in rubric.criteria) or test.total_marks
+            attempt.percentage = (draft.total_score / max_total * 100) if max_total else 0
+            attempt.status = "graded"
+            await attempt.save()
         published_count += 1
         
     return {"status": "success", "published_count": published_count}
@@ -172,19 +178,21 @@ async def resolve_regrade_request(id: uuid.UUID, req: RegradeResolutionInput, us
         
     draft = await _verify_draft_ownership(rr.grading_draft_id, user)
     
-    rr.status = "resolved" if req.approved else "rejected"
-    rr.professor_comment = req.professor_comment
+    score_changed = req.approved and (req.new_score is not None or req.new_feedback is not None)
+    rr.status = "resolved_score_changed" if score_changed else "resolved_score_maintained"
+    rr.professor_reply = req.professor_comment
     rr.resolved_at = datetime.now(timezone.utc)
     rr.resolved_by_id = user.id
-    
-    if req.approved and (req.new_score is not None or req.new_feedback is not None):
+    rr.updated_at = rr.resolved_at
+
+    if score_changed:
         # Update the draft with the new score/feedback
         for c_eval in draft.criteria_evaluations:
             if str(c_eval.criterion_id) == str(rr.criterion_id):
-                old_score = c_eval.override_score or c_eval.suggested_score
+                old_score = c_eval.override_score if c_eval.override_score is not None else c_eval.suggested_score
                 new_score = req.new_score if req.new_score is not None else old_score
                 
-                old_feedback = c_eval.override_feedback or c_eval.suggested_feedback
+                old_feedback = c_eval.override_feedback if c_eval.override_feedback is not None else c_eval.suggested_feedback
                 new_feedback = req.new_feedback if req.new_feedback is not None else old_feedback
                 
                 if new_score != old_score:

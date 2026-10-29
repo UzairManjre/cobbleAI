@@ -5,7 +5,13 @@ interface Props {
 }
 
 export default function SankeyPipeline({ data }: Props) {
-  if (!data || !data.nodes || !data.links) return <div>No sankey data</div>;
+  if (!data || !data.nodes || !data.links || data.nodes.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: '14px' }}>
+        Not measured yet: no student tutor questions recorded.
+      </div>
+    );
+  }
 
   return (
     <div style={{ height: '100%', width: '100%' }}>

@@ -21,6 +21,10 @@ class User(BeanieBaseUser, Document):
     institution: Optional[str] = None
     department: Optional[str] = None
     has_onboarded: bool = False
+    # Research participation (opt-in). None = not asked yet. Only consenting users appear in research exports.
+    research_consent: Optional[bool] = None
+    research_consent_at: Optional[datetime] = None
+    research_consent_version: Optional[str] = None
     preferences: UserPreferences = UserPreferences()
     created_at: datetime = Field(default_factory=_utcnow)
     last_login: Optional[datetime] = None

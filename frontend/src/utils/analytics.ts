@@ -10,6 +10,7 @@
  */
 
 import { API_URL } from '../api';
+import { useAuthStore } from '../store/authStore';
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -55,29 +56,29 @@ class AnalyticsTracker {
     this.queue = [];
 
     try {
-      const token = localStorage.getItem('token');
+      // The token lives in the persisted auth store, not under a bare 'token' key
+      const token = useAuthStore.getState().token;
       if (!token) return;
 
-      // Fire individual events (backend handles them async, fire-and-forget)
-      // We use the beacon API for reliability on page unload
-      for (const item of batch) {
-        // Use fetch with keepalive for reliable delivery
-        fetch(`${API_URL}/api/analytics/track`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
+      // One request per batch; keepalive lets it complete during page unload.
+      // The backend reads node/course/session context from the payload keys too.
+      fetch(`${API_URL}/api/analytics/track/batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          events: batch.map(item => ({
             event_type: item.event,
-            event_category: item.payload.category || 'ui',
+            event_category: (item.payload.category as string | undefined) || 'ui',
             payload: item.payload,
-          }),
-          keepalive: true,
-        }).catch(() => {
-          // Silently fail — analytics should never break the app
-        });
-      }
+          })),
+        }),
+        keepalive: true,
+      }).catch(() => {
+        // Silently fail — analytics should never break the app
+      });
     } catch {
       // Never throw
     }

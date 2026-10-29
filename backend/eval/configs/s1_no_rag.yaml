@@ -1,0 +1,13 @@
+# S1 no-RAG baseline: the model answers from its own knowledge (correctness only; faithfulness is undefined)
+name: s1_no_rag
+study: S1
+gold: [eval/gold/example.jsonl]
+split: test
+retrieval:
+  preset: hybrid   # still retrieved, so retrieval metrics are logged, but not shown to the model
+generation:
+  enabled: true
+  rag: false
+judge:
+  enabled: true
+  metrics: [answer_relevancy, correctness]

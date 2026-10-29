@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.auth import current_active_user, require_role
+from app.api.auth import require_role
 from app.models.user import User
-from app.models.graph import StudySession, ChatMessage
-from app.models.document import DocumentModel
-from app.services.tutor import TutorService
+from app.models.graph import ChatMessage, KnowledgeGraph, StudySession, node_to_dict
+from app.services.tutor_engine import TutorEngine, TutorRequest
+from app.services.tutor_stream import tutor_sse
+from app.services.access import ensure_course_access
+from app.utils.llm_text import split_thinking
 from pydantic import BaseModel
 import uuid
-import asyncio
 import time
 from datetime import datetime, timezone
-from typing import List
+from typing import Optional
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -23,41 +24,59 @@ class NavigateRequest(BaseModel):
 class AskRequest(BaseModel):
     node_id: str
     question: str
+    mode: Optional[str] = None  # teach (default) | review | teach_back
+    hint_level: Optional[str] = None  # nudge | guiding_question | worked_step | full_answer
 
 class GetOrCreateSessionRequest(BaseModel):
     graph_id: uuid.UUID
 
+
+# Students use sessions to study; professors use them to preview their own course graphs.
+session_user = require_role("student", "professor")
+
+
+async def _load_owned_session(session_id: uuid.UUID, user: User) -> StudySession:
+    from app.repositories.session_repository import StudySessionRepository
+    session = await StudySessionRepository().get_by_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.student_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your session")
+    return session
+
+
+def _message_to_dict(msg: ChatMessage) -> dict:
+    content, legacy_thinking = split_thinking(msg.content)
+    return {
+        "id": str(msg.id),
+        "role": msg.role,
+        "content": content,
+        "thinking": msg.thinking or legacy_thinking or None,
+        "sources": msg.sources or [],
+        "citations": msg.citations,
+        "decision": msg.decision,
+        "support": msg.support,
+        "mode": msg.mode,
+        "hint_level": msg.hint_level,
+        "created_at": msg.created_at.isoformat(),
+    }
+
+
 @router.get("/{session_id}")
 async def get_session(
     session_id: uuid.UUID,
-    user: User = Depends(require_role("student"))
+    user: User = Depends(session_user)
 ):
     """Get current session state."""
-    from app.repositories.session_repository import StudySessionRepository, ChatMessageRepository
-    
-    session_repo = StudySessionRepository()
-    session = await session_repo.get_by_id(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    from app.repositories.session_repository import ChatMessageRepository
 
-    if session.student_id != user.id:
-        raise HTTPException(status_code=403, detail="Not your session")
+    session = await _load_owned_session(session_id, user)
 
     # Get chat history for current node
     chat_history = []
     if session.current_node_id:
-        chat_repo = ChatMessageRepository()
-        messages = await chat_repo.find_by_session_and_node(session_id, session.current_node_id)
-
-        chat_history = [
-            {
-                "role": msg.role,
-                "content": msg.content,
-                "sources": msg.sources if hasattr(msg, 'sources') else [],
-                "created_at": msg.created_at.isoformat()
-            }
-            for msg in messages
-        ]
+        messages = await ChatMessageRepository().find_by_session_and_node(session_id, session.current_node_id)
+        chat_history = [_message_to_dict(msg) for msg in messages]
 
     return {
         "id": str(session.id),
@@ -71,34 +90,41 @@ async def get_session(
 @router.post("/get-or-create")
 async def get_or_create_session(
     req: GetOrCreateSessionRequest,
-    user: User = Depends(require_role("student"))
+    user: User = Depends(session_user)
 ):
     """Get the most recent session for this graph or create a new one."""
 
     from app.repositories.session_repository import StudySessionRepository
     session_repo = StudySessionRepository()
-    
+
+    graph = await KnowledgeGraph.get(req.graph_id)
+    if not graph:
+        raise HTTPException(status_code=404, detail="Graph not found")
+    if graph.course_id:
+        await ensure_course_access(user, graph.course_id)
+
     # Try to find an existing session for this user and graph
     session = await session_repo.find_latest_by_student_and_graph(user.id, req.graph_id)
 
     if not session:
-        # Create a new session
-        from app.models.graph import KnowledgeGraph
-        graph = await KnowledgeGraph.get(req.graph_id)
-        if not graph:
-            raise HTTPException(status_code=404, detail="Graph not found")
-
+        first_node_id = graph.nodes[0].id if graph.nodes else None
         session = StudySession(
             graph_id=req.graph_id,
             student_id=user.id,
-            current_node_id=graph.nodes[0]["id"] if graph.nodes else None,
-            visited_nodes=[graph.nodes[0]["id"]] if graph.nodes else []
+            current_node_id=first_node_id,
+            current_node_since=datetime.now(timezone.utc),
+            visited_nodes=[first_node_id] if first_node_id else []
         )
         await session_repo.create(session)
+    else:
+        # Reopening a session starts the dwell clock again for the concept it shows
+        session.current_node_since = datetime.now(timezone.utc)
+        await session_repo.update(session)
 
         # Track session start
         safe_track_event(
             "session_started", "session", user.id, user.role,
+            course_id=graph.course_id,
             graph_id=req.graph_id,
             session_id=session.id,
             payload={
@@ -112,42 +138,48 @@ async def get_or_create_session(
     # Return formatted session data (same as get_session)
     return await get_session(session.id, user)
 
+MAX_DWELL_MS = 30 * 60 * 1000
+
+
 @router.post("/{session_id}/navigate")
 async def navigate_to_node(
     session_id: uuid.UUID,
     req: NavigateRequest,
-    user: User = Depends(require_role("student"))
+    user: User = Depends(session_user)
 ):
     """Navigate to a new node in the graph."""
     from app.repositories.session_repository import StudySessionRepository
-    session_repo = StudySessionRepository()
-    session = await session_repo.get_by_id(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    if session.student_id != user.id:
-        raise HTTPException(status_code=403, detail="Not your session")
+    session = await _load_owned_session(session_id, user)
 
     # Track dwell time on previous node before navigating away
     previous_node_id = session.current_node_id
     is_revisit = req.node_id in session.visited_nodes
+    now = datetime.now(timezone.utc)
+    since = session.current_node_since
+    if previous_node_id and since and previous_node_id != req.node_id:
+        since = since if since.tzinfo else since.replace(tzinfo=timezone.utc)
+        dwell_ms = int((now - since).total_seconds() * 1000)
+        if 0 <= dwell_ms <= MAX_DWELL_MS:  # longer means the tab was left open, not time spent reading
+            graph_for_dwell = await KnowledgeGraph.get(session.graph_id)
+            safe_track_event(
+                "node_dwell", "navigation", user.id, user.role,
+                course_id=graph_for_dwell.course_id if graph_for_dwell else None,
+                graph_id=session.graph_id, session_id=session_id, node_id=previous_node_id,
+                payload={"dwellTimeMs": dwell_ms, "source": "server"},
+            )
 
     # Update session
+    session.current_node_since = now
     session.current_node_id = req.node_id
     if req.node_id not in session.visited_nodes:
         session.visited_nodes.append(req.node_id)
     session.updated_at = datetime.now(timezone.utc)
-    await session_repo.update(session)
+    await StudySessionRepository().update(session)
 
     # Get graph to find node label
-    from app.models.graph import KnowledgeGraph
     graph = await KnowledgeGraph.get(session.graph_id)
-    node_label = ""
-    if graph:
-        for node in graph.nodes:
-            if node["id"] == req.node_id:
-                node_label = node.get("label", "")
-                break
+    node = graph.find_node(req.node_id) if graph else None
+    node_label = node.label if node else ""
 
     visit_order = len(session.visited_nodes)
 
@@ -156,6 +188,7 @@ async def navigate_to_node(
         "node_revisited" if is_revisit else "node_visited",
         "navigation",
         user.id, user.role,
+        course_id=graph.course_id if graph else None,
         graph_id=session.graph_id,
         session_id=session_id,
         node_id=req.node_id,
@@ -168,164 +201,79 @@ async def navigate_to_node(
         },
     )
 
+    # The node's earlier conversation: the tutor sees it as history, so the student should too
+    from app.repositories.session_repository import ChatMessageRepository
+    messages = await ChatMessageRepository().find_by_session_and_node(session_id, req.node_id)
     return {
         "current_node_id": session.current_node_id,
-        "visited_nodes": session.visited_nodes
+        "visited_nodes": session.visited_nodes,
+        "chat_history": [_message_to_dict(m) for m in messages],
     }
 
 @router.post("/{session_id}/ask")
 async def ask_question(
     session_id: uuid.UUID,
     req: AskRequest,
-    user: User = Depends(require_role("student"))
+    user: User = Depends(session_user)
 ):
-    """Ask a question about the current node with RAG support."""
+    """Ask the tutor about a concept node. Streams SSE frames (see app/services/tutor_stream.py)."""
     start_time = time.time()
 
-    from app.repositories.session_repository import StudySessionRepository, ChatMessageRepository
-    session_repo = StudySessionRepository()
-    session = await session_repo.get_by_id(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    from app.repositories.session_repository import ChatMessageRepository
+    session = await _load_owned_session(session_id, user)
 
-    if session.student_id != user.id:
-        raise HTTPException(status_code=403, detail="Not your session")
-
-    # Get the graph
-    from app.models.graph import KnowledgeGraph
     graph = await KnowledgeGraph.get(session.graph_id)
     if not graph:
         raise HTTPException(status_code=404, detail="Graph not found")
 
-    # Find current node data
-    current_node = None
-    neighbors = []
-    for node in graph.nodes:
-        if node["id"] == req.node_id:
-            current_node = node
-
-    # Find connected neighbors
-    for edge in graph.edges:
-        if edge["from"] == req.node_id:
-            neighbors.append({
-                "node_id": edge["to"],
-                "relation": edge["relation"],
-                "label": next((n["label"] for n in graph.nodes if n["id"] == edge["to"]), "")
-            })
-        elif edge["to"] == req.node_id:
-            neighbors.append({
-                "node_id": edge["from"],
-                "relation": edge["relation"],
-                "label": next((n["label"] for n in graph.nodes if n["id"] == edge["from"]), "")
-            })
-
+    current_node = graph.find_node(req.node_id)
     if not current_node:
         raise HTTPException(status_code=400, detail="Node not found in graph")
 
-    # Get chat history for this node
-    chat_repo = ChatMessageRepository()
-    messages = await chat_repo.find_by_session_and_node(session_id, req.node_id)
+    messages = await ChatMessageRepository().find_by_session_and_node(session_id, req.node_id)
+    history = [{"role": m.role, "content": m.content} for m in messages]
 
-    chat_history = [{"role": msg.role, "content": msg.content} for msg in messages]
-
-    # Track question asked event (before LLM call)
     safe_track_event(
         "question_asked", "chat", user.id, user.role,
+        course_id=graph.course_id,
         graph_id=session.graph_id,
         session_id=session_id,
         node_id=req.node_id,
         payload={
             "question_length_chars": len(req.question),
             "word_count": len(req.question.split()),
-            "session_question_count": len(chat_history) + 1,
-            "node_label": current_node.get("label", ""),
+            "session_question_count": sum(1 for m in messages if m.role == "user") + 1,
+            "node_label": current_node.label,
+            "mode": req.mode or "teach",
+            "hint_level": req.hint_level,
         },
     )
 
-    # Get context and LLM generator
-    tutor = TutorService()
-    raw_sources, stream_gen = await tutor.get_context_and_stream(
-        node=current_node,
-        neighbors=neighbors,
+    engine = TutorEngine()
+    prepared = await engine.prepare(TutorRequest(
         question=req.question,
-        chat_history=chat_history,
         course_id=str(graph.course_id) if graph.course_id else None,
-    )
-
-    # Resolve source doc_ids to actual filenames for frontend display
-    resolved_sources = []
-    if raw_sources:
-        for source in raw_sources:
-            did = source.get("doc_id", "")
-            filename = source.get("filename")  
-            if not filename and did and did != "unknown":
-                try:
-                    from app.repositories.document_repository import DocumentRepository
-                    doc_uuid = uuid.UUID(did)
-                    doc = await DocumentRepository().get_by_id(doc_uuid)
-                    if doc:
-                        filename = doc.filename
-                except Exception as e:
-                    print(f"  Failed to resolve doc {did}: {e}")
-            
-            resolved_sources.append({
-                "doc_id": did,
-                "filename": filename or "Unknown Document",
-                "relevance_score": source.get("relevance_score", 0),
-            })
+        mode=req.mode or "teach",
+        hint_level=req.hint_level,
+        node=node_to_dict(current_node),
+        neighbors=graph.neighbors(req.node_id),
+        history=history,
+        node_id=req.node_id,
+        user=user,
+    ))
 
     from fastapi.responses import StreamingResponse
-    import json
-
-    async def event_generator():
-        # Yield sources right away
-        yield f"data: {json.dumps({'type': 'sources', 'sources': resolved_sources})}\n\n"
-        
-        full_answer = ""
-        # Stream LLM chunks
-        async for chunk in stream_gen:
-            if chunk.startswith("Error:"):
-                yield f"data: {json.dumps({'type': 'error', 'content': chunk})}\n\n"
-                break
-            full_answer += chunk
-            yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
-
-        # After streaming completes, save to DB
-        user_msg = ChatMessage(
+    return StreamingResponse(
+        tutor_sse(
+            engine, prepared,
+            user=user,
             session_id=session_id,
-            node_id=req.node_id,
-            role="user",
-            content=req.question,
-            sources=[]
-        )
-        await chat_repo.create(user_msg)
-
-        assistant_msg = ChatMessage(
-            session_id=session_id,
-            node_id=req.node_id,
-            role="assistant",
-            content=full_answer,
-            sources=resolved_sources
-        )
-        await chat_repo.create(assistant_msg)
-
-        # Track answer received event
-        latency_ms = int((time.time() - start_time) * 1000)
-        safe_track_event(
-            "answer_received", "chat", user.id, user.role,
+            chat_node_id=req.node_id,
+            endpoint="session_ask",
+            course_id=graph.course_id,
             graph_id=session.graph_id,
-            session_id=session_id,
-            node_id=req.node_id,
-            payload={
-                "answer_length_chars": len(full_answer),
-                "has_sources": len(resolved_sources) > 0,
-                "source_count": len(resolved_sources),
-                "response_latency_ms": latency_ms,
-                "node_label": current_node.get("label", ""),
-            },
-        )
-
-        # Indicate completion
-        yield f"data: {json.dumps({'type': 'done'})}\n\n"
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+            started_at=start_time,
+            event_payload={"node_label": current_node.label},
+        ),
+        media_type="text/event-stream",
+    )

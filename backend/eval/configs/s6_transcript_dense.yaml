@@ -1,0 +1,11 @@
+# S6: + lecture transcripts with dense retrieval only
+name: s6_transcript_dense
+study: S6
+gold: [eval/gold/example.jsonl]
+qtypes: [lecture]
+split: test
+retrieval:
+  preset: dense
+generation:
+  enabled: true
+  hint_level: full_answer

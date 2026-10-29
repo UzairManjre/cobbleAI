@@ -27,13 +27,20 @@ async def chat_interaction(
     message: str,
     course_id: uuid.UUID | None = None,
     mode: str = "teach",
-    user: User | None = Depends(fastapi_users.current_user(optional=True))
+    user: User = Depends(current_active_user)
 ):
     """Core Chat Orchestrator with RAG - Retrieves context from course documents."""
     start_time = time.time()
 
-    user_id = user.id if user else uuid.UUID("00000000-0000-0000-0000-000000000000")
-    user_role = user.role if user else "unknown"
+    user_id = user.id
+    user_role = user.role
+
+    if course_id:
+        # Course questions go through the 2.0 tutor engine, so the instructor's policy (hint cap,
+        # assessment mode, scope, cite-or-decline) and run logging apply here too. Its SSE frames
+        # are a superset of this route's (sources / chunk / error / done).
+        from app.api.common.tutor import CourseAskRequest, ask_course
+        return await ask_course(course_id, CourseAskRequest(question=message, mode=mode if mode != "test" else None), user)
 
     # Track standalone chat message
     safe_track_event(
@@ -47,7 +54,7 @@ async def chat_interaction(
     )
 
     # Retrieve context from course documents if course_id is provided
-    context_str = "General knowledge context."
+    context_str = ""
     sources = []
 
     if course_id:
@@ -82,7 +89,7 @@ async def chat_interaction(
             payload={
                 "query_text": message[:200],
                 "retrieved_count": len(sources),
-                "source_doc_ids": doc_ids if doc_ids else [],
+                "source_doc_ids": [s.get("doc_id", "") for s in sources],
                 "avg_relevance_score": sum(s.get("relevance_score", 0) for s in sources) / max(len(sources), 1),
             },
         )
@@ -100,7 +107,7 @@ async def chat_interaction(
     elif mode == "review":
         prompt_template = REVIEW_MODE_SYSTEM
 
-    system_prompt = prompt_template.format(context=context_str)
+    system_prompt = prompt_template.format(context=context_str or "No course material matched this question.")
     messages = [{"role": "user", "content": message}]
 
     # Stream LLM Response with metadata

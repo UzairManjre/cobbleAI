@@ -18,7 +18,9 @@ services:
     restart: unless-stopped
 
   qdrant:
-    image: qdrant/qdrant:latest
+    # Hybrid (dense + BM25) retrieval needs Qdrant >= v1.10 for sparse vectors with the IDF modifier.
+    # Pinned (verified with CobbleAI 2.0) so upgrades are deliberate.
+    image: qdrant/qdrant:v1.20.0
     container_name: cobble-qdrant
     ports:
       - "6333:6333"
@@ -27,7 +29,8 @@ services:
     restart: unless-stopped
 
   minio:
-    image: minio/minio
+    # minio/minio was removed from Docker Hub in September 2026; Chainguard publishes the same server binary.
+    image: cgr.dev/chainguard/minio:latest
     container_name: cobble-minio
     ports:
       - "9002:9000"

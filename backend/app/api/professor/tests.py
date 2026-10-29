@@ -31,6 +31,12 @@ async def publish_test(test_id: str, user: User = Depends(require_role("professo
     test = await TestService.publish_test(user, test_id)
     return {"test": jsonable_encoder(test), "message": "Test published successfully"}
 
+@router.post("/{test_id}/release-results")
+async def release_results(test_id: str, user: User = Depends(require_role("professor"))):
+    """Show results to students: attempts with nothing left to review are released now,
+    later submissions and finished reviews are released automatically."""
+    return await TestService.release_results(user, test_id)
+
 @router.get("/all")
 async def get_all_professor_tests(user: User = Depends(require_role("professor"))):
     tests, course_map = await TestService.get_all_professor_tests(user)
@@ -49,6 +55,8 @@ async def get_all_professor_tests(user: User = Depends(require_role("professor")
             "questions": [],
             "question_count": len(t.questions) if t.questions else 0,
             "total_marks": t.total_marks,
+            "show_results_immediately": t.show_results_immediately,
+            "results_released": t.results_released,
             "created_at": t.created_at.isoformat() if t.created_at else None,
             "available_until": t.available_until.isoformat() if t.available_until else None,
         })
@@ -67,6 +75,8 @@ async def get_course_tests(course_id: str, user: User = Depends(require_role("pr
         "status": t.status,
         "question_count": len(t.questions) if t.questions else 0,
         "total_marks": t.total_marks,
+        "show_results_immediately": t.show_results_immediately,
+        "results_released": t.results_released,
     } for t in tests])
 
 @router.get("/analytics/{test_id}")
@@ -101,6 +111,7 @@ async def get_test(test_id: str, user: User = Depends(require_role("professor"))
             "shuffle_questions": test.shuffle_questions,
             "shuffle_options": test.shuffle_options,
             "show_results_immediately": test.show_results_immediately,
+            "results_released": test.results_released,
             "allow_retakes": test.allow_retakes,
             "max_attempts": test.max_attempts,
             "available_from": test.available_from.isoformat() if test.available_from else None,
@@ -110,3 +121,37 @@ async def get_test(test_id: str, user: User = Depends(require_role("professor"))
         }
     }
     return jsonable_encoder(res)
+
+
+from typing import List, Optional
+from pydantic import BaseModel
+
+
+class QuestionUpdate(BaseModel):
+    cognitive_level: Optional[str] = None
+    rubric: Optional[List[str]] = None
+    node_id: Optional[str] = None
+
+
+@router.patch("/{test_id}/questions/{question_id}")
+async def update_question(test_id: str, question_id: str, req: QuestionUpdate, user: User = Depends(require_role("professor"))):
+    """Edit the grading metadata of a question: Bloom level, rubric key points, linked concept."""
+    import uuid
+    from datetime import datetime, timezone
+    from fastapi import HTTPException
+    from app.services.test_generator import COGNITIVE_LEVELS
+    test = await TestService.get_test(user, test_id)
+    question = next((q for q in test.questions if str(q.id) == question_id), None)
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+    if req.cognitive_level is not None:
+        if req.cognitive_level and req.cognitive_level not in COGNITIVE_LEVELS:
+            raise HTTPException(status_code=400, detail=f"cognitive_level must be one of {', '.join(COGNITIVE_LEVELS)}")
+        question.cognitive_level = req.cognitive_level or None
+    if req.rubric is not None:
+        question.rubric = [p.strip() for p in req.rubric if p.strip()][:10]
+    if req.node_id is not None:
+        question.node_id = req.node_id or None
+    test.updated_at = datetime.now(timezone.utc)
+    await test.save()
+    return jsonable_encoder(question)

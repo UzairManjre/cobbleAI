@@ -18,6 +18,7 @@ import { useToastStore } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
+import CalibrationChart from '../../components/tests/CalibrationChart';
 
 export default function Dashboard() {
   const { token, role } = useAuthStore();
@@ -34,6 +35,7 @@ export default function Dashboard() {
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
+  const [calibrationCourseId, setCalibrationCourseId] = useState<string | null>(null);
   const [courseTitle, setCourseTitle] = useState('');
   const [courseCode, setCourseCode] = useState('');
   const [courseDesc, setCourseDesc] = useState('');
@@ -186,6 +188,26 @@ export default function Dashboard() {
                 </Card>
               ))}
             </div>
+          )}
+
+          {!isLoading && courses.length > 0 && (
+            /* Confidence check-ins over time: how well "how sure am I" matches "was I right" */
+            <section className="space-y-3 max-w-2xl">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-xs font-semibold text-[#888888] uppercase tracking-widest">How sure vs. how right</h2>
+                {courses.length > 1 && (
+                  <select
+                    value={calibrationCourseId ?? courses[0].id}
+                    onChange={e => setCalibrationCourseId(e.target.value)}
+                    className="bg-[#111111] border border-[#1A1A1A] rounded-lg px-2 py-1 text-xs text-white"
+                    aria-label="Course"
+                  >
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                  </select>
+                )}
+              </div>
+              <CalibrationChart courseId={calibrationCourseId ?? courses[0].id} />
+            </section>
           )}
         </div>
 

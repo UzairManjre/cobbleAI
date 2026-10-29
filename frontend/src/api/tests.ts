@@ -17,6 +17,11 @@ export const testsApi = {
   publish: (testId: string) => {
     return api.post(`/tests/${testId}/publish`, {});
   },
+
+  // Show results to students (attempts still waiting for review follow once reviewed)
+  releaseResults: (testId: string) => {
+    return api.post<{ released: number; waiting_for_review: number }>(`/tests/${testId}/release-results`, {});
+  },
   
   getByCourse: (courseId: string) => {
     return api.get(`/tests/course/${courseId}`);
@@ -46,6 +51,15 @@ export const testsApi = {
     return api.get(`/tests/attempt/${attemptId}`);
   },
   
+  getResult: (attemptId: string) => {
+    return api.get(`/tests/attempt/${attemptId}/result`);
+  },
+
+  // Grading metadata of one question (professor): Bloom level, rubric points, linked concept
+  updateQuestion: (testId: string, questionId: string, update: { cognitive_level?: string; rubric?: string[]; node_id?: string }) => {
+    return api.patch(`/tests/${testId}/questions/${questionId}`, update);
+  },
+
   getMyAttempts: () => {
     return api.get('/tests/attempts/my');
   },

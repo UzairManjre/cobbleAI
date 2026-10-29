@@ -1,7 +1,9 @@
 from app.services.llm import LLMAdapter
 from app.core.config import settings
-from app.services.rag import retrieve_context
-from typing import List, Dict
+from app.services.rag import retrieve_with_details
+from app.services.retrieval.config import default_config
+from app.services.retrieval.hybrid import RetrievalResult, chunk_to_source, format_context
+from typing import List, Dict, Optional
 import uuid
 import traceback
 import time
@@ -26,141 +28,37 @@ Course Material Sources:
 {source_list}
 """
 
+PROMPT_VERSION = "v1-tutor"
+
 
 class TutorService:
     def __init__(self):
         self.adapter = LLMAdapter()
         self.model = settings.LLM_MODEL
-        print(f"Tutor Service Config: URL={self.adapter.base_url}, Model={self.model}")
+        self.last_retrieval: Optional[RetrievalResult] = None
 
-    async def _track_rag(self, course_id: str, question: str, sources: list, retrieval_time_ms: int):
-        """Fire-and-forget RAG tracking."""
+    async def _track_rag(self, course_id: str, question: str, result: RetrievalResult, sources: list):
+        """Fire-and-forget RAG tracking with the measured stage latencies."""
         try:
             from app.services.analytics import analytics_service
+            timings = result.timings_ms
             await analytics_service.track_rag_query(
                 course_id=uuid.UUID(course_id),
                 query_text=question,
-                retrieved_count=len(sources),
-                total_retrieval_latency_ms=retrieval_time_ms,
-                rerank_applied=True,
+                retrieved_count=result.candidates_considered,
+                embedding_latency_ms=timings.get("embedding", 0),
+                qdrant_search_latency_ms=timings.get("search", 0),
+                reranker_latency_ms=timings.get("rerank", 0),
+                total_retrieval_latency_ms=timings.get("total", 0),
+                rerank_applied=any(c.rerank_logit is not None for c in result.chunks),
                 final_context_count=len(sources),
                 source_doc_ids=[s.get("doc_id", "") for s in sources],
                 source_relevance_scores=[s.get("relevance_score", 0) for s in sources],
                 avg_relevance_score=sum(s.get("relevance_score", 0) for s in sources) / max(len(sources), 1),
-                led_to_successful_answer=True,
             )
         except Exception as e:
             import logging
-            from fastapi import HTTPException
-            logging.error(f"An error occurred: {e}")
-            raise HTTPException(status_code=500, detail="An error occurred")
-
-    async def _track_llm(self, user_id, session_id, question, answer, latency_ms, sources):
-        """Fire-and-forget LLM tracking."""
-        try:
-            from app.services.analytics import analytics_service
-            await analytics_service.track_llm_usage(
-                user_id=user_id,
-                session_id=session_id,
-                endpoint="/sessions/{id}/ask",
-                model=self.model,
-                prompt_text=question,
-                latency_ms=latency_ms,
-                response_length_chars=len(answer),
-                estimated_input_tokens=len(question.split()),
-                estimated_output_tokens=len(answer.split()),
-                rag_retrieved_count=len(sources),
-                rag_success=len(sources) > 0,
-            )
-        except Exception as e:
-            import logging
-            from fastapi import HTTPException
-            logging.error(f"An error occurred: {e}")
-            raise HTTPException(status_code=500, detail="An error occurred")
-
-    async def answer_question(
-        self,
-        node: Dict,
-        neighbors: List[Dict],
-        question: str,
-        chat_history: List[Dict],
-        course_id: str = None,
-        user_id: uuid.UUID = None,
-        session_id: uuid.UUID = None,
-    ) -> Dict:
-        """Get an answer from the LLM tutor for a question about a node, with RAG support.
-
-        Returns: {
-            "answer": str,
-            "sources": List[Dict]
-        }
-        """
-
-        # Retrieve relevant course material if course_id is provided
-        course_context = "No specific course material context available."
-        sources = []
-        source_list_text = "None available"
-
-        if course_id:
-            try:
-                rag_start = time.time()
-                print(f"  Tutor retrieving context for: '{question}' in course {course_id}")
-                course_context, sources = await retrieve_context(question, course_id, top_k=5, use_rerank=True)
-                retrieval_time_ms = int((time.time() - rag_start) * 1000)
-                print(f"  Retrieved {len(sources)} sources")
-
-                # Track RAG performance
-                import asyncio
-                asyncio.create_task(self._track_rag(course_id, question, sources, retrieval_time_ms))
-
-                if sources:
-                    source_list_text = "\n".join([
-                        f"- {s.get('filename', 'Document')} (Relevance: {s['relevance_score']:.2f})"
-                        for s in sources
-                    ])
-            except Exception as e:
-                print(f"  RAG retrieval failed: {e}")
-                print(traceback.format_exc())
-                course_context = f"Error retrieving course materials: {str(e)}"
-
-        neighbor_text = ", ".join([
-            f"{n['label']} ({n['relation']})" for n in neighbors
-        ]) if neighbors else "None"
-
-        system_prompt = TUTOR_SYSTEM_PROMPT.format(
-            node_label=node.get("label", "Unknown"),
-            node_description=node.get("description", ""),
-            neighbors=neighbor_text,
-            course_context=course_context,
-            source_list=source_list_text
-        )
-
-        try:
-            print(f"  Sending request to LLM (Model: {self.model})...")
-            llm_start = time.time()
-            answer = await self.adapter.generate_full_response(
-                system=system_prompt,
-                messages=[*chat_history, {"role": "user", "content": question}],
-                max_tokens=2048
-            )
-            latency_ms = int((time.time() - llm_start) * 1000)
-
-            # Track LLM usage
-            import asyncio
-            asyncio.create_task(self._track_llm(user_id, session_id, question, answer, latency_ms, sources))
-
-            return {
-                "answer": answer,
-                "sources": sources
-            }
-
-        except Exception as e:
-            print(f"  LLM call failed: {e}")
-            print(traceback.format_exc())
-            return {
-                "answer": f"I'm sorry, I encountered an error processing your question. Error: {str(e)}",
-                "sources": sources
-            }
+            logging.error(f"Analytics tracking failed: {e}")
 
     async def get_context_and_stream(
         self,
@@ -170,31 +68,37 @@ class TutorService:
         chat_history: List[Dict],
         course_id: str = None,
     ):
-        """Get RAG context and return (sources, async_generator) for streaming."""
+        """Get RAG context and return (sources, async_generator) for streaming.
+        The full retrieval result (all signals, timings, config) is kept on self.last_retrieval."""
         course_context = "No specific course material context available."
         sources = []
         source_list_text = "None available"
 
         if course_id:
             try:
-                rag_start = time.time()
-                print(f"  Tutor retrieving context for: '{question}' in course {course_id}")
-                course_context, sources = await retrieve_context(question, course_id, top_k=5, use_rerank=True)
-                retrieval_time_ms = int((time.time() - rag_start) * 1000)
+                result = await retrieve_with_details(question, course_id, default_config())
+                self.last_retrieval = result
+                sources = [chunk_to_source(c) for c in result.chunks]
+                course_context = format_context(result.chunks, numbered=False) or "No course material matched this question."
                 print(f"  Retrieved {len(sources)} sources")
 
                 import asyncio
-                asyncio.create_task(self._track_rag(course_id, question, sources, retrieval_time_ms))
+                from app.utils.telemetry import _pending_tasks
+                task = asyncio.create_task(self._track_rag(course_id, question, result, sources))
+                _pending_tasks.add(task)
+                task.add_done_callback(_pending_tasks.discard)
 
                 if sources:
                     source_list_text = "\n".join([
-                        f"- {s.get('filename', 'Document')} (Relevance: {s['relevance_score']:.2f})"
+                        f"- {s.get('filename', 'Document')}"
+                        + (f" ({s['location']})" if s.get("location") else "")
+                        + f" (Relevance: {s['relevance_score']:.2f})"
                         for s in sources
                     ])
             except Exception as e:
                 print(f"  RAG retrieval failed: {e}")
                 print(traceback.format_exc())
-                course_context = f"Error retrieving course materials: {str(e)}"
+                course_context = "Course materials could not be searched for this question."
 
         neighbor_text = ", ".join([
             f"{n['label']} ({n['relation']})" for n in neighbors

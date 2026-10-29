@@ -8,6 +8,7 @@ import { analytics } from '../../utils/analytics';
 import { API_URL } from '../../api';
 import { Button } from '../../components/ui/Button';
 import KnowledgeGraph from '../../components/graph/KnowledgeGraph';
+import CourseTutorChat from '../../components/tutor/CourseTutorChat';
 import { useGraphStore } from '../../store/graphStore';
 
 interface Message {
@@ -153,13 +154,11 @@ export default function Chat() {
         topic: initialTopic || '',
       });
 
-      const url = new URL(`${API_URL}/chat/`);
-      url.searchParams.append('session_id', sessionIdRef.current);
-      url.searchParams.append('message', input);
-      if (courseId) url.searchParams.append('course_id', courseId);
-      url.searchParams.append('mode', mode);
+      // API_URL is '' in dev (Vite proxy), so build a relative URL rather than new URL()
+      const params = new URLSearchParams({ session_id: sessionIdRef.current, message: input, mode });
+      if (courseId) params.append('course_id', courseId);
 
-      const response = await fetch(url.toString(), {
+      const response = await fetch(`${API_URL}/api/chat/?${params.toString()}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -216,6 +215,8 @@ export default function Chat() {
           }
 
           assistantMessage += chunk;
+          // The backend prefixes the stream with a <sources>[json]</sources> block
+          assistantMessage = assistantMessage.replace(/^<sources>[\s\S]*?<\/sources>/, '');
 
           setMessages(prev => {
             const newMessages = [...prev];
@@ -370,9 +371,15 @@ export default function Chat() {
           </div>
         </div>
       </div>
-      {/* Chat Panel */}
-      <div className="w-[500px] flex flex-col border-l border-[#1A1A1A]">
-        {chatPanel}
+      {/* Chat Panel: course-grounded tutor with citations (cite or decline) */}
+      <div className="w-[500px] flex flex-col border-l border-[#1A1A1A] bg-[#050505]">
+        <div className="px-6 py-4 border-b border-[#1A1A1A] bg-[#0A0A0A] shrink-0">
+          <h2 className="text-base font-medium text-white tracking-tight uppercase">Ask the Course</h2>
+          <p className="text-[10px] font-semibold text-[#888888] uppercase tracking-widest">Answers cite your notes and lectures</p>
+        </div>
+        <div className="flex-1 min-h-0">
+          <CourseTutorChat courseId={courseId} />
+        </div>
       </div>
     </div>
   );

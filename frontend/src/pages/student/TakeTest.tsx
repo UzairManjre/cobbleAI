@@ -2,11 +2,14 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import {
-  Clock, Send, ArrowLeft,
+  Clock, ArrowLeft,
   AlertTriangle, Sparkles,
   ChevronLeft, ChevronRight, CheckCircle2
 } from 'lucide-react';
 import { testsApi } from '../../api';
+import { useToastStore } from '../../store/toastStore';
+import { answersFromAttempt, formatAnswers, remainingSeconds } from '../../utils/testAnswers';
+import ConfidenceCheckIn from '../../components/tests/ConfidenceCheckIn';
 
 const DEBOUNCE_MS = 2000;    // wait 2 s of inactivity before auto-saving
 const FLUSH_MS   = 30_000;   // force a save at most every 30 s regardless
@@ -31,6 +34,7 @@ export default function TakeTest() {
   const attemptRef   = useRef<any>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef<number>(0);
+  const startedForRef = useRef<string | undefined>(undefined);
 
   // Keep refs in sync with state on every render (cheap assignment)
   answersRef.current = answers;
@@ -78,16 +82,7 @@ export default function TakeTest() {
 
     lastSavedRef.current = Date.now();
     try {
-      const formattedAnswers = Object.entries(currentAnswers).map(
-        ([questionId, ans]: [string, any]) => ({
-          question_id: questionId,
-          answer_type: ans.type,
-          answer_text: ans.type === 'text' ? ans.value : null,
-          selected_option_id: ans.type === 'option' ? ans.value : null,
-          time_spent_seconds: ans.time_spent || 0,
-        })
-      );
-      await testsApi.submit(currentAttempt.id, formattedAnswers, true /* is_auto_save */);
+      await testsApi.submit(currentAttempt.id, formatAnswers(currentAnswers), true /* is_auto_save */);
     } catch (err) {
       // Auto-save failures are non-fatal — silently log
       console.warn('Auto-save failed:', err);
@@ -108,13 +103,38 @@ export default function TakeTest() {
   }, [doAutoSave]);
 
   const startTest = async () => {
+    // StrictMode runs effects twice in dev; only start the attempt once per test
+    if (startedForRef.current === testId) return;
+    startedForRef.current = testId;
     try {
       const startRes = await testsApi.start(testId || '');
+      const startedAttempt = startRes.data.attempt;
       setTest(startRes.data.test);
-      setAttempt(startRes.data.attempt);
-      setTimeLeft(startRes.data.test.duration_minutes * 60);
+      setAttempt(startedAttempt);
+      // A resumed attempt keeps its saved answers and the clock keeps running from its start time
+      setAnswers(answersFromAttempt(startedAttempt?.answers));
+      setTimeLeft(remainingSeconds(startRes.data.test.duration_minutes, startedAttempt?.started_at));
     } catch (err) {
+      startedForRef.current = undefined;
+      const response = (err as { response?: { status?: number; data?: { detail?: string } } }).response;
+      // No attempts left (or the test closed): open the latest result instead of a dead end
+      if (response?.status === 403) {
+        try {
+          const { data } = await testsApi.getMyAttempts();
+          type AttemptRow = { id: string; test_id: string; status: string; submitted_at?: string | null };
+          const done = ((data.attempts || []) as AttemptRow[])
+            .filter(a => a.test_id === testId && a.status !== 'in_progress')
+            .sort((a, b) => String(b.submitted_at).localeCompare(String(a.submitted_at)));
+          if (done[0]) {
+            navigate(`/tests/${testId}/result/${done[0].id}`, { replace: true });
+            return;
+          }
+        } catch {
+          // fall through to going back
+        }
+      }
       console.error('Failed to start test:', err);
+      useToastStore.getState().addToast(response?.data?.detail || 'Could not start the test', 'error');
       navigate(-1);
     }
   };
@@ -122,9 +142,14 @@ export default function TakeTest() {
   const handleAnswer = (questionId: string, value: any, type: string = 'text') => {
     setAnswers(prev => ({
       ...prev,
-      [questionId]: { value, type, time_spent: 0 }
+      [questionId]: { ...prev[questionId], value, type, time_spent: 0 }
     }));
     // Schedule a debounced save after the answer changes
+    scheduleDebouncedSave();
+  };
+
+  const handleConfidence = (questionId: string, confidence: number) => {
+    setAnswers(prev => prev[questionId] ? { ...prev, [questionId]: { ...prev[questionId], confidence } } : prev);
     scheduleDebouncedSave();
   };
 
@@ -138,15 +163,7 @@ export default function TakeTest() {
     setIsSubmitting(true);
 
     try {
-      const formattedAnswers = Object.entries(answers).map(([questionId, ans]: [string, any]) => ({
-        question_id: questionId,
-        answer_type: ans.type,
-        answer_text: ans.type === 'text' ? ans.value : null,
-        selected_option_id: ans.type === 'option' ? ans.value : null,
-        time_spent_seconds: ans.time_spent || 0
-      }));
-
-      await testsApi.submit(attempt.id, formattedAnswers);
+      await testsApi.submit(attempt.id, formatAnswers(answersRef.current));
       navigate(`/tests/${testId}/result/${attempt.id}`);
     } catch (err) {
       console.error('Failed to submit test:', err);
@@ -330,6 +347,13 @@ export default function TakeTest() {
                   />
                 </div>
               )}
+
+              {/* Confidence check-in, before any result is shown */}
+              <ConfidenceCheckIn
+                value={answers[currentQuestion.id]?.confidence}
+                disabled={!answers[currentQuestion.id]?.value}
+                onChange={(level) => handleConfidence(currentQuestion.id, level)}
+              />
 
               {/* Hints */}
               {currentQuestion.hints?.length > 0 && (

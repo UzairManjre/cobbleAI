@@ -5,7 +5,14 @@ interface Props {
 }
 
 export default function StudyHeatmap({ data }: Props) {
-  if (!data || data.length === 0) return <div>No heatmap data</div>;
+  const empty = !data || data.length === 0 || data.every(day => (day.data || []).every((cell: { y: number }) => !cell.y));
+  if (empty) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: '14px' }}>
+        No study activity recorded in the last 30 days.
+      </div>
+    );
+  }
 
   return (
     <div style={{ height: '100%', width: '100%' }}>

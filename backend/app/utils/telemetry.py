@@ -1,5 +1,9 @@
 import asyncio
 
+# Keep references so pending fire-and-forget tasks are not garbage-collected mid-flight
+_pending_tasks: set = set()
+
+
 def safe_track_event(event_type: str, event_category: str, user_id, user_role: str, **kwargs):
     """Fire-and-forget event tracking that never breaks the caller."""
     async def _track():
@@ -14,7 +18,7 @@ def safe_track_event(event_type: str, event_category: str, user_id, user_role: s
             )
         except Exception as e:
             import logging
-            from fastapi import HTTPException
-            logging.error(f"An error occurred: {e}")
-            raise HTTPException(status_code=500, detail="An error occurred")
-    asyncio.create_task(_track())
+            logging.error(f"Analytics tracking failed for {event_type}: {e}")
+    task = asyncio.create_task(_track())
+    _pending_tasks.add(task)
+    task.add_done_callback(_pending_tasks.discard)

@@ -10,7 +10,8 @@ export default function LandingPage() {
   // If already logged in, redirect
   const handleStart = () => {
     if (token) {
-      if (!hasOnboarded) navigate(`/onboarding/${role}`);
+      // Only students have an onboarding flow
+      if (!hasOnboarded && role === 'student') navigate('/onboarding/student');
       else navigate(role === 'professor' ? '/professor/dashboard' : '/student/dashboard');
     } else {
       // Scroll to role selection

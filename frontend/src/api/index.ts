@@ -9,3 +9,6 @@ export { sessionsApi } from './sessions';
 export { testsApi } from './tests';
 export { studyPlansApi } from './studyPlans';
 export { analyticsApi } from './analytics';
+export { gradingApi } from './grading';
+export { tutorApi } from './tutor';
+export { lecturesApi } from './lectures';

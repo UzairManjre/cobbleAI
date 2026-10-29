@@ -1,0 +1,12 @@
+# S6 lecture video (RQ4): slides/notes only — the comparison baseline
+name: s6_slides_only
+study: S6
+gold: [eval/gold/example.jsonl]
+qtypes: [lecture]
+split: test
+retrieval:
+  preset: hybrid
+  overrides: {source_types: [slide, pdf_page, docx_para, text], media_types: [document]}
+generation:
+  enabled: true
+  hint_level: full_answer

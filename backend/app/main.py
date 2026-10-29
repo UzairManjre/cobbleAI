@@ -8,6 +8,7 @@ from slowapi import _rate_limit_exceeded_handler
 from fastapi.middleware.cors import CORSMiddleware
 from app.middleware.analytics import setup_analytics_middleware
 from app.core.config import settings
+from app.core.responses import CobbleJSONResponse
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Connect to MongoDB, Redis, Qdrant here
@@ -25,6 +26,10 @@ async def lifespan(app: FastAPI):
         print("  MinIO bucket ready")
     except Exception as e:
         print(f"  MinIO bucket error: {e}")
+
+    # Hybrid retrieval needs sparse vectors with the IDF modifier (Qdrant >= 1.10)
+    from app.core.qdrant import check_server_version
+    check_server_version()
     
     yield
     # Shutdown: Close connections here
@@ -35,7 +40,8 @@ app = FastAPI(
     title="Cobble AI API",
     description="Education platform RAG architecture backend",
     version="2.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    default_response_class=CobbleJSONResponse,
 )
 app.state.limiter = limiter
 
@@ -66,9 +72,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Import and register all routers
 from app.api import auth
-from app.api.professor import courses as professor_courses, documents as professor_documents, graphs as professor_graphs, tests as professor_tests, grading as professor_grading
-from app.api.student import courses as student_courses, sessions as student_sessions, study_plans as student_study_plans, tests as student_tests, grading as student_grading, documents as student_documents
-from app.api.common import chat as common_chat, analytics as common_analytics
+from app.api.professor import courses as professor_courses, documents as professor_documents, graphs as professor_graphs, tests as professor_tests, grading as professor_grading, review_queue as professor_review_queue
+from app.api.student import courses as student_courses, sessions as student_sessions, study_plans as student_study_plans, tests as student_tests, grading as student_grading, documents as student_documents, graphs as student_graphs
+from app.api.common import chat as common_chat, analytics as common_analytics, tutor as common_tutor, lectures as common_lectures, learner as common_learner, insights as common_insights, consent as common_consent
 
 # Auth routes
 app.include_router(auth.auth_router, prefix="/auth/jwt", tags=["auth"])
@@ -81,6 +87,7 @@ app.include_router(professor_documents.router, prefix="/api/professor")
 app.include_router(professor_graphs.router, prefix="/api/professor")
 app.include_router(professor_tests.router, prefix="/api/professor")
 app.include_router(professor_grading.router, prefix="/api/professor")
+app.include_router(professor_review_queue.router, prefix="/api/professor")
 app.include_router(student_sessions.router, prefix="/api/professor")
 
 # Student routes
@@ -90,10 +97,16 @@ app.include_router(student_study_plans.router, prefix="/api/student")
 app.include_router(student_tests.router, prefix="/api/student")
 app.include_router(student_grading.router, prefix="/api/student")
 app.include_router(student_documents.router, prefix="/api/student")
+app.include_router(student_graphs.router, prefix="/api/student")
 
 # Common routes
 app.include_router(common_chat.router, prefix="/api")
 app.include_router(common_analytics.router, prefix="/api")
+app.include_router(common_tutor.router, prefix="/api")
+app.include_router(common_lectures.router, prefix="/api")
+app.include_router(common_learner.router, prefix="/api")
+app.include_router(common_insights.router, prefix="/api")
+app.include_router(common_consent.router, prefix="/api")
 
 
 @app.get("/health")

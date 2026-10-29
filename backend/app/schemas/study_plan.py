@@ -3,6 +3,7 @@ from typing import List, Optional
 
 class GeneratePlanRequest(BaseModel):
     course_id: str
+    graph_id: Optional[str] = None  # defaults to the course's newest graph
     goals: List[str] = []
     time_commitment_hours_per_week: int = 5
     duration_weeks: int = 4

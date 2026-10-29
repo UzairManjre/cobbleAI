@@ -21,15 +21,20 @@ async def generate_mock_test(req: GenerateMockTestRequest, user: User = Depends(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid course ID")
 
-    graph = await KnowledgeGraph.find_one(KnowledgeGraph.course_id == course_uuid)
+    from app.services.access import ensure_course_access
+    await ensure_course_access(user, course_uuid)
+
+    graph = await KnowledgeGraph.find(
+        KnowledgeGraph.course_id == course_uuid
+    ).sort(-KnowledgeGraph.created_at).first_or_none()
     if not graph or not graph.nodes:
         raise HTTPException(status_code=404, detail="Course knowledge graph not found. Cannot generate mock test.")
 
     graph_topics = []
     for node in graph.nodes:
         graph_topics.append({
-            "label": node.get("label", node.get("id", "Unknown")),
-            "description": node.get("description", "")
+            "label": node.label or node.id,
+            "description": node.description
         })
 
     generator = TestGenerator()
@@ -40,6 +45,8 @@ async def generate_mock_test(req: GenerateMockTestRequest, user: User = Depends(
 
     if not questions:
         raise HTTPException(status_code=500, detail="Failed to generate mock test questions.")
+    from app.services.learner.tagging import tag_questions
+    tag_questions(questions, graph)
 
     mock_test = MockTest(
         course_id=course_uuid,
@@ -95,31 +102,12 @@ async def submit_mock_test(mock_id: str, req: SubmitTestRequest, user: User = De
             answer_text=ans_req.answer_text,
             selected_option_id=ans_req.selected_option_id,
             selected_options=ans_req.selected_options,
-            time_spent_seconds=ans_req.time_spent_seconds
+            time_spent_seconds=ans_req.time_spent_seconds,
+            confidence=ans_req.confidence,
         )
         
         if not req.is_auto_save:
-            if question.type == "mcq" and ans_req.selected_option_id:
-                is_correct, marks = evaluator.evaluate_mcq(question, ans_req.selected_option_id)
-                answer.is_correct = is_correct
-                answer.marks_awarded = marks
-                answer.graded_by = "auto"
-            elif question.type == "true_false" and ans_req.answer_text:
-                try:
-                    student_answer = ans_req.answer_text.lower() in ["true", "yes", "1"]
-                    is_correct, marks = evaluator.evaluate_true_false(question, student_answer)
-                    answer.is_correct = is_correct
-                    answer.marks_awarded = marks
-                    answer.graded_by = "auto"
-                except Exception as e:
-                    logging.error(f"Failed to evaluate true/false question: {e}")
-                    raise HTTPException(status_code=500, detail="Failed to evaluate question")
-            elif question.type in ["short_answer", "code", "essay"] and ans_req.answer_text:
-                is_correct, marks, feedback = await evaluator.evaluate_short_answer(question, ans_req.answer_text)
-                answer.is_correct = is_correct
-                answer.marks_awarded = marks
-                answer.feedback = feedback
-                answer.graded_by = "auto"
+            await TestService.grade_answer(evaluator, question, answer, ans_req, mock_test.course_id)
 
             total_marks += answer.marks_awarded or 0.0
             
@@ -134,6 +122,8 @@ async def submit_mock_test(mock_id: str, req: SubmitTestRequest, user: User = De
     mock_test.marks_obtained = total_marks
     mock_test.percentage = (total_marks / mock_test.total_marks * 100) if mock_test.total_marks > 0 else 0
     mock_test.completed_at = datetime.now(timezone.utc)
+    # Practice counts toward mastery too
+    await TestService.update_mastery(user.id, mock_test, processed_answers)
     
     await mock_test_repo.update(mock_test)
     
@@ -149,21 +139,25 @@ async def submit_mock_test(mock_id: str, req: SubmitTestRequest, user: User = De
 async def start_test(test_id: str, user: User = Depends(require_role("student"))):
     attempt, test, resumed = await TestService.start_test(user, test_id)
     return {
-        "attempt": jsonable_encoder(attempt),
-        "test": jsonable_encoder(test),
+        "attempt": TestService.student_attempt_view(attempt),
+        "test": TestService.student_test_view(test),
         "message": "Resuming existing attempt" if resumed else "Test started. Good luck!"
     }
 
 @router.post("/attempt/{attempt_id}/submit")
 async def submit_test(attempt_id: str, req: SubmitTestRequest, user: User = Depends(require_role("student"))):
     attempt, total_marks, total_possible = await TestService.submit_test(user, attempt_id, req)
-    if attempt.status == "submitted":
-        return {"attempt": jsonable_encoder(attempt), "message": "Already submitted"}
+    view = TestService.student_attempt_view(attempt)
+    if total_possible is None:
+        return {"attempt": view, "status": attempt.status, "message": "Already submitted"}
+    if req.is_auto_save:
+        return {"attempt": view, "status": attempt.status, "message": "Auto-saved"}
+    revealed = attempt.status == "graded"
     return {
-        "attempt": jsonable_encoder(attempt),
-        "total_marks": total_marks,
+        "attempt": view,
+        "total_marks": total_marks if revealed else None,
         "total_possible": total_possible,
-        "percentage": attempt.percentage,
+        "percentage": attempt.percentage if revealed else None,
         "status": attempt.status,
         "message": "Test submitted successfully"
     }
@@ -180,7 +174,34 @@ async def get_attempt(attempt_id: str, user: User = Depends(require_role("studen
     attempt = await TestAttemptRepository().get_by_id(attempt_uuid)
     if not attempt or attempt.student_id != user.id:
         raise HTTPException(status_code=404, detail="Attempt not found")
-    return {"attempt": jsonable_encoder(attempt)}
+    return {"attempt": TestService.student_attempt_view(attempt)}
+
+@router.get("/attempt/{attempt_id}/result")
+async def get_attempt_result(attempt_id: str, user: User = Depends(require_role("student"))):
+    """Result view for a submitted attempt. The answer key and explanations are
+    only revealed once the attempt is graded."""
+    from app.repositories.test_repository import TestAttemptRepository, TestRepository
+    from fastapi import HTTPException
+    attempt = await TestAttemptRepository().get_by_id(attempt_id)
+    if not attempt or attempt.student_id != user.id:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+    test = await TestRepository().get_by_id(attempt.test_id)
+    if not test:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    revealed = attempt.status == "graded"
+    test_view = jsonable_encoder(test) if revealed else TestService.student_test_view(test)
+    return {
+        "attempt": TestService.student_attempt_view(attempt),
+        "test": {
+            "id": str(test.id),
+            "title": test.title,
+            "total_marks": test.total_marks,
+            "passing_percentage": test.passing_percentage,
+            "questions": test_view.get("questions", []),
+        },
+        "revealed": revealed,
+    }
 
 @router.get("/attempts/my")
 async def get_my_attempts(user: User = Depends(require_role("student"))):
@@ -189,7 +210,7 @@ async def get_my_attempts(user: User = Depends(require_role("student"))):
     if user.role != "student":
         raise HTTPException(status_code=403, detail="Only for students")
     attempts = await TestAttemptRepository().find_by_student(user.id)
-    return {"attempts": jsonable_encoder(attempts)}
+    return {"attempts": [TestService.student_attempt_view(a) for a in attempts]}
 
 @router.get("/course/{course_id}")
 async def get_course_tests(course_id: str, user: User = Depends(require_role("student"))):

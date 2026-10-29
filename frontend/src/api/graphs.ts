@@ -1,7 +1,8 @@
-import api from './client';
+import api, { API_URL } from './client';
+import type { AuditItem, AuditReport } from '../types/graph';
 
-// Get base URL for SSE connections (EventSource doesn't support custom headers)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+// Same origin as every other call (the Vite proxy in development)
+const API_BASE_URL = API_URL;
 
 // Graphs API
 export const graphsApi = {
@@ -53,6 +54,19 @@ export const graphsApi = {
   
   getStatus: (courseId: string) => {
     return api.get(`/graph/course/${courseId}/status`);
+  },
+
+  // Edge audit (professor): judge a stratified sample of relations
+  auditSample: (graphId: string, n = 30) => {
+    return api.post<{ items: AuditItem[] }>(`/graph/${graphId}/audit-sample`, null, { params: { n } });
+  },
+
+  judgeEdge: (graphId: string, edgeId: string, status: 'correct' | 'incorrect' | 'unreviewed', note?: string) => {
+    return api.patch<AuditItem>(`/graph/${graphId}/edges/${edgeId}/audit`, { status, note });
+  },
+
+  auditReport: (graphId: string) => {
+    return api.get<AuditReport>(`/graph/${graphId}/audit-report`);
   },
 };
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import { useToastStore } from "../../store/toastStore";
-import { FileText, Plus, Sparkles } from "lucide-react";
+import { ClipboardCheck, FileText, Plus, Sparkles } from "lucide-react";
 import { testsApi, documentsApi, graphsApi } from "../../api";
 
 import { TestCard } from "../../components/tests/TestCard";
@@ -40,7 +40,8 @@ export default function ProfessorTests() {
     if (!token) return;
     try {
       const res = await testsApi.getByCourse(courseId || "");
-      setTests(res.data.tests || []);
+      // The endpoint returns a bare array; accept the older { tests } shape too
+      setTests(Array.isArray(res.data) ? res.data : res.data.tests || []);
     } catch (err: any) {
       if (err.response?.status === 401) {
         useAuthStore.getState().logout();
@@ -87,6 +88,20 @@ export default function ProfessorTests() {
     }
   };
 
+  const handleReleaseResults = async (testId: string) => {
+    try {
+      const { data } = await testsApi.releaseResults(testId);
+      addToast(
+        `Results released for ${data.released} attempt${data.released === 1 ? "" : "s"}` +
+          (data.waiting_for_review ? `; ${data.waiting_for_review} follow once you review their AI grades` : ""),
+        "success",
+      );
+      loadTests();
+    } catch (err) {
+      addToast((err as { response?: { status?: number; data?: { detail?: string } } }).response?.data?.detail || "Could not release results", "error");
+    }
+  };
+
   const handleCreateTestSubmit = async (newTest: any) => {
     try {
       const res = await testsApi.create({
@@ -96,6 +111,7 @@ export default function ProfessorTests() {
         duration_minutes: newTest.duration_minutes,
         passing_percentage: newTest.passing_percentage,
         test_type: newTest.test_type,
+        show_results_immediately: !!newTest.show_results_immediately,
       });
       return res.data.test?.id || res.data.test_id;
     } catch (err: any) {
@@ -158,14 +174,24 @@ export default function ProfessorTests() {
               </p>
             </div>
             {role === "professor" && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 text-white px-6 py-3 rounded-full font-extrabold border-2 border-[#0A0A0A] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 shadow-[4px_4px_0_rgba(0,0,0,1)]"
-                style={{ background: "#FF4D5B", fontFamily: "'Outfit', sans-serif" }}
-              >
-                <Plus className="w-5 h-5 stroke-[3px]" />
-                Create Test
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => navigate(`/professor/courses/${courseId}/review`)}
+                  className="flex items-center gap-2 text-[#0A0A0A] bg-white px-6 py-3 rounded-full font-extrabold border-2 border-[#0A0A0A] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 shadow-[4px_4px_0_rgba(0,0,0,1)]"
+                  style={{ fontFamily: "'Outfit', sans-serif" }}
+                >
+                  <ClipboardCheck className="w-5 h-5" />
+                  Review AI Grades
+                </button>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex items-center gap-2 text-white px-6 py-3 rounded-full font-extrabold border-2 border-[#0A0A0A] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 shadow-[4px_4px_0_rgba(0,0,0,1)]"
+                  style={{ background: "#FF4D5B", fontFamily: "'Outfit', sans-serif" }}
+                >
+                  <Plus className="w-5 h-5 stroke-[3px]" />
+                  Create Test
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -205,6 +231,7 @@ export default function ProfessorTests() {
                     selected_topics: []
                 })}
                 onPublish={handlePublishTest}
+                onReleaseResults={handleReleaseResults}
               />
             ))}
           </div>
@@ -215,6 +242,7 @@ export default function ProfessorTests() {
         <PreviewTestModal
           previewTest={previewTest}
           onClose={() => setShowPreviewModal(false)}
+          editable={role === "professor"}
         />
       )}
 

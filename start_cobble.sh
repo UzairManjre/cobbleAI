@@ -51,6 +51,18 @@ nohup celery -A app.core.celery_app worker --pool=solo --loglevel=info > celery_
 CELERY_PID=$!
 echo "   Celery worker started (PID: $CELERY_PID)"
 
+# Lecture recordings run on their own queue so a long transcription never blocks document processing
+echo "🎬 Starting Celery media worker (lecture transcription)..."
+nohup celery -A app.core.celery_app worker -Q media --pool=solo -n media@%h --loglevel=info > celery_media.log 2>&1 &
+MEDIA_PID=$!
+echo "   Media worker started (PID: $MEDIA_PID)"
+
+# Periodic jobs: analytics aggregates, concept metrics, dropout risk, weekly question insights
+echo "⏰ Starting Celery beat scheduler..."
+nohup celery -A app.core.celery_app beat --loglevel=info > celery_beat.log 2>&1 &
+BEAT_PID=$!
+echo "   Beat scheduler started (PID: $BEAT_PID)"
+
 # Start FastAPI in the background
 echo "🚀 Starting FastAPI server..."
 nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload > fastapi_server.log 2>&1 &

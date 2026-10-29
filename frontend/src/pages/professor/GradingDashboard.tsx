@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { gradingApi } from '../../api/grading';
-import type { GradingOverviewResponse, SubmissionReviewResponse, CriterionDraft } from '../../api/grading';
+import type { GradingOverviewResponse, SubmissionReviewResponse } from '../../api/grading';
 import { testsApi } from '../../api/tests';
 import { Loader2, ArrowLeft, CheckCircle, AlertTriangle, Clock, Edit2 } from 'lucide-react';
+import { useToastStore } from '../../store/toastStore';
+import RubricEditor from '../../components/grading/RubricEditor';
 
 export default function GradingDashboard() {
   const { courseId, testId } = useParams();
@@ -15,6 +17,8 @@ export default function GradingDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'needs_review' | 'anomaly_flagged' | 'approved'>('needs_review');
   const [publishing, setPublishing] = useState(false);
+  const [confirmPublish, setConfirmPublish] = useState(false);
+  const addToast = useToastStore(state => state.addToast);
   
   // Review Mode state
   const [reviewSubmissionId, setReviewSubmissionId] = useState<string | null>(null);
@@ -22,6 +26,8 @@ export default function GradingDashboard() {
   const [testData, setTestData] = useState<any | null>(null); // For questions text
   const [loadingReview, setLoadingReview] = useState(false);
   const [savingOverrides, setSavingOverrides] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const [editingRubric, setEditingRubric] = useState(false);
   
   // Local edits for frictionless overriding
   const [localOverrides, setLocalOverrides] = useState<Record<string, { score: number, feedback: string }>>({});
@@ -67,16 +73,43 @@ export default function GradingDashboard() {
     }
   };
 
+  // The AI drafts against the rubric from the submission's answers, each under its question
+  const generateDraft = async () => {
+    if (!reviewData || !reviewSubmissionId) return;
+    type AnswerRow = { question_id: string; answer_text?: string; selected_options?: string[]; selected_option_id?: string };
+    const text = ((reviewData.attempt.answers || []) as AnswerRow[]).map((ans, i) => {
+      const question = (testData?.questions as { id: string; question_text?: string }[] | undefined)?.find(q => q.id === ans.question_id);
+      const answer = ans.answer_text || (ans.selected_options?.length ? ans.selected_options.join(', ') : ans.selected_option_id) || '(no answer)';
+      return `Question ${i + 1}: ${question?.question_text || ''}\nAnswer: ${answer}`;
+    }).join('\n\n');
+    setDrafting(true);
+    try {
+      await gradingApi.triggerDraft(reviewSubmissionId, text);
+      await loadReviewData(reviewSubmissionId);
+    } catch (err) {
+      addToast((err as { response?: { status?: number; data?: { detail?: string } } }).response?.data?.detail || 'Could not generate the AI draft', 'error');
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  // Publishing is two clicks (no blocking browser dialogs): the first arms it, the second publishes
   const handlePublish = async () => {
-    if (!testId || !confirm("Are you sure you want to publish all approved grades?")) return;
+    if (!testId) return;
+    if (!confirmPublish) {
+      setConfirmPublish(true);
+      setTimeout(() => setConfirmPublish(false), 5000);
+      return;
+    }
+    setConfirmPublish(false);
     try {
       setPublishing(true);
       const res = await gradingApi.publishAssignmentDrafts(testId);
-      alert(`Successfully published ${res.published_count} grades.`);
+      addToast(`Published ${res.published_count} grades.`, 'success');
       loadOverview();
     } catch (err) {
       console.error(err);
-      alert('Failed to publish grades');
+      addToast('Failed to publish grades', 'error');
     } finally {
       setPublishing(false);
     }
@@ -91,7 +124,7 @@ export default function GradingDashboard() {
       loadOverview();
     } catch (err) {
       console.error(err);
-      alert('Failed to approve draft');
+      addToast('Failed to approve draft', 'error');
     }
   };
 
@@ -235,7 +268,16 @@ export default function GradingDashboard() {
              )}
              
              {!draft && reviewData.rubric && (
-               <div className="p-4 border border-[#1A1A1A] text-[#888888] rounded-md">No AI draft generated for this submission yet.</div>
+               <div className="p-4 border border-[#1A1A1A] text-[#888888] rounded-md flex items-center justify-between gap-4">
+                 <span>No AI draft generated for this submission yet.</span>
+                 <button
+                   onClick={generateDraft}
+                   disabled={drafting}
+                   className="px-4 py-2 rounded-md font-medium text-sm bg-white text-black hover:bg-gray-200 disabled:opacity-50 shrink-0"
+                 >
+                   {drafting ? 'Drafting...' : 'Generate AI draft'}
+                 </button>
+               </div>
              )}
              
              <div className="space-y-6">
@@ -245,7 +287,8 @@ export default function GradingDashboard() {
                  // Fallbacks
                  const displayScore = localOverrides[crit.id!]?.score ?? evalData?.override_score ?? evalData?.suggested_score ?? 0;
                  const displayFeedback = localOverrides[crit.id!]?.feedback ?? evalData?.override_feedback ?? evalData?.suggested_feedback ?? '';
-                 const hasOverride = evalData?.override_score !== undefined || evalData?.override_feedback !== undefined || localOverrides[crit.id!] !== undefined;
+                 // The API sends null for "no override"
+                 const hasOverride = evalData?.override_score != null || evalData?.override_feedback != null || localOverrides[crit.id!] !== undefined;
                  
                  return (
                    <div key={crit.id} className={`p-5 rounded-lg border ${hasOverride ? 'border-blue-900/50 bg-blue-950/10' : 'border-[#1A1A1A] bg-[#111111]'}`}>
@@ -304,7 +347,8 @@ export default function GradingDashboard() {
   }
 
   // --- LIST MODE ---
-  const submissions = overview?.submissions || [];
+  // Only finished attempts can be graded
+  const submissions = (overview?.submissions || []).filter(s => s.attempt?.status !== 'in_progress');
   
   const needsReview = submissions.filter(s => s.draft?.status === 'drafting' || s.draft?.status === 'needs_review' || !s.draft);
   const flagged = submissions.filter(s => s.draft?.status === 'anomaly_flagged');
@@ -317,7 +361,7 @@ export default function GradingDashboard() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <button 
-            onClick={() => navigate(`/professor/classes?tab=assignments`)}
+            onClick={() => navigate(`/professor/courses/${courseId}/tests`)}
             className="flex items-center text-sm text-[#888888] hover:text-white mb-2 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
@@ -333,10 +377,24 @@ export default function GradingDashboard() {
             disabled={publishing}
             className="bg-white text-black px-4 py-2 rounded-md font-medium text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
           >
-            {publishing ? 'Publishing...' : `Publish ${approved.filter(s => s.draft?.status === 'approved').length} Approved`}
+            {publishing ? 'Publishing...' : confirmPublish ? 'Click again to publish' : `Publish ${approved.filter(s => s.draft?.status === 'approved').length} Approved`}
           </button>
         )}
       </div>
+
+      {(!overview?.rubric || editingRubric) && testId ? (
+        <div className="mb-8">
+          <RubricEditor
+            assignmentId={testId}
+            rubric={overview?.rubric ?? null}
+            onSaved={() => { setEditingRubric(false); loadOverview(); }}
+          />
+        </div>
+      ) : (
+        <button onClick={() => setEditingRubric(true)} className="mb-6 flex items-center gap-1.5 text-xs text-[#888888] hover:text-white">
+          <Edit2 className="w-3.5 h-3.5" /> Edit rubric ({overview?.rubric?.criteria.length} criteria)
+        </button>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-6 border-b border-[#1A1A1A] mb-6">

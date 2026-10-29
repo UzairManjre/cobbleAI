@@ -223,7 +223,7 @@ export default function Assignments() {
                       key={ass.id} 
                       variant="hoverable"
                       className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5"
-                      onClick={() => navigate(user?.role === 'professor' ? `/professor/courses/${ass.course_id}/tests` : `/student/test/${ass.id}`)}
+                      onClick={() => navigate(user?.role === 'professor' ? `/professor/courses/${ass.course_id}/tests` : `/tests/${ass.id}`)}
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl border border-[#1A1A1A] bg-[#111111] flex items-center justify-center text-[#888888] shrink-0 group-hover:text-white transition-colors">

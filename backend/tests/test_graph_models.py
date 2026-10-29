@@ -59,12 +59,12 @@ def test_graph_edge_populate_by_name():
     assert edge.target == "node2"
 
 def test_graph_edge_invalid_relation():
-    with pytest.raises(ValidationError) as exc_info:
-        GraphEdge(
-            id="edge1",
-            source="node1",
-            target="node2",
-            relation="is_better_than" # Invalid
-        )
-    assert "Input should be" in str(exc_info.value)
-    assert "prerequisite_for" in str(exc_info.value)
+    # An unknown relation from the LLM is coerced to relates_to instead of
+    # failing validation of the whole graph.
+    edge = GraphEdge(
+        id="edge1",
+        source="node1",
+        target="node2",
+        relation="is_better_than"  # Not in RelationType
+    )
+    assert edge.relation == RelationType.relates_to

@@ -2,6 +2,9 @@ fastapi
 uvicorn
 motor
 fastapi-users[beanie]
+# Beanie 2.x requires PyMongo's async client; this codebase uses Motor
+beanie>=1.26,<2
+fastapi-users-db-beanie<5
 python-jose[cryptography] # For RS256 JWT
 passlib[bcrypt]
 pydantic
@@ -20,3 +23,15 @@ boto3
 nltk
 slowapi
 werkzeug>=3.0.0
+
+# CobbleAI 2.0: evaluation harness and provenance checks
+scikit-learn
+scipy
+jiwer
+pyyaml
+rapidfuzz
+reportlab  # one-click PDF course reports
+
+# CobbleAI 2.0: local lecture pipeline (speech-to-text via CTranslate2, PyAV decoding, slide OCR)
+faster-whisper
+easyocr

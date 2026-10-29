@@ -21,6 +21,12 @@ class DocumentResponse(BaseModel):
     file_size_bytes: int = 0
     processed_at: Optional[datetime] = None
     created_at: datetime
+    # Lecture recordings
+    media_type: str = "document"
+    duration_sec: Optional[float] = None
+    has_video: Optional[bool] = None
+    stage: Optional[str] = None
+    progress: Optional[float] = None
     
     class Config:
         from_attributes = True

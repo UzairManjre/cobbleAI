@@ -1,11 +1,14 @@
 import { X, CheckCircle } from "lucide-react";
+import { QuestionGradingMeta } from "./QuestionGradingMeta";
 
 interface PreviewTestModalProps {
   previewTest: any;
   onClose: () => void;
+  /** Show the Bloom-level and rubric editor (professors) */
+  editable?: boolean;
 }
 
-export function PreviewTestModal({ previewTest, onClose }: PreviewTestModalProps) {
+export function PreviewTestModal({ previewTest, onClose, editable = false }: PreviewTestModalProps) {
   if (!previewTest) return null;
 
   return (
@@ -65,6 +68,7 @@ export function PreviewTestModal({ previewTest, onClose }: PreviewTestModalProps
                           </span>
                           <span className="text-[#0A0A0A]/50">{q.marks} marks</span>
                           {q.topic && <span className="text-[#0A0A0A]/40">• {q.topic}</span>}
+                          {!editable && q.cognitive_level && <span className="text-[#0A0A0A]/40">• {q.cognitive_level}</span>}
                         </div>
                       </div>
                     </div>
@@ -112,6 +116,8 @@ export function PreviewTestModal({ previewTest, onClose }: PreviewTestModalProps
                         <p className="text-sm font-medium text-blue-950 font-['Inter']">{q.explanation}</p>
                       </div>
                     )}
+
+                    {editable && <QuestionGradingMeta testId={previewTest.id} question={q} />}
                   </div>
                 ))}
               </div>

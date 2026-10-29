@@ -83,7 +83,7 @@ export default function TelemetryCluster({ llmStreaming, queueDepth, retrievalLa
         <div style={{ height: '120px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 5, right: 20, bottom: 0, left: -20 }}>
-              <XAxis type="number" dataKey="latency_ms" name="Latency" unit="ms" domain={[0, 240]} tick={{ fill: '#0A0A0A', fontSize: 10, fontFamily: 'Outfit' }} axisLine={false} tickLine={false} />
+              <XAxis type="number" dataKey="latency_ms" name="Latency" unit="ms" domain={[0, 'auto']} tick={{ fill: '#0A0A0A', fontSize: 10, fontFamily: 'Outfit' }} axisLine={false} tickLine={false} />
               <YAxis type="number" dataKey="confidence" name="Confidence" domain={[0, 1]} tick={{ fill: '#0A0A0A', fontSize: 10, fontFamily: 'Outfit' }} axisLine={false} tickLine={false} />
               <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={tooltipStyle} itemStyle={{ color: '#0A0A0A' }} />
               <Scatter data={retrieval} fill="#10b981" opacity={0.7} shape="circle" />

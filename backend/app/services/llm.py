@@ -5,6 +5,15 @@ import httpx
 from app.core.config import settings
 from typing import AsyncGenerator
 
+# Failure strings the adapter yields in place of model tokens. Match these exactly: a real answer
+# may well start with "Error" (error-correcting codes, "Errors in..."), and v1 matched "Error:" only.
+LLM_ERROR_PREFIXES = ("Error: ", "Error connecting to Ollama")
+
+
+def is_llm_error(chunk: str) -> bool:
+    return chunk.startswith(LLM_ERROR_PREFIXES)
+
+
 class LLMAdapter:
     def __init__(self, base_url: str = None, model: str = None, timeout: int = 120):
         # Ollama native API is at /api/chat
@@ -17,7 +26,8 @@ class LLMAdapter:
         print(f"LLM Adapter Config: URL={self.base_url}, Model={self.model}, Timeout={self.timeout}s")
 
     async def generate_response(
-        self, system: str, messages: list[dict], max_tokens: int = 4096, stream: bool = True
+        self, system: str, messages: list[dict], max_tokens: int = 4096, stream: bool = True,
+        temperature: float | None = None, think: bool | None = None,
     ) -> AsyncGenerator[str, None]:
 
         # Ollama /api/chat format with 32k context
@@ -29,9 +39,14 @@ class LLMAdapter:
             "options": {
                 "num_ctx": 32768,  # Full 32k context for gemma4:e2b
                 "num_predict": max_tokens,
-                "temperature": 0.3 # Lower temperature for better JSON extraction
+                # Lower temperature for better JSON extraction; callers may override (e.g. grader sampling)
+                "temperature": 0.3 if temperature is None else temperature
             }
         }
+        if think is not None:
+            # False for short structured outputs: a thinking model can spend the whole num_predict
+            # budget thinking and return no answer at all
+            payload["think"] = think
 
         try:
             is_thinking = False
@@ -80,7 +95,8 @@ class LLMAdapter:
             yield f"Error connecting to Ollama: {str(e)}"
 
     async def generate_full_response(
-        self, system: str, messages: list[dict], max_tokens: int = 8192
+        self, system: str, messages: list[dict], max_tokens: int = 8192, temperature: float | None = None,
+        think: bool | None = None,
     ) -> str:
         """Collect all chunks and return the full response string with retries."""
         import sys
@@ -89,8 +105,8 @@ class LLMAdapter:
             error_occurred = False
             
             print(f" [LLM STREAM START] - {self.model}")
-            async for chunk in self.generate_response(system, messages, max_tokens, stream=True):
-                if chunk.startswith("Error:"):
+            async for chunk in self.generate_response(system, messages, max_tokens, stream=True, temperature=temperature, think=think):
+                if is_llm_error(chunk):
                     error_occurred = True
                     response_text = chunk  # Capture the error message
                     print(f"\n   LLM error (attempt {attempt + 1}): {chunk[:100]}")

@@ -197,7 +197,10 @@ class CourseService:
                         progress_percent = 100
                         
                     if pr.last_accessed_at:
-                        days_since_access = (datetime.now(timezone.utc) - pr.last_accessed_at).days
+                        last_access = pr.last_accessed_at
+                        if last_access.tzinfo is None:
+                            last_access = last_access.replace(tzinfo=timezone.utc)
+                        days_since_access = (datetime.now(timezone.utc) - last_access).days
                         if days_since_access > 7:
                             status = "Inactive"
                         else:

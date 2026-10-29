@@ -9,6 +9,7 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     institution: Optional[str] = None
     department: Optional[str] = None
     has_onboarded: bool = False
+    research_consent: Optional[bool] = None
 
 class UserCreate(schemas.BaseUserCreate):
     name: str
@@ -17,8 +18,9 @@ class UserCreate(schemas.BaseUserCreate):
     department: Optional[str] = None
 
 class UserUpdate(schemas.BaseUserUpdate):
+    # No `role`: a user must not be able to change their own role through PATCH /users/me.
+    # Research consent has its own endpoint (/api/consent) so it is timestamped and versioned.
     name: Optional[str] = None
-    role: Optional[str] = None
     institution: Optional[str] = None
     department: Optional[str] = None
     has_onboarded: Optional[bool] = None

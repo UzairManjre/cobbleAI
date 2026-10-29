@@ -23,6 +23,13 @@ class BaseRepository(Generic[T]):
     async def save(self, entity: T) -> T:
         await entity.save()
         return entity
-        
+
+    # Aliases used by services and routers
+    async def create(self, entity: T) -> T:
+        return await self.insert(entity)
+
+    async def update(self, entity: T) -> T:
+        return await self.save(entity)
+
     async def delete(self, entity: T) -> None:
         await entity.delete()

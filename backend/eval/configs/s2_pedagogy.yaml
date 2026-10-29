@@ -1,0 +1,7 @@
+# S2 pedagogy: simulated-student dialogues rated by the judge; calibrate with human ratings
+name: s2_pedagogy
+gold: [eval/gold/example.jsonl]
+split: dev
+limit: 20
+turns: 3
+hint_level: guiding_question

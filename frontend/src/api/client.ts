@@ -25,7 +25,7 @@ api.interceptors.request.use(
     
     // Auto-prefix routes that are role-segregated on the backend
     if (role && config.url) {
-      let path = config.url.startsWith('/api/') ? config.url.substring(4) : config.url;
+      const path = config.url.startsWith('/api/') ? config.url.substring(4) : config.url;
       const prefixesToRewrite = ['/courses', '/documents', '/graphs', '/graph', '/tests', '/sessions', '/study-plans'];
       const shouldRewrite = prefixesToRewrite.some(p => path.startsWith(p));
       if (shouldRewrite) {
@@ -55,7 +55,7 @@ api.interceptors.response.use(
         const stateRole = useAuthStore.getState().role;
         const currentRole = stateRole || localStorage.getItem('last_active_role');
         
-        let redirectRoute = '/login';
+        let redirectRoute = '/role-select';
         if (currentRole === 'student') {
           redirectRoute = '/login/student';
         } else if (currentRole === 'professor') {

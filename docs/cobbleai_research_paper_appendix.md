@@ -360,6 +360,8 @@ PointStruct(
 )
 ```
 
+> **CobbleAI 2.0:** points now live in `course_<id>_v2` with a named `dense` vector and a sparse `bm25` vector. Ids are `uuid5(doc_id, chunk_index)`, so re-processing is idempotent. The payload adds `chunk_index`, `source_type`, `media_type`, `page_start/page_end`, `slide_start/slide_end`, `t_start/t_end`, `chapter_id` and `section_title`. See `app/services/chunking.py::index_chunks` and [COBBLEAI_2_0.md](COBBLEAI_2_0.md).
+
 ---
 
 ## 8. Retrieval-Augmented Generation (RAG) Pipeline
@@ -408,6 +410,8 @@ Where:
 - $S_{cross,i}$ = Cross-encoder joint relevance score
 
 **Rationale for 0.3/0.7 weighting:** The bi-encoder (cosine) produces fast but coarse-grained similarity scores — it embeds query and document independently. The cross-encoder scores the (query, document) pair jointly through all transformer attention layers, capturing fine-grained semantic interactions. The 70% weight on cross-encoder reflects its significantly higher precision.
+
+> **Correction (CobbleAI 2.0):** the v1 code actually used `S_final = 0.2 × S_cosine + 0.8 × raw cross-encoder logit` (`rag.py`), not 0.3/0.7. The 2.0 retriever is described in [COBBLEAI_2_0.md](COBBLEAI_2_0.md); its `v1` preset reproduces the 0.2/0.8 scoring for comparison. The weights were never tuned or measured; in 2.0 the fusion weights are an S1 ablation (`eval/configs/s1_fusion_sweep.yaml`).
 
 ### 8.3 Reranker Implementation (`app/services/reranker.py`)
 
@@ -463,7 +467,7 @@ Each source is tracked with metadata: `{ doc_id, relevance_score, chunk_index, f
 | Parameter | Value | Code Reference |
 |:---|:---|:---|
 | **Context Window** (`num_ctx`) | 32,768 tokens | `payload["options"]["num_ctx"] = 32768` |
-| **Temperature** | 0.7 | `payload["options"]["temperature"] = 0.7` |
+| **Temperature** | 0.3 (this table previously said 0.7) | `llm.py: "temperature": 0.3`; the 2.0 grader samples at 0.7 (`GRADER_SAMPLE_TEMPERATURE`) |
 | **Max Predict (Tutoring)** | 2,048 tokens | `tutor.py: max_tokens=2048` |
 | **Max Predict (Chat)** | 4,096 tokens | `llm.py: max_tokens=4096` |
 | **Max Predict (Graph/Test)** | 8,192 tokens | `graph_generator.py / test_generator.py` |

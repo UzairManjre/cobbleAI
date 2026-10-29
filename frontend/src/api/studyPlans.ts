@@ -1,53 +1,37 @@
 import api from './client';
 
-// Study Plans API
+// Study Plans API — paths are rewritten to /api/{role}/study-plans by the client
 export const studyPlansApi = {
-  generate: (course_id: string, graph_id: string) => {
+  generate: (course_id: string, graph_id?: string) => {
     return api.post('/api/study-plans/generate', { course_id, graph_id });
   },
-  
-  getActive: (course_id?: string) => {
-    return api.get('/api/study-plans/active', { params: { course_id } });
+
+  getActive: (course_id: string) => {
+    return api.get(`/api/study-plans/active/${course_id}`);
   },
-  
-  deleteActive: () => {
-    return api.delete('/api/study-plans/active');
+
+  deleteActive: (course_id?: string) => {
+    return api.delete('/api/study-plans/active', { params: { course_id } });
   },
-  
-  regenerate: (course_id: string, graph_id: string) => {
+
+  regenerate: (course_id: string, graph_id?: string) => {
     return api.post('/api/study-plans/regenerate', { course_id, graph_id });
   },
-  
-  get: (planId: string) => {
-    return api.get(`/api/study-plans/${planId}`);
+
+  completeTopic: (course_id: string, nodeId: string) => {
+    return api.post(`/api/study-plans/${course_id}/topic/${nodeId}/complete`, {});
   },
-  
-  start: (planId: string) => {
-    return api.post(`/api/study-plans/${planId}/start`, {});
+
+  completeExercise: (course_id: string, exerciseId: string) => {
+    return api.post(`/api/study-plans/${course_id}/exercise/${exerciseId}/complete`, {});
   },
-  
-  completeTopic: (planId: string, nodeId: string) => {
-    return api.post(`/api/study-plans/${planId}/topics/${nodeId}/complete`, {});
-  },
-  
-  completeExercise: (planId: string, exerciseId: string) => {
-    return api.post(`/api/study-plans/${planId}/exercises/${exerciseId}/complete`, {});
-  },
-  
-  delete: (planId: string) => {
-    return api.delete(`/api/study-plans/${planId}`);
-  },
-  
+
   generateTopic: (node_id: string, course_id: string) => {
     return api.post('/api/study-plans/topics/generate', null, { params: { node_id, course_id } });
   },
-  
+
   getTopic: (node_id: string, course_id: string) => {
     return api.get('/api/study-plans/topics', { params: { node_id, course_id } });
-  },
-  
-  updateTopicProgress: (node_id: string, course_id: string, progress: number) => {
-    return api.post('/api/study-plans/topics/progress', { progress }, { params: { node_id, course_id } });
   },
 };
 

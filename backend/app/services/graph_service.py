@@ -8,51 +8,9 @@ from app.models.user import User
 from app.models.course import Course
 from app.services.graph_generator import GraphGenerator
 from app.services.advanced_graph_generator import AdvancedGraphGenerator
-from app.core.config import settings
 from app.utils.telemetry import safe_track_event
-import redis
 
 class GraphService:
-    @staticmethod
-    async def generate_graph_for_course(course_id: str):
-        """Auto-generate knowledge graph from course documents after processing."""
-        try:
-            redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
-            lock_key = f"graph_gen_lock:{course_id}"
-            acquired = redis_client.set(lock_key, "1", nx=True, ex=600)
-
-            if not acquired:
-                return
-
-            try:
-                course_uuid = uuid.UUID(course_id) if isinstance(course_id, str) else course_id
-                existing_graph = await KnowledgeGraph.find_one(
-                    KnowledgeGraph.course_id == course_uuid
-                ).to_list()
-
-                if existing_graph:
-                    return
-
-                await asyncio.sleep(2)
-                generator = AdvancedGraphGenerator()
-                graph_data = await generator.generate_from_course(str(course_uuid))
-
-                if not graph_data["nodes"]:
-                    return
-
-                graph = KnowledgeGraph(
-                    topic=f"Course Knowledge Graph (from {len(graph_data.get('_source_docs', []))} documents)",
-                    course_id=course_uuid,
-                    nodes=graph_data["nodes"],
-                    edges=graph_data["edges"],
-                    created_by=course_uuid
-                )
-                await graph.insert()
-            finally:
-                redis_client.delete(lock_key)
-        except Exception as e:
-            print(f"Auto graph generation failed: {e}")
-
     @staticmethod
     async def generate_graph(topic: str, user: User, course_id: Optional[uuid.UUID] = None) -> Dict[str, Any]:
         start_time = time.time()
@@ -211,83 +169,53 @@ class GraphService:
 
     @staticmethod
     async def generate_graph_from_docs_stream(course_id: uuid.UUID, user_id: uuid.UUID):
+        """Server-Sent Events view of a background build (kept for older clients).
+
+        The build runs as a Celery task (app/services/graph_build.py); this stream only follows
+        it, so closing the connection no longer stops or duplicates anything.
+        """
         from fastapi.responses import StreamingResponse
         import json
-        
+        from app.models.graph import GraphBuild
+        from app.services import graph_build
+
+        def frame(event_type: str, data: dict) -> str:
+            return f"event: {event_type}\ndata: {json.dumps({'type': event_type, **data})}\n\n"
+
         async def event_generator():
-            q = asyncio.Queue()
-            
-            async def progress_callback(step: int, total_steps: int, message: str, detail: str = ""):
-                await q.put({
-                    "type": "progress",
-                    "step": step,
-                    "totalSteps": total_steps,
-                    "message": message,
-                    "detail": detail,
-                    "elapsed": 0
-                })
-
-            async def run_generator():
-                try:
-                    user = await User.get(user_id)
-                    if not user:
-                        await q.put({"type": "error", "message": "User not found"})
-                        return
-                    course = await Course.get(course_id)
-                    if not course or (user.role == "professor" and course.professor_id != user.id):
-                        await q.put({"type": "error", "message": "Not your course"})
-                        return
-                    
-                    adv_generator = AdvancedGraphGenerator()
-                    graph_data = await adv_generator.generate_from_course(str(course_id), progress_callback=progress_callback)
-                    
-                    graph = KnowledgeGraph(
-                        topic=f"Course Knowledge Graph (from {len(graph_data.get('_source_docs', []))} documents)",
-                        course_id=course_id,
-                        nodes=graph_data["nodes"],
-                        edges=graph_data["edges"],
-                        created_by=user_id
-                    )
-                    await graph.insert()
-                    
-                    session = StudySession(
-                        graph_id=graph.id,
-                        student_id=user_id,
-                        current_node_id=graph_data["nodes"][0]["id"] if graph_data["nodes"] else None,
-                        visited_nodes=[graph_data["nodes"][0]["id"]] if graph_data["nodes"] else []
-                    )
-                    await session.insert()
-                    
-                    await q.put({
-                        "type": "complete",
-                        "graph_id": str(graph.id),
-                        "session_id": str(session.id),
-                        "nodes_count": len(graph_data["nodes"]),
-                        "edges_count": len(graph_data["edges"]),
-                        "elapsed": 0
-                    })
-                except Exception as e:
-                    await q.put({"type": "error", "message": str(e)})
-                finally:
-                    await q.put(None)
-
-            task = asyncio.create_task(run_generator())
-            
+            user = await User.get(user_id)
+            course = await Course.get(course_id)
+            if not user or not course or (user.role == "professor" and course.professor_id != user.id):
+                yield frame("error", {"message": "Not your course"})
+                return
+            try:
+                build, _ = await graph_build.start_build(course_id, user_id)
+            except ValueError as e:
+                yield frame("error", {"message": str(e)})
+                return
+            last, quiet = None, 0
             while True:
-                try:
-                    # Wait for an event, but timeout every 15s to send a keep-alive
-                    event = await asyncio.wait_for(q.get(), timeout=15.0)
-                    if event is None:
-                        break
-                    
-                    # Format as Server-Sent Event with event type
-                    event_type = event.get("type", "message")
-                    yield f"event: {event_type}\ndata: {json.dumps(event)}\n\n"
-                except asyncio.TimeoutError:
-                    # Send a keep-alive ping to prevent proxy/browser timeouts
+                current = await GraphBuild.get(build.id)
+                current = await graph_build._expire_if_stale(current)
+                data = graph_build.serialize_build(current)
+                key = (data["step"], data["detail"], data["status"])
+                if key != last:
+                    last, quiet = key, 0
+                    yield frame("progress", {"step": data["step"], "totalSteps": data["total_steps"],
+                                             "message": data["message"], "detail": data["detail"],
+                                             "elapsed": data["elapsed_s"] or 0})
+                if data["status"] == "complete":
+                    yield frame("complete", {"graph_id": data["graph_id"], "nodes_count": data["nodes_count"],
+                                             "edges_count": data["edges_count"], "elapsed": data["elapsed_s"] or 0})
+                    return
+                if data["status"] in ("failed", "cancelled"):
+                    yield frame("error", {"message": data["error"] or "The build was cancelled"})
+                    return
+                await asyncio.sleep(2)
+                quiet += 2
+                if quiet >= 14:  # keep proxies and browsers from closing an idle stream
+                    quiet = 0
                     yield ": keep-alive\n\n"
-                
-            await task
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
 
@@ -350,6 +278,16 @@ class GraphService:
                 "nodes_count": len(graph.nodes),
                 "edges_count": len(graph.edges),
                 "created_at": graph.created_at.isoformat(),
+            }
+
+        from app.services.graph_build import active_build, serialize_build
+        build = await active_build(course_id)
+        if build:
+            progress = serialize_build(build)
+            return {
+                "status": "building",
+                "build": {k: progress[k] for k in ("id", "status", "step", "total_steps", "message", "detail",
+                                                   "percent", "eta_s", "elapsed_s", "waiting_for_worker")},
             }
 
         pending_count = await DocumentModel.find(

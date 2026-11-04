@@ -5,9 +5,10 @@ import { useGraphStore } from '../../store/graphStore';
 import SpriteText from 'three-spritetext';
 // @ts-ignore - three module types are not fully defined
 import * as THREE from 'three';
-import { ArrowLeft, Map as MapIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { escapeHtml } from '../../utils/html';
+import MapNotReady from '../../components/graph/MapNotReady';
 
 export default function MindMap() {
   const { courseId } = useParams();
@@ -86,22 +87,14 @@ export default function MindMap() {
   if (nodes.length === 0) {
     return (
       <div className={`${fullScreen} bg-[#FCFCFC] flex flex-col items-center justify-center text-center p-8`}>
-        <div className="bg-white border-[3px] border-[#0A0A0A] rounded-2xl p-12 text-center shadow-[8px_8px_0_#0A0A0A] max-w-md">
-          <div className="w-20 h-20 bg-gray-100 border-[3px] border-[#0A0A0A] rounded-full flex items-center justify-center mx-auto mb-6">
-            <MapIcon size={32} className="text-[#0A0A0A]" />
-          </div>
-          <h2 className="text-2xl font-extrabold text-[#0A0A0A] mb-4">No Map Available</h2>
-          <p className="text-[#0A0A0A]/60 font-bold text-sm mb-8">
-            This course hasn't been transformed into a knowledge graph yet. 
-            Upload materials and generate the map first.
-          </p>
-          <button 
-            onClick={() => navigate(`/${role}/courses/${courseId}`)}
-            className="w-full py-3 bg-[#FF4D5B] text-white border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[4px_4px_0_#0A0A0A] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] transition-all"
-          >
-            Return to Course Detail
-          </button>
-        </div>
+        {courseId && (
+          <MapNotReady
+            courseId={courseId}
+            role={role}
+            onReady={() => fetchCourseGraph(courseId)}
+            onBack={() => navigate(`/${role}/courses/${courseId}`)}
+          />
+        )}
       </div>
     );
   }

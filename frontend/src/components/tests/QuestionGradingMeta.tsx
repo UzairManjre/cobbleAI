@@ -38,28 +38,28 @@ export function QuestionGradingMeta({ testId, question }: Props) {
   };
 
   return (
-    <div className="mt-4 ml-0 sm:ml-12 p-3 bg-gray-50 border-2 border-gray-200 rounded-xl space-y-2">
+    <div className="mt-4 p-3 rounded-lg border border-[#1A1A1A] bg-[#080808] space-y-3">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="text-[11px] font-extrabold text-[#0A0A0A]/60 uppercase font-['Outfit']">
+        <label className="text-[11px] text-[#AAAAAA] flex items-center gap-2">
           Bloom level
           <select value={level} onChange={e => setLevel(e.target.value)}
-            className="ml-2 normal-case font-['Inter'] font-medium text-sm border-2 border-gray-300 rounded-lg px-2 py-1 bg-white text-[#0A0A0A]">
+            className="text-xs bg-[#111111] border border-[#262626] rounded-lg px-2 py-1 text-white focus:outline-none focus:border-[#444444]">
             <option value="">Not set</option>
             {COGNITIVE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
         </label>
         {dirty && (
           <button onClick={save} disabled={saving}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg border-2 border-[#0A0A0A] bg-white text-xs font-extrabold disabled:opacity-40">
-            <Save className="w-3.5 h-3.5" /> Save
+            className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white text-black text-xs font-semibold hover:bg-neutral-200 disabled:opacity-40">
+            <Save className="w-3.5 h-3.5" /> {saving ? "Saving..." : "Save"}
           </button>
         )}
       </div>
       {freeText && (
-        <label className="block text-[11px] font-extrabold text-[#0A0A0A]/60 uppercase font-['Outfit']">
-          Rubric points (one per line; empty = derived from the explanation)
+        <label className="block text-[11px] text-[#AAAAAA]">
+          Rubric points, one per line <span className="text-[#666666]">(leave empty to derive them from the explanation)</span>
           <textarea value={rubric} onChange={e => setRubric(e.target.value)} rows={3}
-            className="mt-1 w-full normal-case font-['Inter'] font-medium text-sm border-2 border-gray-300 rounded-lg px-2 py-1 bg-white text-[#0A0A0A]" />
+            className="mt-1.5 w-full text-sm bg-[#111111] border border-[#262626] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#444444]" />
         </label>
       )}
     </div>

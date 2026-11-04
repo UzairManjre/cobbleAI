@@ -4,39 +4,15 @@ import { useState, useEffect, useRef } from 'react';
 import { coursesApi, documentsApi, graphsApi } from '../../api';
 import { useGraphStore } from '../../store/graphStore';
 import { useToastStore } from '../../store/toastStore';
-import { ArrowLeft, Upload, Sparkles, FileText, Trash2, Loader2, BookOpen, Users, Map, Calendar, Zap, LayoutDashboard, PlayCircle, MessageSquare, BarChart3, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, Trash2, Loader2, BookOpen, Users, Map, Calendar, Zap, LayoutDashboard, PlayCircle, MessageSquare, BarChart3, ClipboardCheck } from 'lucide-react';
 import TutorPolicyCard from '../../components/tutor/TutorPolicyCard';
 import CourseFAQ from '../../components/insights/CourseFAQ';
-
-const LECTURE_STAGES: Record<string, string> = {
-  downloading: 'Preparing',
-  transcribing: 'Transcribing',
-  frames: 'Reading slides',
-  chapters: 'Writing chapters',
-  indexing: 'Indexing',
-};
+import CourseSetupPanel from '../../components/course/CourseSetupPanel';
+import { useCourseSetup } from '../../hooks/useCourseSetup';
+import { STAGE_LABELS, isActiveBuild } from '../../utils/buildProgress';
+import { apiErrorDetail } from '../../utils/apiError';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-
-interface GenerationProgress {
-  step: number;
-  totalSteps: number;
-  message: string;
-  detail: string;
-  elapsed: number;
-}
-
-const STEP_LABELS = [
-  'Processing documents',
-  'Fetching documents',
-  'Extracting text',
-  'Analyzing content',
-  'Merging graphs',
-  'Enriching connections',
-  'Finalizing graph',
-];
-
-const STEP_ICONS = ['📄', '📂', '📝', '🧠', '🔗', '✨', '✅'];
 
 export default function CourseDetail() {
   const { courseId } = useParams();
@@ -53,18 +29,26 @@ export default function CourseDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [students, setStudents] = useState<any[]>([]);
 
-  // Graph generation progress state
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState<GenerationProgress | null>(null);
-  const [genError, setGenError] = useState<string | null>(null);
-  const [genResult, setGenResult] = useState<{ nodes_count: number; edges_count: number; elapsed: number } | null>(null);
-  const eventSourceRef = useRef<AbortController | null>(null);
-
   const {
     nodes: graphNodes,
     edges: graphEdges,
     fetchCourseGraph
   } = useGraphStore();
+
+  // Course setup: file processing and the concept-map build, which runs in the background
+  const isProfessor = role === 'professor';
+  const setupRef = useRef<HTMLDivElement>(null);
+  const [startingBuild, setStartingBuild] = useState(false);
+  const [cancellingBuild, setCancellingBuild] = useState(false);
+  const { setup, refresh: refreshSetup } = useCourseSetup(courseId, isProfessor, build => {
+    if (build.status === 'complete' && courseId) {
+      fetchCourseGraph(courseId);
+      addToast(`Concept map ready: ${build.nodes_count} concepts, ${build.edges_count} connections`, 'success');
+    } else if (build.status === 'failed') {
+      addToast('The concept map build failed. See Course setup for details.', 'error');
+    }
+  });
+  const building = isActiveBuild(setup?.build);
 
   useEffect(() => {
     if (courseId) {
@@ -87,14 +71,6 @@ export default function CourseDetail() {
 
     return () => clearInterval(interval);
   }, [documents, courseId, token]);
-
-  useEffect(() => {
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.abort();
-      }
-    };
-  }, []);
 
   const fetchCourseDetails = async () => {
     try {
@@ -138,6 +114,7 @@ export default function CourseDetail() {
     try {
       await documentsApi.upload(courseId || '', files, setUploadProgress);
       fetchDocuments();
+      refreshSetup();
     } catch (err: any) {
       console.error('Upload error:', err);
       // documentsApi.upload throws Error(detail) from the server response
@@ -156,6 +133,7 @@ export default function CourseDetail() {
     try {
       await documentsApi.delete(docId);
       fetchDocuments();
+      refreshSetup();
     } catch (err) {
       console.error('Failed to delete document', err);
       addToast('Failed to delete document', 'error');
@@ -171,103 +149,31 @@ export default function CourseDetail() {
     }
   };
 
-  const generateGraph = () => {
-    if (!courseId || !token) return;
-
-    let userId = '';
+  const startBuild = async () => {
+    if (!courseId) return;
+    setStartingBuild(true);
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      userId = payload.sub || '';
-    } catch {
-      console.error('Failed to decode JWT for user_id');
-      return;
+      const res = await graphsApi.startBuild(courseId);
+      addToast(res.data.created ? 'Map build started. Its progress is shown under Course setup.' : 'A map build is already running.', 'success');
+      refreshSetup();
+      setupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) {
+      addToast(apiErrorDetail(err, 'Could not start the map build'), 'error');
+    } finally {
+      setStartingBuild(false);
     }
-
-    setIsGenerating(true);
-    setProgress(null);
-    setGenError(null);
-    setGenResult(null);
-
-    if (eventSourceRef.current) {
-      eventSourceRef.current.abort();
-    }
-
-    const ctrl = new AbortController();
-    eventSourceRef.current = ctrl;
-
-    let isComplete = false;
-
-    graphsApi.generateFromDocsStream(
-      courseId, 
-      userId, 
-      token, 
-      ctrl,
-      (e) => {
-        if (e.event === 'progress') {
-          try {
-            const data = JSON.parse(e.data);
-            setProgress(data);
-          } catch (err) {
-            console.error('Failed to parse progress event:', err);
-          }
-        } else if (e.event === 'complete') {
-          isComplete = true;
-          try {
-            const data = JSON.parse(e.data);
-            setGenResult({
-              nodes_count: data.nodes_count,
-              edges_count: data.edges_count,
-              elapsed: data.elapsed,
-            });
-            fetchCourseGraph(courseId).catch(err => console.error(err));
-          } catch (err) {
-            console.error('Failed to parse complete event:', err);
-          }
-        } else if (e.event === 'error') {
-          if (isComplete) return;
-          try {
-            const data = JSON.parse(e.data);
-            setGenError(data.message || 'Graph generation failed');
-          } catch {
-            setGenError('Graph generation failed');
-          }
-          if (eventSourceRef.current) {
-            eventSourceRef.current.abort();
-            eventSourceRef.current = null;
-          }
-          setIsGenerating(false);
-        }
-      },
-      (err) => {
-        if (isComplete) return;
-        setGenError('Connection lost during graph generation. The graph may still be generating — please refresh in a minute.');
-        eventSourceRef.current = null;
-        setIsGenerating(false);
-      },
-      async () => {
-        isComplete = true;
-        try {
-          // fetch latest on complete
-          await fetchCourseGraph(courseId);
-          setGenResult({
-            nodes_count: 0,
-            edges_count: 0,
-            elapsed: 0
-          });
-        } catch (err) {
-          console.error('Failed on complete:', err);
-        }
-        eventSourceRef.current = null;
-        setIsGenerating(false);
-      }
-    );
   };
 
-  const dismissOverlay = () => {
-    setIsGenerating(false);
-    setProgress(null);
-    setGenError(null);
-    setGenResult(null);
+  const cancelBuild = async (buildId: string) => {
+    setCancellingBuild(true);
+    try {
+      await graphsApi.cancelBuild(buildId);
+      refreshSetup();
+    } catch (err) {
+      addToast(apiErrorDetail(err, 'Could not cancel the build'), 'error');
+    } finally {
+      setCancellingBuild(false);
+    }
   };
 
   const cleanupDuplicates = async () => {
@@ -282,13 +188,6 @@ export default function CourseDetail() {
       console.error('Cleanup error:', err);
       addToast('Cleanup failed', 'error');
     }
-  };
-
-  const formatElapsed = (seconds: number) => {
-    if (seconds < 60) return `${Math.round(seconds)}s`;
-    const min = Math.floor(seconds / 60);
-    const sec = Math.round(seconds % 60);
-    return `${min}m ${sec}s`;
   };
 
   if (isLoading) {
@@ -314,131 +213,21 @@ export default function CourseDetail() {
     );
   }
 
-  const progressPct = progress ? Math.round(((progress.step) / progress.totalSteps) * 100) : 0;
+  const mapStatus = (() => {
+    if (setup?.build && building) {
+      return { label: setup.build.status === 'queued' ? 'Map build queued' : `Building map · ${setup.build.percent}%`, tone: 'text-purple-400' };
+    }
+    if (setup?.phase === 'processing') return { label: 'Processing files', tone: 'text-purple-400' };
+    if (graphNodes.length > 0) {
+      return setup?.materials_changed.length
+        ? { label: 'Map out of date', tone: 'text-orange-500' }
+        : { label: 'Map ready', tone: 'text-blue-500' };
+    }
+    return { label: 'Map required', tone: 'text-orange-500' };
+  })();
 
   return (
     <div className="min-h-screen bg-black text-white p-8 lg:p-12 relative overflow-hidden">
-
-      {/* Graph Generation Progress Overlay */}
-      {(isGenerating || genResult || genError) && (
-        <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4">
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={dismissOverlay} />
-
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-8 max-w-lg w-full relative z-10 shadow-2xl space-y-6">
-
-            {/* Header */}
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-outfit font-medium tracking-tight text-white">
-                {genResult ? 'Knowledge Graph Ready' : genError ? 'Generation Failed' : 'Building Knowledge Graph'}
-              </h2>
-              {!genResult && !genError && (
-                <p className="text-sm text-[#888888]">
-                  This may take a few minutes depending on document size.
-                </p>
-              )}
-            </div>
-
-            {/* Progress Content */}
-            {!genResult && !genError && (
-              <div className="space-y-6">
-                <div>
-                  <div className="h-2 bg-[#1A1A1A] rounded-full overflow-hidden relative">
-                    <div className="h-full bg-white transition-all duration-300" style={{ width: `${progressPct}%` }} />
-                  </div>
-                  <div className="flex justify-between items-center text-xs mt-2 text-[#888888]">
-                    <span>{progressPct}% Done</span>
-                    {progress && (
-                      <span className="flex items-center gap-1">
-                        ⏱ {formatElapsed(progress.elapsed)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                  {STEP_LABELS.map((label, i) => {
-                    const stepNum = i;
-                    const currentStep = progress?.step ?? -1;
-                    const isActive = currentStep === stepNum;
-                    const isDone = currentStep > stepNum;
-
-                    return (
-                      <div
-                        key={i}
-                        className={`flex items-center justify-between p-3 rounded-lg transition-all ${isActive ? 'bg-[#111111]' : isDone ? 'opacity-50' : 'opacity-30'
-                          }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm">
-                            {isDone ? '✓' : STEP_ICONS[i]}
-                          </span>
-                          <div className="text-sm text-white">
-                            <span>{label}</span>
-                            {isActive && progress?.detail && (
-                              <p className="text-xs text-[#888888] mt-0.5">{progress.detail}</p>
-                            )}
-                          </div>
-                        </div>
-                        {isActive && (
-                          <Loader2 className="w-4 h-4 animate-spin text-[#888888]" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Success Result */}
-            {genResult && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="p-4 border border-[#1A1A1A] rounded-xl bg-[#050505] text-center">
-                    <span className="block text-2xl font-light text-white mb-1">{genResult.nodes_count}</span>
-                    <span className="text-[10px] uppercase tracking-widest text-[#888888]">Concepts</span>
-                  </div>
-                  <div className="p-4 border border-[#1A1A1A] rounded-xl bg-[#050505] text-center">
-                    <span className="block text-2xl font-light text-white mb-1">{genResult.edges_count}</span>
-                    <span className="text-[10px] uppercase tracking-widest text-[#888888]">Links</span>
-                  </div>
-                  <div className="p-4 border border-[#1A1A1A] rounded-xl bg-[#050505] text-center">
-                    <span className="block text-2xl font-light text-white mb-1">{formatElapsed(genResult.elapsed)}</span>
-                    <span className="text-[10px] uppercase tracking-widest text-[#888888]">Time</span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={() => {
-                    dismissOverlay();
-                    navigate(`/${role}/courses/${courseId}/map`);
-                  }}
-                  variant="primary"
-                  className="w-full"
-                >
-                  <Sparkles size={16} />
-                  <span>View Knowledge Graph</span>
-                </Button>
-              </div>
-            )}
-
-            {/* Error */}
-            {genError && (
-              <div className="space-y-4">
-                <div className="p-4 border border-[#331111] bg-[#1A0505] text-[#FF4444] text-sm rounded-lg">
-                  {genError}
-                </div>
-                <Button
-                  onClick={dismissOverlay}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Dismiss
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <div className="max-w-6xl mx-auto space-y-12 relative z-10">
 
@@ -478,17 +267,34 @@ export default function CourseDetail() {
                   Clean Duplicates
                 </Button>
                 <Button
-                  onClick={generateGraph}
-                  disabled={isGenerating}
+                  onClick={startBuild}
+                  disabled={building || startingBuild || !setup?.documents.ready}
                   variant="primary"
+                  title={setup && !setup.documents.ready ? 'Upload files and wait for them to be processed first' : undefined}
                 >
-                  <Zap size={14} />
-                  {isGenerating ? 'Generating...' : 'Regenerate Graph'}
+                  {building ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                  {building
+                    ? (setup?.build?.status === 'queued' ? 'Map build queued' : `Building map · ${setup?.build?.percent ?? 0}%`)
+                    : graphNodes.length > 0 ? 'Rebuild Map' : 'Build Map'}
                 </Button>
               </div>
             )}
           </header>
         </div>
+
+        {isProfessor && setup && (
+          <div ref={setupRef} className="scroll-mt-8">
+            <CourseSetupPanel
+              setup={setup}
+              starting={startingBuild}
+              cancelling={cancellingBuild}
+              onBuild={startBuild}
+              onCancel={cancelBuild}
+              onViewMap={() => navigate(`/professor/courses/${courseId}/map`)}
+              onUpload={() => fileInputRef.current?.click()}
+            />
+          </div>
+        )}
 
         {/* Feature Navigation Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -602,8 +408,12 @@ export default function CourseDetail() {
                         <h4 className="text-sm font-medium text-white truncate max-w-[200px] md:max-w-md">{doc.filename}</h4>
                         <p className="text-[10px] text-[#888888] mt-1">
                           {doc.media_type === 'lecture' ? 'Lecture recording · ' : ''}Added {new Date(doc.created_at).toLocaleDateString()}
-                          {doc.media_type === 'lecture' && doc.status === 'processing' && doc.stage && (
-                            <span className="ml-2 text-purple-400">{LECTURE_STAGES[doc.stage] || doc.stage}{doc.progress ? ` ${Math.round(doc.progress * 100)}%` : ''}</span>
+                          {doc.status === 'processing' && doc.stage && (
+                            <span className="ml-2 text-purple-400">{STAGE_LABELS[doc.stage] || doc.stage}{doc.progress ? ` ${Math.round(doc.progress * 100)}%` : ''}</span>
+                          )}
+                          {doc.status === 'pending' && <span className="ml-2 text-orange-400">Waiting in queue</span>}
+                          {doc.status === 'failed' && doc.error_message && (
+                            <span className="block mt-1 text-red-400 line-clamp-2">{doc.error_message}</span>
                           )}
                         </p>
                       </div>
@@ -677,9 +487,8 @@ export default function CourseDetail() {
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-[#888888]">Status</span>
-                  <span className={`text-xs font-medium ${graphNodes.length > 0 ? 'text-blue-500' : 'text-orange-500'
-                    }`}>
-                    {graphNodes.length > 0 ? 'Map Optimized' : 'Map Required'}
+                  <span className={`text-xs font-medium ${mapStatus.tone}`}>
+                    {mapStatus.label}
                   </span>
                 </div>
               </div>

@@ -1,8 +1,5 @@
-import api, { API_URL } from './client';
-import type { AuditItem, AuditReport } from '../types/graph';
-
-// Same origin as every other call (the Vite proxy in development)
-const API_BASE_URL = API_URL;
+import api from './client';
+import type { AuditItem, AuditReport, CourseGraphStatus, CourseSetup, GraphBuild } from '../types/graph';
 
 // Graphs API
 export const graphsApi = {
@@ -14,36 +11,19 @@ export const graphsApi = {
     return api.post('/graph/generate-from-docs', { course_id });
   },
 
-  /**
-   * Stream graph generation progress via Server-Sent Events.
-   */
-  generateFromDocsStream: (courseId: string, userId: string, token: string, ctrl: AbortController, onMessage: (ev: any) => void, onError: (err: any) => void, onComplete: () => void) => {
-    import('@microsoft/fetch-event-source').then(({ fetchEventSource }) => {
-      fetchEventSource(`${API_BASE_URL}/api/professor/graph/generate-from-docs-stream/${courseId}?user_id=${encodeURIComponent(userId)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        signal: ctrl.signal,
-        onmessage(ev) {
-          onMessage(ev);
-        },
-        onerror(err) {
-          onError(err);
-          // throw err to stop retrying
-          throw err;
-        },
-        onclose() {
-          onComplete();
-        }
-      }).catch((err) => {
-        if (err.name !== 'AbortError') {
-          onError(err);
-        }
-      });
-    });
+  // Concept-map builds run in the background; these read and steer them (professor)
+  getSetup: (courseId: string) => {
+    return api.get<CourseSetup>(`/graph/course/${courseId}/setup`);
   },
-  
+
+  startBuild: (courseId: string) => {
+    return api.post<{ created: boolean; build: GraphBuild }>(`/graph/course/${courseId}/build`);
+  },
+
+  cancelBuild: (buildId: string) => {
+    return api.post<GraphBuild>(`/graph/builds/${buildId}/cancel`);
+  },
+
   get: (graphId: string) => {
     return api.get(`/graph/${graphId}`);
   },
@@ -53,7 +33,7 @@ export const graphsApi = {
   },
   
   getStatus: (courseId: string) => {
-    return api.get(`/graph/course/${courseId}/status`);
+    return api.get<CourseGraphStatus>(`/graph/course/${courseId}/status`);
   },
 
   // Edge audit (professor): judge a stratified sample of relations

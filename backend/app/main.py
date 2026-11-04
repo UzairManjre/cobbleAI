@@ -9,6 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.middleware.analytics import setup_analytics_middleware
 from app.core.config import settings
 from app.core.responses import CobbleJSONResponse
+from app.core.console import make_console_safe
+
+make_console_safe()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Connect to MongoDB, Redis, Qdrant here

@@ -47,6 +47,24 @@ async def reindex_legacy_documents(course_id: str, just_indexed: str) -> int:
     return queued
 
 
+async def _set_stage(doc_id: uuid.UUID, stage: str | None, progress: float) -> None:
+    """Shown on the course page while the document is processing."""
+    from app.models.document import DocumentModel
+    await DocumentModel.find_one({"_id": doc_id}).update({"$set": {"stage": stage, "progress": progress}})
+
+
+async def check_auto_build(course_id) -> None:
+    """The last file of a new course finished: build its first concept map. Never fails the document."""
+    try:
+        from app.services.graph_build import maybe_auto_build
+        course_uuid = uuid.UUID(bytes=course_id) if isinstance(course_id, bytes) else uuid.UUID(str(course_id))
+        build = await maybe_auto_build(course_uuid)
+        if build:
+            print(f"  Every file of course {course_id} is processed: concept-map build {build.id} queued")
+    except Exception as e:
+        print(f"  Auto map build check failed: {e}")
+
+
 async def run_process_document(doc_id_str: str, task):
     print(f"Beginning processing for document: {doc_id_str}")
     
@@ -77,12 +95,14 @@ async def run_process_document(doc_id_str: str, task):
             raise NonRetryableProcessingError(f"Document {doc_id} has no S3 path")
         
         print(f"Downloading from S3: {s3_key}")
+        await _set_stage(doc_id, "downloading", 0.05)
         response = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
         file_bytes = response['Body'].read()
 
         # 3. Extract located text segments (pages / slides / paragraphs)
         file_type = getattr(doc, "file_type", "pdf")
         print(f"Extracting segments from {file_type}...")
+        await _set_stage(doc_id, "extracting", 0.15)
         try:
             segments = extract_segments(file_type, file_bytes)
         except ValueError as e:
@@ -93,6 +113,7 @@ async def run_process_document(doc_id_str: str, task):
 
         # 4. Chunk (chunks keep their page/slide span; one summary per section for the chapter prior)
         print("Chunking...")
+        await _set_stage(doc_id, "chunking", 0.35)
         chunks, summaries = chunk_segments(segments, str(doc_id))
         print(f"Created {len(chunks)} chunks")
 
@@ -105,6 +126,7 @@ async def run_process_document(doc_id_str: str, task):
             course_id = str(course_id_raw)
         
         print(f"Pushing {len(chunks)} chunks to Qdrant for course {course_id}...")
+        await _set_stage(doc_id, "indexing", 0.5)
         filename = getattr(doc, "filename", "")
         pushed_count = index_chunks(chunks, course_id, str(doc_id), filename, summaries=summaries)
         print(f"Pushed {pushed_count} chunks to Qdrant")
@@ -113,12 +135,14 @@ async def run_process_document(doc_id_str: str, task):
             raise RuntimeError("No chunks were successfully pushed to Qdrant. Document is empty or embedding failed.")
 
         # 6. Mark Success
+        await _set_stage(doc_id, None, 1.0)
         await doc_repo.update_status(doc_id, "ready", chunks=pushed_count)
         print(f"  Document {doc_id} processed successfully.")
         try:
             await reindex_legacy_documents(course_id, str(doc_id))
         except Exception as e:  # never fail the document that did index
             print(f"  Legacy re-index check failed: {e}")
+        await check_auto_build(course_id)
         return True
 
     except Exception as e:
@@ -128,6 +152,8 @@ async def run_process_document(doc_id_str: str, task):
         print(traceback.format_exc())
         await doc_repo.update_status(doc_id, "failed", error=str(e))
         if isinstance(e, NonRetryableProcessingError):
+            # A final failure: the rest of the course's materials may be ready to build from
+            await check_auto_build(getattr(doc, "course_id", ""))
             return False
         raise task.retry(exc=e)
 

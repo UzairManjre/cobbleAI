@@ -5,6 +5,7 @@ import { useCourseTutor } from '../../hooks/useCourseTutor';
 import type { HintLevel, TutorMode } from '../../types/tutor';
 import HintLadder from './HintLadder';
 import TutorMessageView from './TutorMessageView';
+import VoiceInputButton from './VoiceInputButton';
 
 interface Props {
   courseId: string;
@@ -72,6 +73,7 @@ export default function CourseTutorChat({ courseId, lectureId, getCurrentTime, o
             placeholder={lectureId ? 'Ask about something said in this lecture...' : 'Ask about the course...'}
             className="flex-1 bg-[#111111] border border-[#1A1A1A] rounded-xl px-3 py-2 text-sm text-white placeholder:text-[#666666] focus:outline-none focus:border-[#333333]"
           />
+          <VoiceInputButton courseId={courseId} disabled={isStreaming} onTranscript={(text) => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))} />
           <button type="submit" disabled={!input.trim() || isStreaming} className="px-3 bg-white text-black rounded-xl disabled:opacity-50" aria-label="Send">
             <Send className="w-4 h-4" />
           </button>

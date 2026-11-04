@@ -35,7 +35,8 @@
 - **Hint ladder:** nudge → guiding question → worked step → full answer, within the limits the instructor sets.
 - **Lecture view:** video with captions, chapters with summaries and timestamped notes, and a clickable transcript you can download. You can also ask questions about one lecture alone.
 - **Teach it back:** explain a concept, and the tutor plays a curious classmate who asks follow-up questions and points out claims that conflict with the notes.
-- **Answer feedback** ("helpful", "wrong", "not in my notes"), and **read aloud** using on-device voices only.
+- **Answer feedback** ("helpful", "wrong", "not in my notes").
+- **Speech in and out:** ask by voice, transcribed by a local Whisper model on the course server, and have answers read aloud with on-device voices. Audio and text never go to a cloud speech service.
 - **Quizzes with confidence check-ins,** a result page, and a calibration chart comparing confidence with accuracy.
 - **Study plans** for the whole course or a single topic, and a published FAQ on the course page.
 

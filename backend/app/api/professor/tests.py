@@ -64,7 +64,17 @@ async def get_all_professor_tests(user: User = Depends(require_role("professor")
 
 @router.get("/course/{course_id}")
 async def get_course_tests(course_id: str, user: User = Depends(require_role("professor"))):
+    from collections import Counter
+    from beanie.operators import In
+    from app.models.test import TestAttempt
     tests = await TestService.get_course_tests(user, course_id)
+    # What needs the professor's attention on each card: finished attempts and AI grades to review
+    finished = await TestAttempt.find(In(TestAttempt.test_id, [t.id for t in tests]),
+                                      In(TestAttempt.status, ["submitted", "graded"])).to_list() if tests else []
+    submissions = Counter(a.test_id for a in finished)
+    to_review = Counter()
+    for a in finished:
+        to_review[a.test_id] += sum(1 for ans in a.answers if ans.review_status == "needs_review")
     return jsonable_encoder([{
         "id": str(t.id),
         "title": t.title,
@@ -77,6 +87,10 @@ async def get_course_tests(course_id: str, user: User = Depends(require_role("pr
         "total_marks": t.total_marks,
         "show_results_immediately": t.show_results_immediately,
         "results_released": t.results_released,
+        "created_at": t.created_at.isoformat() if t.created_at else None,
+        "available_until": t.available_until.isoformat() if t.available_until else None,
+        "submissions": submissions.get(t.id, 0),
+        "answers_to_review": to_review.get(t.id, 0),
     } for t in tests])
 
 @router.get("/analytics/{test_id}")

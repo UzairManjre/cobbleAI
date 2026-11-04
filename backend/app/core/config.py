@@ -48,6 +48,17 @@ class Settings(BaseSettings):
     # Host browsers use to reach MinIO for presigned media/file URLs (defaults to S3_ENDPOINT_URL)
     S3_PUBLIC_ENDPOINT_URL: str = ""
 
+    # Ask by voice: students speak a question; a small local Whisper model in the API turns it into text
+    VOICE_INPUT: bool = True
+    VOICE_ASR_MODEL: str = "small"  # faster-whisper size; small is accurate enough for course terms and quick
+    # auto | cuda | cpu. Measured on an RTX 3080 for a 10 s question: 0.6 s on CUDA (about 0.5 GB of
+    # GPU memory, alongside the LLM), about 4 s on the CPU. auto falls back to the CPU.
+    VOICE_ASR_DEVICE: str = "auto"
+
+    # Concept-map builds run on the media queue (long GPU jobs) and report progress to GraphBuild
+    AUTO_BUILD_MAP: bool = True  # build a course's first map once every uploaded file is processed
+    GRAPH_BUILD_TIME_LIMIT_S: int = 3 * 3600
+
     # Grader v2
     GRADER_SAMPLES: int = 3  # independent gradings per answer; their spread feeds the confidence
     GRADER_SAMPLE_TEMPERATURE: float = 0.7

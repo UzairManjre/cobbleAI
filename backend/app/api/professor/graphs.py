@@ -42,6 +42,44 @@ async def generate_graph_from_docs_stream(
         raise HTTPException(status_code=403, detail="Unauthorized")
     return await GraphService.generate_graph_from_docs_stream(course_id, user_id)
 
+#   Course setup and concept-map builds (background jobs with saved progress)
+
+@router.get("/course/{course_id}/setup")
+async def get_course_setup(course_id: uuid.UUID, user: User = Depends(require_role("professor"))):
+    """Each file's processing, the map build in progress, and whether the map is out of date."""
+    from app.services.access import ensure_course_owner
+    from app.services.graph_build import course_setup
+    await ensure_course_owner(user, course_id)
+    return await course_setup(course_id)
+
+
+@router.post("/course/{course_id}/build", status_code=202)
+async def start_course_build(course_id: uuid.UUID, user: User = Depends(require_role("professor"))):
+    """Build (or rebuild) the course map; joins the build already queued or running."""
+    from app.services.access import ensure_course_owner
+    from app.services.graph_build import serialize_build, start_build
+    await ensure_course_owner(user, course_id)
+    try:
+        build, created = await start_build(course_id, user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return {"created": created, "build": serialize_build(build)}
+
+
+@router.post("/builds/{build_id}/cancel")
+async def cancel_course_build(build_id: uuid.UUID, user: User = Depends(require_role("professor"))):
+    from app.models.graph import GraphBuild
+    from app.services.access import ensure_course_owner
+    from app.services.graph_build import ACTIVE, cancel_build, serialize_build
+    build = await GraphBuild.get(build_id)
+    if not build:
+        raise HTTPException(status_code=404, detail="Build not found")
+    await ensure_course_owner(user, build.course_id)
+    if build.status not in ACTIVE:
+        raise HTTPException(status_code=409, detail="This build has already finished")
+    return serialize_build(await cancel_build(build_id))
+
+
 @router.get("/{graph_id}")
 async def get_graph(
     graph_id: uuid.UUID,

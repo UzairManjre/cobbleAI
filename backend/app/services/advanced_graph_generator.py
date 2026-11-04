@@ -101,9 +101,11 @@ class AdvancedGraphGenerator:
         5. Enrich: difficulty labels and extra cross-topic relations (additive only)
         6. Stable ids + provenance verification (unsupported edges flagged)
         """
-        async def _progress(step: int, total_steps: int, message: str, detail: str = ""):
+        async def _progress(step: int, total_steps: int, message: str, detail: str = "", **stats):
+            # stats: sources, passages, chunks_total, chunks_done, concepts_found, relations_found.
+            # The callback may raise to stop the build (a cancelled GraphBuild).
             if progress_callback:
-                await progress_callback(step, total_steps, message, detail)
+                await progress_callback(step, total_steps, message, detail, **stats)
 
         try:
             uuid.UUID(course_id)
@@ -119,21 +121,26 @@ class AdvancedGraphGenerator:
         if not chunks:
             raise ValueError("No processed documents found for this course. Upload and process documents first.")
         doc_titles = sorted({c.filename for c in chunks if c.filename})
-        await _progress(1, 6, "Fetching documents", f"Found {len(doc_titles)} sources ({len(chunks)} passages)")
+        await _progress(1, 6, "Fetching documents", f"Found {len(doc_titles)} sources ({len(chunks)} passages)",
+                        sources=len(doc_titles), passages=len(chunks))
 
         print("  Step 2: Packing evidence passages...")
         await _progress(2, 6, "Extracting text", f"Preparing {len(chunks)} passages from {len(doc_titles)} sources")
         blocks = provenance.build_prompt_chunks(chunks)
 
         print(f"  Step 3: Extracting concepts from {len(blocks)} blocks...")
-        await _progress(3, 6, "Analyzing content", f"Split into {len(blocks)} chunks — sending to LLM...")
+        await _progress(3, 6, "Analyzing content", f"Split into {len(blocks)} chunks — sending to LLM...",
+                        chunks_total=len(blocks), chunks_done=0)
         partial_graphs = []
+        n_concepts_total = n_rels_total = 0
         for i, block in enumerate(blocks):
             await _progress(3, 6, "Analyzing content", f"Processing chunk {i + 1} of {len(blocks)}...")
             partial = await self._extract_concepts(block)
             n_concepts, n_rels = len(partial.get("concepts", [])), len(partial.get("relationships", []))
+            n_concepts_total, n_rels_total = n_concepts_total + n_concepts, n_rels_total + n_rels
             print(f"      chunk {i + 1}: {n_concepts} concepts, {n_rels} relationships")
-            await _progress(3, 6, "Analyzing content", f"Chunk {i + 1}/{len(blocks)}: found {n_concepts} concepts, {n_rels} relationships")
+            await _progress(3, 6, "Analyzing content", f"Chunk {i + 1}/{len(blocks)}: found {n_concepts} concepts, {n_rels} relationships",
+                            chunks_done=i + 1, concepts_found=n_concepts_total, relations_found=n_rels_total)
             if n_concepts:
                 partial_graphs.append(partial)
         if not partial_graphs:
@@ -142,12 +149,14 @@ class AdvancedGraphGenerator:
         print(f"  Step 4: Merging {len(partial_graphs)} partial graphs...")
         await _progress(4, 6, "Merging graphs", f"Merging {len(partial_graphs)} partial graphs...")
         merged = self._merge_partial_graphs(partial_graphs)
-        await _progress(4, 6, "Merging graphs", f"Merged to {len(merged['concepts'])} unique concepts, {len(merged['relationships'])} relationships")
+        await _progress(4, 6, "Merging graphs", f"Merged to {len(merged['concepts'])} unique concepts, {len(merged['relationships'])} relationships",
+                        concepts_found=len(merged["concepts"]), relations_found=len(merged["relationships"]))
 
         print("  Step 5: Enriching (additive)...")
         await _progress(5, 6, "Enriching connections", "Discovering cross-topic relationships...")
         enriched = await self._enrich_graph(merged)
-        await _progress(5, 6, "Enriching connections", f"Enhanced to {len(enriched['relationships'])} relationships")
+        await _progress(5, 6, "Enriching connections", f"Enhanced to {len(enriched['relationships'])} relationships",
+                        relations_found=len(enriched["relationships"]))
 
         print("  Step 6: Verifying provenance...")
         await _progress(6, 6, "Finalizing graph", "Checking every concept and relation against the materials...")

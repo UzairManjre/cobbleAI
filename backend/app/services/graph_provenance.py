@@ -4,7 +4,8 @@ Concepts and relations are extracted from *located* evidence chunks (labelled
 E1, E2, ...). The LLM cites the label and a short quote; we then verify the
 quote against that chunk, fall back to finding the concept mentioned in the
 materials, and link concepts to the lecture moments that discuss them. An edge
-with no verified quote and no chunk mentioning both ends is flagged unsupported.
+with no verified quote, no chunk mentioning both ends and no passage in which
+both ends were verified is flagged unsupported.
 """
 
 import hashlib
@@ -179,8 +180,26 @@ def node_provenance(label: str, evidence_refs: List[dict], chunks: List[Evidence
     return evidence, any(e["support_score"] >= QUOTE_THRESHOLD for e in evidence)
 
 
+def shared_passage(source_evidence: List[dict], target_evidence: List[dict],
+                   by_chunk: Dict[str, EvidenceChunk]) -> Optional[dict]:
+    """Both concepts were verified in the same passage (a quote or a mention each), so the passage
+    discusses them together even when the AI's names differ from the slide's wording
+    ("Missing Data Handling" vs "Handling Missing Data")."""
+    target_scores = {e.get("chunk_id"): e.get("support_score", 0) for e in target_evidence
+                     if e.get("method") in ("quote", "mention") and e.get("chunk_id")}
+    for ev in source_evidence:
+        cid = ev.get("chunk_id")
+        if ev.get("method") not in ("quote", "mention") or cid not in target_scores or cid not in by_chunk:
+            continue
+        score = min(ev.get("support_score", 0), target_scores[cid]) * 0.6
+        return by_chunk[cid].evidence(ev.get("quote") or by_chunk[cid].text[:300], score, "co_mention")
+    return None
+
+
 def edge_provenance(source_label: str, target_label: str, evidence_refs: List[dict],
-                    chunks: List[EvidenceChunk], by_ref: Dict[str, EvidenceChunk]) -> Tuple[List[dict], bool]:
+                    chunks: List[EvidenceChunk], by_ref: Dict[str, EvidenceChunk],
+                    source_evidence: Optional[List[dict]] = None, target_evidence: Optional[List[dict]] = None,
+                    by_chunk: Optional[Dict[str, EvidenceChunk]] = None) -> Tuple[List[dict], bool]:
     evidence = [e for e in _verify_refs(evidence_refs, by_ref) if e["support_score"] >= QUOTE_THRESHOLD]
     if evidence:
         return evidence[:2], True
@@ -189,7 +208,27 @@ def edge_provenance(source_label: str, target_label: str, evidence_refs: List[di
         if a >= MENTION_THRESHOLD and b >= MENTION_THRESHOLD:
             # Both concepts are discussed together: weaker than a quote, but auditable
             return [chunk.evidence(_snippet(chunk.text, source_label, 300), min(a, b) * 0.6, "co_mention")], True
+    if source_evidence and target_evidence and by_chunk:
+        shared = shared_passage(source_evidence, target_evidence, by_chunk)
+        if shared:
+            return [shared], True
     return [], False
+
+
+def recheck_unsupported_edges(nodes: List[dict], edges: List[dict], chunks: List[EvidenceChunk]) -> int:
+    """Give unsupported edges of an existing graph the shared-passage check (no LLM call).
+    Works on API-shaped dicts (`from`/`to`); returns how many edges are now supported."""
+    by_chunk = {c.chunk_id: c for c in chunks if c.chunk_id}
+    provenance = {n["id"]: n.get("provenance") or [] for n in nodes}
+    fixed = 0
+    for edge in edges:
+        if edge.get("supported") is not False:
+            continue
+        shared = shared_passage(provenance.get(edge["from"], []), provenance.get(edge["to"], []), by_chunk)
+        if shared:
+            edge["provenance"], edge["supported"] = [shared], True
+            fixed += 1
+    return fixed
 
 
 def attach_provenance(course_id: str, concepts: List[dict], relationships: List[dict],
@@ -215,6 +254,8 @@ def attach_provenance(course_id: str, concepts: List[dict], relationships: List[
         })
 
     labels = {n["id"]: n["label"] for n in nodes}
+    node_evidence = {n["id"]: n["provenance"] for n in nodes}
+    by_chunk = {c.chunk_id: c for c in chunks if c.chunk_id}
     edges, seen = [], set()
     for rel in relationships:
         src = name_to_id.get(normalize_label(rel.get("from") or rel.get("source") or ""))
@@ -226,7 +267,8 @@ def attach_provenance(course_id: str, concepts: List[dict], relationships: List[
         if edge_id in seen:
             continue
         seen.add(edge_id)
-        evidence, supported = edge_provenance(labels[src], labels[tgt], rel.get("evidence", []), chunks, by_ref)
+        evidence, supported = edge_provenance(labels[src], labels[tgt], rel.get("evidence", []), chunks, by_ref,
+                                              node_evidence[src], node_evidence[tgt], by_chunk)
         edges.append({
             "id": edge_id, "from": src, "to": tgt, "relation": relation,
             "strength": rel.get("strength", 0.8), "provenance": evidence, "supported": supported,

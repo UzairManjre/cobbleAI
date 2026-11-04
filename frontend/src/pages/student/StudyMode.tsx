@@ -5,10 +5,11 @@ import { useAuthStore } from '../../store/authStore';
 import KnowledgeGraph from '../../components/graph/KnowledgeGraph';
 import TutorChat from '../../components/graph/TutorChat';
 import NodeInfo from '../../components/graph/NodeInfo';
+import ConceptNavigator from '../../components/graph/ConceptNavigator';
 import {
   ArrowLeft, BookOpen, RefreshCw, GraduationCap,
   RotateCcw, CheckCircle2, Sparkles, ChevronLeft,
-  ChevronRight, Award, Lock, HelpCircle, MessageSquare
+  ChevronRight, Award, HelpCircle, MessageSquare, Network, PanelRightOpen
 } from 'lucide-react';
 
 export default function StudyMode() {
@@ -76,7 +77,8 @@ export default function StudyMode() {
       
       if (state.nodes && state.nodes.length > 0) {
         setShowGenerator(false);
-        if (!state.currentNodeId && state.nodes.length > 0) {
+        // A rebuilt map can drop the concept the student was on: start from the first one then
+        if (!state.nodes.some(n => n.id === state.currentNodeId)) {
           setCurrentNode(state.nodes[0].id);
         }
       }
@@ -122,12 +124,6 @@ export default function StudyMode() {
       navigateToNode(nextId);
     }
   };
-
-  // Check if current node is locked based on incoming edges
-  const incomingEdges = edges.filter(e => e.to === currentNode?.id);
-  const isCurrentNodeLocked = incomingEdges.length > 0 && incomingEdges.some(
-    e => !visitedNodes.includes(e.from) && !masteredNodes.includes(e.from)
-  );
 
   const masteredCount = masteredNodes.length;
   const masteryPercentage = nodes.length > 0 ? Math.round((masteredCount / nodes.length) * 100) : 0;
@@ -248,7 +244,7 @@ export default function StudyMode() {
     );
   }
 
-  const activeNodeId = currentNodeId || (nodes.length > 0 ? nodes[0].id : null);
+  const activeNodeId = nodes.some(n => n.id === currentNodeId) ? currentNodeId : (nodes[0]?.id ?? null);
 
   if (!activeNodeId) {
     return (
@@ -258,141 +254,120 @@ export default function StudyMode() {
     );
   }
 
+  const visitedPct = nodes.length > 0 ? Math.round((visitedNodes.length / nodes.length) * 100) : 0;
+
   return (
-    <div className="h-screen bg-black text-white flex flex-col font-sans">
-      
-      {/* Universal Top Bar */}
-      <header className="h-16 bg-[#0A0A0A] border-b border-[#1A1A1A] flex items-center justify-between px-6 shrink-0 z-20">
-        
-        {/* Left: Back & Title */}
-        <div className="flex items-center gap-5">
+    // Full window, like the 3D map: the app's centred page layout leaves the study tools cramped
+    <div className="fixed inset-0 z-[60] bg-black text-white flex flex-col font-sans">
+
+      {/* Top bar */}
+      <header className="h-14 bg-[#0A0A0A] border-b border-[#1A1A1A] flex items-center gap-4 px-4 shrink-0 z-20">
+        <div className="flex items-center gap-3 min-w-0 lg:min-w-[300px]">
           <button
             onClick={() => navigate(courseId ? `/${role}/courses/${courseId}` : dashboardRoute)}
+            aria-label="Back to the course"
             className="p-2 bg-[#111111] border border-[#1A1A1A] rounded-lg hover:border-[#333333] transition-all text-[#888888] hover:text-white"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div>
-            <h1 className="text-base font-medium tracking-tight uppercase text-white flex items-center gap-2">
-              Study Space
-            </h1>
-            <p className="text-[11px] font-semibold text-[#888888] uppercase tracking-widest">
-              {nodes.length} concepts • {edges.length} connections
-            </p>
+          <div className="min-w-0">
+            <h1 className="text-sm font-medium text-white">Study Space</h1>
+            <p className="text-[11px] text-[#888888] truncate">{nodes.length} concepts · {edges.length} connections</p>
           </div>
         </div>
 
-        {/* Center: Dedicated Mode Switcher Tabs */}
-        <div className="bg-[#111111] border border-[#1A1A1A] p-1 rounded-xl flex items-center gap-1">
+        {/* Mode switcher */}
+        <div className="mx-auto bg-[#111111] border border-[#1A1A1A] p-1 rounded-xl flex items-center gap-1">
           <button
             onClick={() => setStudyTab('teach')}
             className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
-              studyTab === 'teach'
-                ? 'bg-white text-black shadow-sm'
-                : 'text-[#888888] hover:text-white'
+              studyTab === 'teach' ? 'bg-white text-black shadow-sm' : 'text-[#888888] hover:text-white'
             }`}
           >
             <GraduationCap className="w-3.5 h-3.5" />
-            <span>Teach Mode</span>
+            <span>Learn</span>
           </button>
-
           <button
             onClick={() => setStudyTab('review')}
             className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
-              studyTab === 'review'
-                ? 'bg-white text-black shadow-sm'
-                : 'text-[#888888] hover:text-white'
+              studyTab === 'review' ? 'bg-white text-black shadow-sm' : 'text-[#888888] hover:text-white'
             }`}
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Review Mode</span>
+            <span>Review</span>
             {masteredCount > 0 && (
-              <span className="bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded text-[10px]">
-                {masteredCount}
-              </span>
+              <span className="bg-emerald-500/20 text-emerald-400 px-1.5 rounded text-[10px]">{masteredCount}</span>
             )}
           </button>
         </div>
 
-        {/* Right: Stats & Graph Collapse Toggle */}
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-3 bg-[#111111] border border-[#1A1A1A] px-3 py-1.5 rounded-xl text-xs font-medium text-[#888888]">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              Visited: <strong className="text-white">{visitedNodes.length}</strong>/{nodes.length}
-            </span>
-            <span className="text-[#333333]">|</span>
-            <span className="flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5 text-emerald-400" />
-              Mastery: <strong className="text-emerald-400">{masteryPercentage}%</strong>
-            </span>
+        {/* Progress and layout */}
+        <div className="flex items-center justify-end gap-3 shrink-0 lg:min-w-[300px]">
+          <div className="hidden md:flex items-center gap-4 text-[11px] text-[#888888]">
+            <div className="w-28" title={`${visitedNodes.length} of ${nodes.length} concepts visited`}>
+              <div className="flex justify-between mb-1">
+                <span>Visited</span>
+                <span className="text-white tabular-nums">{visitedNodes.length}/{nodes.length}</span>
+              </div>
+              <div className="h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 transition-all" style={{ width: `${visitedPct}%` }} />
+              </div>
+            </div>
+            <div className="w-24" title={`${masteredCount} of ${nodes.length} concepts mastered`}>
+              <div className="flex justify-between mb-1">
+                <span className="flex items-center gap-1"><Award className="w-3 h-3 text-emerald-400" /> Mastered</span>
+                <span className="text-emerald-400 tabular-nums">{masteryPercentage}%</span>
+              </div>
+              <div className="h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-400 transition-all" style={{ width: `${masteryPercentage}%` }} />
+              </div>
+            </div>
           </div>
 
           {studyTab === 'teach' && (
             <button
               onClick={() => setIsGraphCollapsed(!isGraphCollapsed)}
-              className="px-3 py-1.5 bg-[#111111] text-[#888888] hover:text-white border border-[#1A1A1A] hover:border-[#333333] rounded-xl font-medium transition-all text-xs uppercase tracking-wider"
+              aria-pressed={!isGraphCollapsed}
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 whitespace-nowrap bg-[#111111] text-[#AAAAAA] hover:text-white border border-[#1A1A1A] hover:border-[#333333] rounded-lg font-medium transition-all text-xs"
             >
-              {isGraphCollapsed ? '🕸 Show Graph' : '💬 Focus Chat'}
+              {isGraphCollapsed ? <Network className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+              {isGraphCollapsed ? 'Show map' : 'Hide map'}
             </button>
           )}
         </div>
-
       </header>
 
       {/* Main Workspace Area */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative w-full">
-        
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden relative w-full">
+
         {/* =========================================================================
-            TEACH MODE (Socratic Graph & Interactive Concept Progression)
+            LEARN MODE: the concept, the map around it, and the tutor
            ========================================================================= */}
         {studyTab === 'teach' && (
           <>
-            {/* Left Graph & Concept Details */}
-            <div className={`flex-1 flex-col overflow-hidden lg:border-r border-[#1A1A1A] ${mobileActiveTab === 'content' ? 'flex' : 'hidden lg:flex'}`}>
+            {/* Concept panel and map: stacked (map on top) below xl, side by side from xl */}
+            <div className={`min-h-0 min-w-0 flex-col-reverse xl:flex-row overflow-hidden ${
+              isGraphCollapsed ? 'lg:w-[420px] lg:flex-none' : 'flex-1'
+            } ${mobileActiveTab === 'content' ? 'flex flex-1' : 'hidden lg:flex'}`}>
+              <aside className={`min-h-0 flex flex-col bg-[#080808] border-[#1A1A1A] ${
+                isGraphCollapsed ? 'flex-1' : 'h-[55%] xl:h-auto xl:w-[380px] 2xl:w-[420px] xl:flex-none border-t xl:border-t-0 xl:border-r'
+              }`}>
+                <ConceptNavigator nodes={nodes} currentIndex={Math.max(currentIndex, 0)} onPick={handleNodeClick} />
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <NodeInfo nodeId={activeNodeId} onNavigate={handleNodeClick} />
+                </div>
+              </aside>
               {!isGraphCollapsed && (
-                <div className="flex-1 relative bg-[#050505]">
+                <div className="flex-1 min-h-0 relative bg-[#050505]">
                   <KnowledgeGraph onNodeClick={handleNodeClick} />
                 </div>
               )}
-
-              {/* Node Navigation Bar & Info Card */}
-              <div className="bg-[#0A0A0A] border-t border-[#1A1A1A] p-4 shrink-0">
-                <div className="flex items-center justify-between gap-4 mb-3">
-                  <button
-                    onClick={handlePreviousNode}
-                    disabled={!canGoPrevious}
-                    className="px-3 py-1.5 bg-[#111111] border border-[#1A1A1A] rounded-xl text-xs text-[#888888] hover:text-white disabled:opacity-30 transition-all flex items-center gap-1"
-                  >
-                    <ChevronLeft className="w-4 h-4" /> Previous
-                  </button>
-
-                  <div className="text-center">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[#888888]">
-                      Concept {currentIndex + 1} of {nodes.length}
-                    </span>
-                    {isCurrentNodeLocked && (
-                      <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                        <Lock className="w-3 h-3" /> Prerequisite Required
-                      </span>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={handleNextNode}
-                    disabled={!canGoNext}
-                    className="px-3 py-1.5 bg-[#111111] border border-[#1A1A1A] rounded-xl text-xs text-[#888888] hover:text-white disabled:opacity-30 transition-all flex items-center gap-1"
-                  >
-                    Next <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <NodeInfo nodeId={activeNodeId} onNavigate={handleNodeClick} />
-              </div>
             </div>
 
-            {/* Right Panel: Socratic Tutor Chat */}
-            <div className={`lg:border-l border-[#1A1A1A] flex-col ${mobileActiveTab === 'chat' ? 'flex-1 flex' : 'hidden lg:flex'} ${isGraphCollapsed ? 'lg:flex-1 lg:w-full' : 'lg:w-[450px] shrink-0'}`}>
+            {/* Tutor */}
+            <div className={`min-h-0 lg:border-l border-[#1A1A1A] flex-col ${mobileActiveTab === 'chat' ? 'flex flex-1' : 'hidden lg:flex'} ${
+              isGraphCollapsed ? 'lg:flex-1' : 'lg:w-[400px] 2xl:w-[460px] lg:shrink-0'
+            }`}>
               <TutorChat key={activeNodeId} nodeId={activeNodeId} mode="teach" isMassive={isGraphCollapsed} />
             </div>
           </>
@@ -586,7 +561,7 @@ export default function StudyMode() {
             </div>
 
             {/* Right 40%: Targeted Review Chat */}
-            <div className={`lg:w-[450px] shrink-0 lg:border-l border-[#1A1A1A] flex-col ${mobileActiveTab === 'chat' ? 'flex-1 flex' : 'hidden lg:flex'}`}>
+            <div className={`min-h-0 lg:w-[400px] 2xl:w-[460px] shrink-0 lg:border-l border-[#1A1A1A] flex-col ${mobileActiveTab === 'chat' ? 'flex-1 flex' : 'hidden lg:flex'}`}>
               <TutorChat key={activeNodeId} nodeId={activeNodeId} mode="review" />
             </div>
 
@@ -610,7 +585,7 @@ export default function StudyMode() {
           }`}
         >
           {studyTab === 'teach' ? <BookOpen className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
-          {studyTab === 'teach' ? 'Graph & Info' : 'Flashcard'}
+          {studyTab === 'teach' ? 'Concept & map' : 'Flashcard'}
         </button>
         <button
           onClick={() => setMobileActiveTab('chat')}

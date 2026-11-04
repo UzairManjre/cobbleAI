@@ -21,7 +21,7 @@ This note covers what changed from v1, how to run each part, and how to reproduc
 |---|---|---|
 | API | `uvicorn app.main:app --port 8000` | |
 | Worker (documents, analytics) | `celery -A app.core.celery_app worker --pool=solo` | Default queue. 300 s limit per document. |
-| **Media worker** | `celery -A app.core.celery_app worker -Q media --pool=solo -n media@%h` | Lecture recordings only (`process_lecture`), with long time limits. Run exactly one per GPU. |
+| **Media worker** | `celery -A app.core.celery_app worker -Q media --pool=solo -n media@%h` | Long GPU jobs with long time limits: lecture recordings (`process_lecture`) and concept-map builds (`build_course_graph`), one at a time. Run exactly one per GPU. |
 | Beat | `celery -A app.core.celery_app beat` | Daily aggregates, user profiles, node metrics every 6 h, dropout risk weekly, **weekly question insights**. |
 | Ollama | `ollama serve` | Model from `LLM_MODEL`. Frame captions use `CAPTION_MODEL` (empty = `LLM_MODEL`; it must accept images). |
 
@@ -56,8 +56,13 @@ Each flag doubles as an ablation switch and an instant rollback to v1 behaviour.
 | `GRADER_V2` | true | v1 single-pass grading |
 | `LECTURE_PIPELINE` | true | media uploads are rejected |
 | `FRAME_CAPTIONING` | true | keyframes get OCR only |
+| `AUTO_BUILD_MAP` | true | a new course's first concept map waits for the professor to click Build Map |
+
+Concept-map builds are background jobs (`GraphBuild`, collection `graph_builds`). The course page's **Course setup** panel shows each file's processing stage and the build's step, progress, time left, counts and activity log, and it can cancel a build. Asking for a build while one is queued or running joins that build. A running build whose worker stops is reported as interrupted after five minutes without a heartbeat. `GRAPH_BUILD_TIME_LIMIT_S` (default 3 h) caps one build.
 
 Grader settings: `GRADER_SAMPLES=3`, `GRADER_SAMPLE_TEMPERATURE=0.7`, `GRADER_REVIEW_THRESHOLD=0.7`.
+
+Ask by voice: `VOICE_INPUT` (default true) turns on `POST /api/tutor/transcribe`, which accepts a recording of up to 90 s or 10 MB. `VOICE_ASR_MODEL` (default `small`) stays loaded in the API process, and `VOICE_ASR_DEVICE` defaults to `auto`: CUDA, falling back to the CPU. For a 10-second question that is about 0.6 s on an RTX 3080 (about 0.5 GB of GPU memory) or about 4 s on the CPU. Recordings go to a temporary file, which is deleted right after decoding. Analytics records each question's length and language, never its words.
 
 Test results: a test shows results right after submission only when "Show results right after submission" is ticked (`show_results_immediately`); otherwise the instructor clicks **Release Results** on the test card. Either way, an attempt with an AI grade still waiting for review stays hidden until it is reviewed. A submitted or graded attempt is final: it cannot be re-submitted, and a late auto-save cannot overwrite it.
 
@@ -73,6 +78,13 @@ python -m scripts.migrate_qdrant_v2 --drop-legacy      # remove course_<id> once
 ```
 
 To get provenance on an existing concept map, regenerate the graph from the course page.
+
+A link counts as supported when the AI quotes a passage that states it, when one passage names both concepts, or when both concepts were verified in the same passage (the AI's names often differ from the slide's wording). Maps built before the third check can get it without another AI call:
+
+```bash
+python -m scripts.recheck_graph_sources --dry-run    # how many links each course would gain
+python -m scripts.recheck_graph_sources              # update each course's latest map; safe to re-run
+```
 
 ## Evaluation harness (`backend/eval`)
 
@@ -120,6 +132,7 @@ python -m eval.cli draft-gold --course <id> --out drafts.jsonl      # candidates
 | Grading | `GET /api/professor/grading/queue`, `POST …/answers/{attempt}/{question}/review`, `GET …/export.csv`, `GET …/agreement`, `POST /api/professor/tests/{id}/release-results` |
 | Study plans | `GET /api/student/study-plans/topics?node_id&course_id`, `POST …/topics/generate` (per-topic deep dive) |
 | Graph audit | `POST /api/professor/graph/{id}/audit-sample`, `PATCH …/edges/{edge}/audit`, `GET …/audit-report` |
+| Course setup | `GET /api/professor/graph/course/{id}/setup`, `POST …/course/{id}/build` (202; joins a running build), `POST /api/professor/graph/builds/{build}/cancel`; `GET /api/{role}/graph/course/{id}/status` reports `building` with progress |
 | Insights | `GET /api/insights/courses/{id}/questions`, `POST …/questions/generate`, `GET …/coverage-gaps`, `GET …/source-counts`, `GET …/reports/{weekly\|term}.{pdf\|csv\|json}` |
 | FAQ | `GET /api/faq/courses/{id}` (students see published entries only), `POST …/draft`, `POST /api/faq/courses/{id}`, `PATCH/DELETE /api/faq/{entry}` |
 | Consent | `GET/PUT /api/consent` |

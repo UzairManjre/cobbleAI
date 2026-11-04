@@ -50,7 +50,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
       ) : (
         leftIcon && <span className="shrink-0">{leftIcon}</span>
       )}
-      <span>{children}</span>
+      {/* Icons passed as children sit beside the text (Tailwind makes svg a block element) */}
+      <span className="inline-flex items-center gap-[inherit]">{children}</span>
       {!isLoading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
     </button>
   );

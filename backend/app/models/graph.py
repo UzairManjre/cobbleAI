@@ -189,3 +189,43 @@ class StudySession(Document):
 
     class Settings:
         name = "study_sessions"
+
+
+class BuildEvent(BaseModel):
+    at: datetime = Field(default_factory=_utcnow)
+    message: str
+
+
+class GraphBuild(Document):
+    """One concept-map build for a course. It runs as a Celery task, so its progress lives here
+    (not in a browser connection): any page can show it, and closing a tab no longer hides it."""
+    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    course_id: uuid.UUID
+    requested_by: Optional[uuid.UUID] = None
+    trigger: str = "manual"  # manual | auto (all materials finished processing)
+    status: str = "queued"  # queued | running | complete | failed | cancelled
+    step: int = 0  # generator step, 1..total_steps
+    total_steps: int = 6
+    message: str = "Waiting for a worker"
+    detail: str = ""
+    sources: int = 0
+    passages: int = 0
+    chunks_total: int = 0
+    chunks_done: int = 0
+    concepts_found: int = 0
+    relations_found: int = 0
+    events: List[BuildEvent] = []  # recent activity, newest last
+    cancel_requested: bool = False
+    graph_id: Optional[uuid.UUID] = None
+    nodes_count: Optional[int] = None
+    edges_count: Optional[int] = None
+    unsupported_edges: Optional[int] = None
+    error: Optional[str] = None
+    created_at: datetime = Field(default_factory=_utcnow)
+    started_at: Optional[datetime] = None
+    extract_started_at: Optional[datetime] = None
+    heartbeat_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+    class Settings:
+        name = "graph_builds"

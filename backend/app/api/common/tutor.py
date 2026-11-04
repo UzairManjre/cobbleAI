@@ -1,15 +1,17 @@
-"""Course-level tutor: ask the course or one lecture, tutor policy, and answer feedback."""
+"""Course-level tutor: ask the course or one lecture, ask by voice, tutor policy, and answer feedback."""
 
+import os
 import time
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.api.auth import current_active_user, require_role
+from app.core.limiter import limiter
 from app.models.graph import ChatMessage
 from app.models.tutor import HINT_LEVELS, AnswerFeedback, TopicPolicyOverride, TutorPolicy, TutorRun
 from app.models.user import User
@@ -40,6 +42,50 @@ def _maybe_uuid(value: Optional[str]) -> Optional[uuid.UUID]:
 
 def _chat_node_id(lecture_id: Optional[str]) -> str:
     return f"lecture:{lecture_id}" if lecture_id else "course"
+
+
+@router.post("/transcribe")
+@limiter.limit("30/minute")
+async def transcribe_voice_question(
+    request: Request,
+    audio: UploadFile = File(...),
+    course_id: Optional[uuid.UUID] = Form(None),
+    language: Optional[str] = Form(None),
+    user: User = Depends(current_active_user),
+):
+    """Ask by voice: a short recording -> text for the question box. Transcribed by a local
+    Whisper model on this server; the recording is not stored."""
+    import asyncio
+    from app.core.config import settings
+    from app.models.graph import KnowledgeGraph
+    from app.services.media import voice
+
+    if not settings.VOICE_INPUT:
+        raise HTTPException(status_code=404, detail="Voice questions are turned off on this server")
+    data = await audio.read(voice.MAX_BYTES + 1)
+    if len(data) > voice.MAX_BYTES:
+        raise HTTPException(status_code=413, detail="The recording is too large. Keep voice questions short.")
+    prompt = None
+    if course_id:
+        await ensure_course_access(user, course_id)
+        # The course map's concept names are the vocabulary students will say
+        graph = await KnowledgeGraph.find(KnowledgeGraph.course_id == course_id).sort(-KnowledgeGraph.created_at).first_or_none()
+        if graph:
+            prompt = voice.vocabulary_prompt([n.label for n in graph.nodes])
+    suffix = os.path.splitext(audio.filename or "")[1] or ".webm"
+    try:
+        result = await asyncio.to_thread(voice.transcribe_question, data, suffix, prompt, language)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        print(f"  Voice transcription failed: {e}")
+        raise HTTPException(status_code=503, detail="Speech recognition is unavailable right now. Type your question instead.")
+    safe_track_event(
+        "voice_question_transcribed", "chat", user.id, user.role, course_id=course_id,
+        payload={"duration_sec": result["duration_sec"], "language": result["language"], "seconds": result["seconds"],
+                 "empty": not result["text"]},  # never the words themselves
+    )
+    return result
 
 
 class CourseAskRequest(BaseModel):

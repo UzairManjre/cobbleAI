@@ -7,7 +7,7 @@ initialise Beanie from this list, so a new model only has to be added here.
 from app.models.user import User
 from app.models.course import Course, Enrolment, CourseInvite
 from app.models.document import DocumentModel
-from app.models.graph import KnowledgeGraph, StudySession, ChatMessage
+from app.models.graph import KnowledgeGraph, StudySession, ChatMessage, GraphBuild
 from app.models.study_plan import StudyPlan, StudyProgress, TopicStudyPlan
 from app.models.test import Test, TestAttempt, MockTest, TestAnalytics
 from app.models.grading import Rubric, GradingDraft, RegradeRequest
@@ -28,7 +28,7 @@ ALL_DOCUMENT_MODELS = [
     # Core business models
     User, Course, Enrolment, CourseInvite,
     DocumentModel,
-    KnowledgeGraph, StudySession, ChatMessage,
+    KnowledgeGraph, StudySession, ChatMessage, GraphBuild,
     StudyPlan, StudyProgress, TopicStudyPlan,
     Test, TestAttempt, MockTest, TestAnalytics,
     Rubric, GradingDraft, RegradeRequest,

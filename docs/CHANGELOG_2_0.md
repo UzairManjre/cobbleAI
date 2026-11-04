@@ -16,11 +16,21 @@ This is the change log for the move from v1 to 2.0 (branch `feature/cobbleai-2.0
 
 ## New for students
 
+- **Redesigned Study Space.** It fills the window. On wide screens it has three columns: the concept (description, what to study first, sources, connections written as sentences), the map, and the tutor.
+  - The map follows the current concept and highlights its neighbours.
+  - Only the current concept's links are labelled, and dashes mean only "no source".
+  - It has a minimap and a concept search.
+  - A concept is locked only by links that mean "study this first" (prerequisite for, enables, builds on, requires), not by "contrasts with" or "relates to".
 - **A tutor that cites or declines.** Answers cite their sources as chips with a page, slide or timestamp. A PDF chip opens the file at that page, and a lecture chip opens the recording at that second. When the course materials don't cover a question, the tutor says so and lists what it searched, instead of answering from general knowledge.
 - **Hint ladder.** Students choose how much help they get: a nudge, a guiding question, a worked step or the full answer. Levels above the instructor's limit are disabled.
 - **Teach it back.** The student explains a concept, and the tutor plays a curious classmate: it asks a follow-up question and cites the slide for any claim that conflicts with the notes.
 - **Answer feedback.** Each answer has "helpful", "wrong" and "not in my notes" buttons. The last two reach the instructor.
-- **Read aloud.** Answers can be read out, using only voices installed on the device, so no text leaves the computer.
+- **Read aloud.** Each answer has a **Listen** button. It uses only voices installed on the device, so no text leaves the computer.
+- **Ask by voice.** A microphone button next to every tutor input (Study Space, course chat, lecture chat).
+  - Students speak a question, and it appears in the box to edit before sending.
+  - A small Whisper model on the course server transcribes it, using the course map's concept names as vocabulary; the recording is not kept.
+  - Measured on an RTX 3080: about 0.9 s for a 10-second question once the model is loaded (about 3 s for the first).
+  - This is the "Voice questions" feature, which the research plan lists as Later. Explanations in Hindi or Gujarati are still not built: the plan says the 2B model's explanations in those languages have to be measured first. The recogniser itself detects the language.
 - **Lecture view.** A recording plays with captions, alongside chapters (each with a summary and timestamped notes) and a transcript where clicking a line jumps to it. Uncertain transcript lines are shaded. The transcript can be downloaded, and students can ask questions about that lecture alone.
 - **Confidence check-ins.** Before each test answer is submitted, students rate their confidence from 1 to 4. A calibration chart (confidence vs accuracy) appears on the result page and the dashboard.
 - **Test results page.** A finished test opens its result page once the instructor releases results (or immediately, if the test is set up that way).
@@ -30,6 +40,12 @@ This is the change log for the move from v1 to 2.0 (branch `feature/cobbleai-2.0
 
 ## New for professors
 
+- **Course setup panel.** While a course is being set up, the course page shows:
+  - each file's processing stage, with a progress bar and its error if it failed;
+  - the concept-map build: its step, a progress bar, time elapsed and left, the concepts and links found so far, an activity log and a Cancel button;
+  - whether the map is out of date because files were processed after it was built, and how many students have joined.
+
+  The map builds as a background job: it survives closing the tab, a second click joins the running build instead of starting another, and a course's first map starts by itself once every file is processed. The map page shows the same progress, and students see that the map is being prepared.
 - **Lecture uploads.** mp4, webm, mov, mp3, m4a and wav files can be uploaded, with a progress bar. They are processed locally into a transcript, keyframes, slide text (OCR), keyframe descriptions, captions and chapters with notes. Parts of a recording can be excluded (for example classroom Q&A). Excluded parts disappear from search, captions and transcript, and the chapters are rewritten without them.
 - **Tutor policy.** A card on the course page sets:
   - the highest hint level and whether full answers are allowed;
@@ -44,6 +60,11 @@ This is the change log for the move from v1 to 2.0 (branch `feature/cobbleai-2.0
   - An agreement report compares the AI with the instructor (quadratic weighted kappa, mean error, exact agreement, overall and by Bloom level, with confidence intervals). The queue exports to CSV.
 - **Rubrics for assignments.** The assignment grading page has a rubric editor and a button that drafts AI grades for review.
 - **Releasing results.** The test wizard has a "Show results right after submission" checkbox, and each test card has a **Release Results** button.
+- **Redesigned Tests page**, in the app's dark style:
+  - totals for tests, published, drafts and AI grades waiting for review, and All / Drafts / Published tabs;
+  - each card shows its minutes, questions, marks and pass mark, how many students submitted, how many AI grades wait for review, and whether students can see results;
+  - the create wizard has labelled steps, a concept filter and clear question-type toggles, and says that writing questions takes a few minutes;
+  - question review uses the same style, with the Bloom-level and rubric editor.
 - **Bloom levels.** Generated questions carry a cognitive level, editable in the wizard and the preview.
 - **Course insights page**:
   - weekly clusters of student questions, each labelled with its topic and likely misconception;
@@ -187,6 +208,15 @@ These problems were found and fixed. Each fix has a regression test where one ma
   - The professor's study-plan card returned errors.
   - Duplicate cleanup always failed.
   - `/login` showed a blank page.
+- **Map building and display** (found while using a real course).
+  - Every click on "Regenerate Graph" started another build inside the browser connection, so one course ran three at once.
+  - Dismissing the progress dialog hid a build that was still running.
+  - On Windows, a Greek letter or maths symbol in the slides made concept extraction fail for that whole chunk: printing the model's output to the console raised an encoding error. Console output now replaces characters it can't encode.
+  - Icons in buttons sat above their labels.
+  - Text that asked for the Inter font, which the app no longer loads, fell back to Times.
+  - After a rebuild, the Study Space could keep a concept that the new map no longer had.
+  - Links were flagged as having no source when the AI's concept names differed from the slide's wording, for example "Missing Data Handling" on a slide titled "Handling Missing Data". A link now also counts as supported when both concepts were verified in the same passage. `scripts/recheck_graph_sources.py` applies this to existing maps (on the DSML course, 6 of 17 flagged links). Links still flagged are labelled "AI-inferred".
+  - The test wizard showed a stray "=" before the question types.
 - **Research numbers.**
   - One judge error crashed a whole evaluation run.
   - The three S6 lecture conditions ran on different questions.

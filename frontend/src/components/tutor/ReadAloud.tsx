@@ -45,10 +45,13 @@ export default function ReadAloud({ text }: { text: string }) {
       type="button"
       onClick={toggle}
       title={speaking ? 'Stop reading' : 'Read aloud (on-device voice)'}
-      className="px-2 py-1 rounded-lg text-[10px] flex items-center gap-1 text-[#666666] hover:text-[#CCCCCC]"
+      aria-pressed={speaking}
+      className={`px-2 py-1 rounded-lg text-[11px] flex items-center gap-1 border transition-colors ${
+        speaking ? 'text-blue-300 border-blue-500/40 bg-blue-500/10' : 'text-[#888888] border-transparent hover:text-white hover:border-[#333333]'
+      }`}
     >
       {speaking ? <Square className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-      <span className="hidden sm:inline">{speaking ? 'Stop' : 'Listen'}</span>
+      <span>{speaking ? 'Stop' : 'Listen'}</span>
     </button>
   );
 }

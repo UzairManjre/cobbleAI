@@ -1,10 +1,13 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactFlow, {
   Controls,
   Background,
+  MiniMap,
   MarkerType,
   Handle,
   Position,
+  ReactFlowProvider,
+  useReactFlow,
   type Node,
   type Edge,
   type NodeProps,
@@ -12,187 +15,167 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useGraphStore } from '../../store/graphStore';
 import dagre from 'dagre';
-import { CheckCircle, Lock, Sparkles } from 'lucide-react';
+import { CheckCircle, Circle, Eye, Lock, Maximize2 } from 'lucide-react';
+import type { GraphEdge as CourseEdge } from '../../types/graph';
+import { conceptState, relationText, type ConceptState } from '../../utils/concepts';
 
-// --- Custom Node Implementation ---
-const ConceptNode = ({ data, id }: NodeProps) => {
-  const { visitedNodes, masteredNodes, currentNodeId, edges } = useGraphStore();
-  
-  const isCurrent = id === currentNodeId;
-  const isMastered = masteredNodes.includes(id);
-  const isVisited = visitedNodes.includes(id);
+const NODE_WIDTH = 230;
+const NODE_HEIGHT = 84;
 
-  // A node is locked if it has incoming edges and at least one predecessor is neither visited nor mastered
-  const incomingEdges = edges.filter(e => e.to === id);
-  const isLocked = incomingEdges.length > 0 && incomingEdges.some(
-    e => !visitedNodes.includes(e.from) && !masteredNodes.includes(e.from)
-  );
+interface ConceptData {
+  label: string;
+  difficulty?: string;
+  state: ConceptState;
+  current: boolean;
+  dimmed: boolean;
+}
 
-  // Difficulty badge colors
-  const difficultyColor = data.difficulty === 'advanced' ? 'bg-amber-400 text-amber-950' :
-                          data.difficulty === 'beginner' ? 'bg-emerald-400 text-emerald-950' : 'bg-blue-400 text-blue-950';
+const STATE_STYLE: Record<ConceptState, { card: string; tag: string; label: string; Icon: typeof Circle }> = {
+  mastered: { card: 'bg-emerald-500/10 border-emerald-500/40', tag: 'text-emerald-400', label: 'Mastered', Icon: CheckCircle },
+  visited: { card: 'bg-[#0B1220] border-blue-500/30', tag: 'text-blue-400', label: 'Visited', Icon: Eye },
+  locked: { card: 'bg-[#0A0A0A] border-[#1F1F1F]', tag: 'text-[#777777]', label: 'Study prerequisites first', Icon: Lock },
+  open: { card: 'bg-[#101010] border-[#2A2A2A]', tag: 'text-[#A3A3A3]', label: 'Not started', Icon: Circle },
+};
 
-  // Dynamic visual states
-  let cardStyle = 'bg-[#0A0A0A] border-[#1A1A1A] text-white hover:border-[#333333]';
-  let badgeStyle = 'bg-[#111111] text-[#888888] border-[#1A1A1A]';
-  let statusText = 'Unlocked';
-  let StatusIcon = Sparkles;
+const DIFFICULTY_TEXT: Record<string, string> = {
+  beginner: 'text-emerald-300',
+  intermediate: 'text-blue-300',
+  advanced: 'text-amber-300',
+};
 
-  if (isMastered) {
-    cardStyle = 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.12)]';
-    badgeStyle = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-    statusText = 'Mastered';
-    StatusIcon = CheckCircle;
-  } else if (isLocked) {
-    cardStyle = 'bg-[#050505] border-[#1A1A1A] text-[#888888] opacity-60 cursor-not-allowed';
-    badgeStyle = 'bg-[#111111] text-[#A3A3A3] border-[#1A1A1A]';
-    statusText = 'Locked';
-    StatusIcon = Lock;
-  } else if (isVisited) {
-    cardStyle = 'bg-blue-500/5 border-blue-500/30 text-white hover:border-blue-500/50';
-    badgeStyle = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-    statusText = 'In Progress';
-    StatusIcon = Sparkles;
-  }
-
-  if (isCurrent) {
-    cardStyle = `${cardStyle} ring-2 ring-blue-500/50 border-blue-500 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.2)]`;
-  }
-
+/** Each concept reads its state from data, so streaming chat tokens never re-render the map. */
+const ConceptNode = ({ data }: NodeProps<ConceptData>) => {
+  const style = STATE_STYLE[data.state];
   return (
-    <div 
+    <div
       role="button"
       tabIndex={0}
-      aria-label={`${data.label} - ${statusText} - ${data.difficulty || 'Core'}`}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          // ReactFlow handles selection when nodes are focused and enter is pressed
-        }
-      }}
-      className={`
-      relative px-5 py-4 rounded-2xl transition-all duration-300
-      border cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${cardStyle}
-    `}>
-      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-[#333333] !border-none" />
-
-      <div className="space-y-1.5 min-w-[170px]">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <StatusIcon className="w-3.5 h-3.5 shrink-0" />
-            <span className={`text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded border ${badgeStyle}`}>
-              {statusText}
-            </span>
-          </div>
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${difficultyColor}`}>
-            {data.difficulty || 'Core'}
-          </span>
-        </div>
-
-        <h4 className="text-sm font-medium tracking-tight leading-snug">
-          {data.label}
-        </h4>
-
-        <p className="text-[11px] text-[#888888] line-clamp-1 max-w-[190px]">
-          {data.description}
-        </p>
+      aria-label={`${data.label} - ${style.label} - ${data.difficulty || 'core'}`}
+      style={{ width: NODE_WIDTH }}
+      className={`relative px-4 py-3 rounded-xl border cursor-pointer transition-all duration-300 hover:border-[#555555]
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${style.card}
+        ${data.current ? '!border-blue-500 ring-2 ring-blue-500/60 shadow-[0_0_28px_rgba(59,130,246,0.35)]' : ''}
+        ${data.dimmed ? 'opacity-30' : ''}`}
+    >
+      <Handle type="target" position={Position.Top} className="!w-1.5 !h-1.5 !bg-[#444444] !border-none" />
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider truncate ${style.tag}`}>
+          <style.Icon className="w-3 h-3 shrink-0" />
+          {data.state === 'locked' ? 'Locked' : style.label}
+        </span>
+        <span className={`text-[10px] font-semibold uppercase tracking-wider shrink-0 ${DIFFICULTY_TEXT[data.difficulty || ''] || 'text-[#888888]'}`}>
+          {data.difficulty || 'core'}
+        </span>
       </div>
-
-      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-[#333333] !border-none" />
-
-      {/* Pulse effect for current active node */}
-      {isCurrent && (
-        <div className="absolute -top-1 -right-1">
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping" />
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-500 absolute inset-0" />
-        </div>
-      )}
+      <div className={`text-[15px] font-medium leading-snug line-clamp-2 ${data.state === 'locked' ? 'text-[#AAAAAA]' : 'text-white'}`}>
+        {data.label}
+      </div>
+      <Handle type="source" position={Position.Bottom} className="!w-1.5 !h-1.5 !bg-[#444444] !border-none" />
     </div>
   );
 };
 
-const nodeTypes = {
-  concept: ConceptNode,
-};
+const nodeTypes = { concept: ConceptNode };
 
-// --- Dagre Layout Engine ---
-const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-  
-  const nodeWidth = 220;
-  const nodeHeight = 90;
-  
-  dagreGraph.setGraph({ rankdir: direction, ranksep: 90, nodesep: 70 });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+/** Top-to-bottom layout; positions depend only on the graph, not on study progress. */
+function layoutPositions(nodeIds: string[], edges: CourseEdge[]) {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: 'TB', ranksep: 80, nodesep: 50 });
+  nodeIds.forEach(id => g.setNode(id, { width: NODE_WIDTH, height: NODE_HEIGHT }));
+  edges.forEach(e => { if (g.hasNode(e.from) && g.hasNode(e.to)) g.setEdge(e.from, e.to); });
+  dagre.layout(g);
+  const positions: Record<string, { x: number; y: number }> = {};
+  nodeIds.forEach(id => {
+    const p = g.node(id);
+    positions[id] = { x: p.x - NODE_WIDTH / 2, y: p.y - NODE_HEIGHT / 2 };
   });
+  return positions;
+}
 
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  const newNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    return {
-      ...node,
-      position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - nodeHeight / 2,
-      },
-    };
-  });
-
-  return { nodes: newNodes, edges };
+const MINIMAP_COLOR: Record<ConceptState, string> = {
+  mastered: '#10B981', visited: '#3B82F6', locked: '#2A2A2A', open: '#555555',
 };
 
 interface KnowledgeGraphProps {
   onNodeClick?: (nodeId: string) => void;
 }
 
-const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
-  const { nodes: graphNodes, edges: graphEdges } = useGraphStore();
+function GraphCanvas({ onNodeClick }: KnowledgeGraphProps) {
+  const graphNodes = useGraphStore(s => s.nodes);
+  const graphEdges = useGraphStore(s => s.edges);
+  const currentNodeId = useGraphStore(s => s.currentNodeId);
+  const visitedNodes = useGraphStore(s => s.visitedNodes);
+  const masteredNodes = useGraphStore(s => s.masteredNodes);
+  const flow = useReactFlow();
+  const [ready, setReady] = useState(false);
+
+  const positions = useMemo(
+    () => layoutPositions(graphNodes.map(n => n.id), graphEdges),
+    [graphNodes, graphEdges],
+  );
 
   const { nodes, edges } = useMemo(() => {
-    if (graphNodes.length === 0) return { nodes: [], edges: [] };
+    const neighbours = new Set<string>();
+    graphEdges.forEach(e => {
+      if (e.from === currentNodeId) neighbours.add(e.to);
+      if (e.to === currentNodeId) neighbours.add(e.from);
+    });
+    const focused = !!currentNodeId && graphNodes.some(n => n.id === currentNodeId);
 
-    const initialNodes: Node[] = graphNodes.map((node) => ({
+    const flowNodes: Node<ConceptData>[] = graphNodes.map(node => ({
       id: node.id,
       type: 'concept',
+      position: positions[node.id] || { x: 0, y: 0 },
       data: {
         label: node.label,
-        description: node.description,
-        difficulty: node.difficulty
+        difficulty: node.difficulty,
+        state: conceptState(node.id, graphEdges, visitedNodes, masteredNodes),
+        current: node.id === currentNodeId,
+        dimmed: focused && node.id !== currentNodeId && !neighbours.has(node.id),
       },
-      position: { x: 0, y: 0 },
     }));
 
-    // Relation labels; relations not supported by the materials are dashed amber
-    const initialEdges: Edge[] = graphEdges.map((edge) => {
+    // Only the current concept's links carry labels; AI-inferred links (no passage supports them) stay dashed amber
+    const flowEdges: Edge[] = graphEdges.map(edge => {
       const unsupported = edge.supported === false;
+      const touching = edge.from === currentNodeId || edge.to === currentNodeId;
+      const stroke = unsupported ? '#B45309' : touching ? '#60A5FA' : '#3A3A3A';
       return {
         id: edge.id,
         source: edge.from,
         target: edge.to,
-        animated: !unsupported,
-        label: edge.relation.replace(/_/g, ' '),
-        labelStyle: { fill: unsupported ? '#F59E0B' : '#888888', fontSize: 10 },
-        labelBgStyle: { fill: '#050505' },
-        style: unsupported
-          ? { stroke: '#B45309', strokeWidth: 1.5, strokeDasharray: '6 4' }
-          : { stroke: '#333333', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: unsupported ? '#B45309' : '#888888' },
+        label: touching ? relationText(edge.relation) : undefined,
+        labelStyle: { fill: unsupported ? '#F59E0B' : '#CBD5E1', fontSize: 11, fontWeight: 500 },
+        labelBgStyle: { fill: '#050505', fillOpacity: 0.9 },
+        labelBgPadding: [6, 3] as [number, number],
+        labelBgBorderRadius: 4,
+        zIndex: touching ? 10 : 0,
+        style: {
+          stroke,
+          strokeWidth: touching ? 2.25 : 1.25,
+          strokeDasharray: unsupported ? '6 4' : undefined,
+          opacity: focused && !touching ? 0.35 : 1,
+        },
+        markerEnd: { type: MarkerType.ArrowClosed, color: stroke, width: 16, height: 16 },
       };
     });
+    return { nodes: flowNodes, edges: flowEdges };
+  }, [graphNodes, graphEdges, positions, currentNodeId, visitedNodes, masteredNodes]);
 
-    return getLayoutedElements(initialNodes, initialEdges);
-  }, [graphNodes, graphEdges]);
+  // Follow the student: centre the current concept whenever it changes
+  useEffect(() => {
+    if (!ready) return;
+    const p = currentNodeId ? positions[currentNodeId] : undefined;
+    if (p) {
+      flow.setCenter(p.x + NODE_WIDTH / 2, p.y + NODE_HEIGHT / 2, { zoom: Math.max(flow.getZoom(), 0.85), duration: 500 });
+    } else {
+      flow.fitView({ padding: 0.15 });
+    }
+  }, [ready, currentNodeId, positions, flow]);
 
-  const handleNodeClick = useCallback((_: any, node: Node) => {
-    if (onNodeClick) onNodeClick(node.id);
+  const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    onNodeClick?.(node.id);
   }, [onNodeClick]);
 
   return (
@@ -202,39 +185,56 @@ const KnowledgeGraph = ({ onNodeClick }: KnowledgeGraphProps) => {
         edges={edges}
         nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        nodesDraggable={true}
+        onInit={() => setReady(true)}
+        minZoom={0.1}
+        maxZoom={1.75}
+        nodesDraggable
         nodesConnectable={false}
-        elementsSelectable={true}
+        elementsSelectable
       >
-        <Background color="#333333" gap={24} size={1} style={{ opacity: 0.15 }} />
-        <Controls 
-          className="!bg-[#0A0A0A] !border !border-[#1A1A1A] !rounded-xl !shadow-2xl !overflow-hidden !fill-[#888888]" 
-          showInteractive={false} 
+        <Background color="#2A2A2A" gap={28} size={1} />
+        <Controls
+          position="bottom-left"
+          className="!bg-[#0A0A0A] !border !border-[#1A1A1A] !rounded-xl !shadow-2xl !overflow-hidden [&>button]:!bg-[#0A0A0A] [&>button]:!border-[#1A1A1A] [&>button]:!fill-[#AAAAAA] [&>button:hover]:!bg-[#1A1A1A]"
+          showInteractive={false}
+        />
+        <MiniMap
+          position="bottom-right"
+          pannable
+          zoomable
+          className="!bg-[#0A0A0A] !border !border-[#1A1A1A] !rounded-xl overflow-hidden"
+          maskColor="rgba(0,0,0,0.65)"
+          nodeColor={node => (node.data as ConceptData)?.current ? '#60A5FA' : MINIMAP_COLOR[(node.data as ConceptData)?.state || 'open']}
+          nodeBorderRadius={6}
         />
       </ReactFlow>
-      
-      {/* Legend */}
-      <div className="absolute top-4 right-4 p-3 bg-[#0A0A0A]/90 backdrop-blur-md border border-[#1A1A1A] rounded-xl pointer-events-none flex flex-col gap-2 z-20">
-         <div className="text-[10px] font-semibold uppercase tracking-widest text-[#888888] border-b border-[#1A1A1A] pb-1">
-           Node States
-         </div>
-         <div className="flex items-center gap-2">
-            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-xs text-[#CCCCCC]">Mastered</span>
-         </div>
-         <div className="flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-            <span className="text-xs text-[#CCCCCC]">Unlocked / Ready</span>
-         </div>
-         <div className="flex items-center gap-2">
-            <Lock className="w-3.5 h-3.5 text-[#888888]" />
-            <span className="text-xs text-[#A3A3A3]">Locked (Prerequisite)</span>
-         </div>
+
+      {/* Legend and "show everything" */}
+      <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2 pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-3 px-3 py-2 bg-[#0A0A0A]/90 backdrop-blur border border-[#1A1A1A] rounded-xl text-[11px] text-[#AAAAAA]">
+          <span className="flex items-center gap-1.5"><CheckCircle className="w-3 h-3 text-emerald-400" /> Mastered</span>
+          <span className="flex items-center gap-1.5"><Eye className="w-3 h-3 text-blue-400" /> Visited</span>
+          <span className="flex items-center gap-1.5"><Lock className="w-3 h-3 text-[#777777]" /> Prerequisites first</span>
+          <span className="flex items-center gap-1.5" title="No single passage in your materials discusses both concepts, so the AI inferred this link">
+            <svg width="18" height="6" aria-hidden><line x1="0" y1="3" x2="18" y2="3" stroke="#B45309" strokeWidth="2" strokeDasharray="4 3" /></svg>
+            AI-inferred link
+          </span>
+        </div>
+        <button
+          onClick={() => flow.fitView({ padding: 0.15, duration: 400 })}
+          className="pointer-events-auto flex items-center gap-1.5 px-3 py-2 bg-[#0A0A0A]/90 backdrop-blur border border-[#1A1A1A] hover:border-[#333333] rounded-xl text-[11px] text-[#CCCCCC] hover:text-white"
+        >
+          <Maximize2 className="w-3 h-3" /> Show whole map
+        </button>
       </div>
     </div>
   );
-};
+}
+
+const KnowledgeGraph = (props: KnowledgeGraphProps) => (
+  <ReactFlowProvider>
+    <GraphCanvas {...props} />
+  </ReactFlowProvider>
+);
 
 export default KnowledgeGraph;

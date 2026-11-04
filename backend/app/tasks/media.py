@@ -37,6 +37,8 @@ async def run_process_lecture(doc_id_str: str) -> bool:
             await reindex_legacy_documents(str(doc.course_id), str(doc.id))
         except Exception as e:
             print(f"  Legacy re-index check failed: {e}")
+        from app.worker import check_auto_build
+        await check_auto_build(doc.course_id)
         return True
     except Exception as e:
         import traceback
@@ -44,6 +46,8 @@ async def run_process_lecture(doc_id_str: str) -> bool:
         await DocumentModel.find_one({"_id": doc.id}).update({"$set": {
             "status": "failed", "error_message": str(e)[:500], "processed_at": datetime.now(timezone.utc),
         }})
+        from app.worker import check_auto_build
+        await check_auto_build(doc.course_id)
         return False
 
 

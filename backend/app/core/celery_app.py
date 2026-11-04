@@ -1,6 +1,9 @@
 from celery import Celery
 from celery.signals import worker_process_init
 from app.core.config import settings
+from app.core.console import make_console_safe
+
+make_console_safe()
 
 def _result_backend_url(broker_url: str) -> str:
     """Use Redis DB 1 for results, swapping only the trailing DB index."""
@@ -26,9 +29,14 @@ celery_app.conf.update(
     task_time_limit=360,
     task_max_retries=3,
     # Auto-discover tasks from the worker and tasks modules
-    imports=['app.worker', 'app.tasks.analytics_aggregation', 'app.tasks.media', 'app.tasks.insights'],
-    # Lecture recordings run on their own queue so long transcriptions never block document processing
-    task_routes={"process_lecture": {"queue": "media"}, "rebuild_lecture": {"queue": "media"}},
+    imports=['app.worker', 'app.tasks.analytics_aggregation', 'app.tasks.media', 'app.tasks.insights', 'app.tasks.graph'],
+    # Long GPU jobs (lecture recordings, concept-map builds) run on their own queue so they never
+    # block document processing
+    task_routes={
+        "process_lecture": {"queue": "media"},
+        "rebuild_lecture": {"queue": "media"},
+        "build_course_graph": {"queue": "media"},
+    },
     #   Celery Beat schedule for analytics aggregation  
     beat_schedule={
         "compute-daily-aggregates": {

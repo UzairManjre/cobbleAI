@@ -30,6 +30,17 @@ export const tutorApi = {
   getCourseChat: (courseId: string, lectureId?: string) =>
     api.get<{ messages: TutorMessage[] }>(`/api/tutor/courses/${courseId}/chat`, { params: { lecture_id: lectureId } }),
 
+  /** Ask by voice: the recording is transcribed by a local Whisper model on the server */
+  transcribe: (recording: Blob, courseId?: string) => {
+    const form = new FormData();
+    const ext = recording.type.includes('ogg') ? 'ogg' : recording.type.includes('mp4') ? 'm4a' : 'webm';
+    form.append('audio', recording, `question.${ext}`);
+    if (courseId) form.append('course_id', courseId);
+    return api.post<{ text: string; language: string | null; duration_sec: number; seconds: number }>(
+      '/api/tutor/transcribe', form, { timeout: 60000 },
+    );
+  },
+
   getPolicy: (courseId: string, nodeId?: string) =>
     api.get<TutorPolicyInfo>(`/api/tutor/courses/${courseId}/policy`, { params: { node_id: nodeId } }),
 

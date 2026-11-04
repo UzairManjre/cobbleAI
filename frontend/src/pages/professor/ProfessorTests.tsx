@@ -1,31 +1,87 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import { useToastStore } from "../../store/toastStore";
-import { ClipboardCheck, FileText, Plus, Sparkles } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, FileText, Loader2, Plus, Sparkles } from "lucide-react";
 import { testsApi, documentsApi, graphsApi } from "../../api";
-
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
 import { TestCard } from "../../components/tests/TestCard";
-import { PreviewTestModal } from "../../components/tests/PreviewTestModal";
+import { PreviewTestModal, type PreviewTest } from "../../components/tests/PreviewTestModal";
 import { CreateTestWizard } from "../../components/tests/CreateTestWizard";
+import type { NewTestDraft, TestSourceDocument, TestSummary, TestTopic } from "../../types/tests";
+import { apiErrorDetail } from "../../utils/apiError";
+
+type Filter = "all" | "draft" | "published";
+type GenerationRequest = Pick<NewTestDraft, "question_count" | "question_types" | "selected_documents" | "selected_topics">;
+
+const DEFAULT_GENERATION: GenerationRequest = {
+  question_count: 10,
+  question_types: ["mcq", "true_false", "short_answer"],
+  selected_documents: [],
+  selected_topics: [],
+};
+
+function Summary({ label, value, tone = "text-white", onClick }: { label: string; value: number; tone?: string; onClick?: () => void }) {
+  const body = (
+    <>
+      <span className={`block text-2xl font-light tabular-nums ${tone}`}>{value}</span>
+      <span className="text-[10px] uppercase tracking-widest text-[#666666]">{label}</span>
+    </>
+  );
+  return onClick ? (
+    <button onClick={onClick} className="text-left p-5 rounded-2xl bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] transition-colors">{body}</button>
+  ) : (
+    <div className="p-5 rounded-2xl bg-[#0A0A0A] border border-[#1A1A1A]">{body}</div>
+  );
+}
 
 export default function ProfessorTests() {
   const navigate = useNavigate();
   const { courseId } = useParams();
   const { token, role } = useAuthStore();
   const addToast = useToastStore((state) => state.addToast);
+  const isProfessor = role === "professor";
 
-  const [tests, setTests] = useState<any[]>([]);
+  const [tests, setTests] = useState<TestSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [filter, setFilter] = useState<Filter>("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  
-  const [previewTest, setPreviewTest] = useState<any>(null);
-  
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [graphNodes, setGraphNodes] = useState<any[]>([]);
-  const [isGeneratingMap, setIsGeneratingMap] = useState<Record<string, boolean>>({});
+  const [previewTest, setPreviewTest] = useState<PreviewTest | null>(null);
+  const [documents, setDocuments] = useState<TestSourceDocument[]>([]);
+  const [graphNodes, setGraphNodes] = useState<TestTopic[]>([]);
+  const [generating, setGenerating] = useState<Record<string, boolean>>({});
+
+  const courseRoute = isProfessor ? `/professor/courses/${courseId}` : `/student/courses/${courseId}`;
+  const handleAuthError = (err: unknown) => {
+    if ((err as { response?: { status?: number } })?.response?.status === 401) {
+      useAuthStore.getState().logout();
+      navigate(role === "student" ? "/login/student" : "/login/professor");
+    }
+  };
+
+  const loadTests = async () => {
+    try {
+      const res = await testsApi.getByCourse(courseId || "");
+      // The endpoint returns a bare array; accept the older { tests } shape too
+      setTests(Array.isArray(res.data) ? res.data : res.data.tests || []);
+    } catch (err) {
+      handleAuthError(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadCourseData = async () => {
+    try {
+      const docsRes = await documentsApi.list(courseId || "");
+      setDocuments(docsRes.data || []);
+      const graphRes = await graphsApi.getByCourse(courseId || "");
+      if (graphRes.data?.length && graphRes.data[0].nodes) setGraphNodes(graphRes.data[0].nodes);
+    } catch (err) {
+      handleAuthError(err);
+    }
+  };
 
   useEffect(() => {
     if (token && courseId) {
@@ -36,59 +92,26 @@ export default function ProfessorTests() {
     }
   }, [courseId, token]);
 
-  const loadTests = async () => {
-    if (!token) return;
-    try {
-      const res = await testsApi.getByCourse(courseId || "");
-      // The endpoint returns a bare array; accept the older { tests } shape too
-      setTests(Array.isArray(res.data) ? res.data : res.data.tests || []);
-    } catch (err: any) {
-      if (err.response?.status === 401) {
-        useAuthStore.getState().logout();
-        navigate(role === "student" ? "/login/student" : "/login/professor");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadCourseData = async () => {
-    if (!token) return;
-    try {
-      const docsRes = await documentsApi.list(courseId || "");
-      setDocuments(docsRes.data || []);
-      const graphRes = await graphsApi.getByCourse(courseId || "");
-      if (graphRes.data && graphRes.data.length > 0 && graphRes.data[0].nodes) {
-        setGraphNodes(graphRes.data[0].nodes);
-      }
-    } catch (err: any) {
-      if (err.response?.status === 401) {
-        useAuthStore.getState().logout();
-        navigate(role === "student" ? "/login/student" : "/login/professor");
-      }
-    }
-  };
-
-  const handlePreviewTest = async (testId: string) => {
+  const openPreview = async (testId: string) => {
     try {
       const res = await testsApi.get(testId);
       setPreviewTest(res.data.test);
-      setShowPreviewModal(true);
-    } catch (err) {
-      addToast("Failed to load test details", "error");
+    } catch {
+      addToast("Could not load the test", "error");
     }
   };
 
-  const handlePublishTest = async (testId: string) => {
+  const publish = async (testId: string) => {
     try {
       await testsApi.publish(testId);
+      addToast("Test published. Students can take it now.", "success");
       loadTests();
     } catch (err) {
-      console.error("Failed to publish test:", err);
+      addToast(apiErrorDetail(err, "Could not publish the test"), "error");
     }
   };
 
-  const handleReleaseResults = async (testId: string) => {
+  const releaseResults = async (testId: string) => {
     try {
       const { data } = await testsApi.releaseResults(testId);
       addToast(
@@ -98,152 +121,185 @@ export default function ProfessorTests() {
       );
       loadTests();
     } catch (err) {
-      addToast((err as { response?: { status?: number; data?: { detail?: string } } }).response?.data?.detail || "Could not release results", "error");
+      addToast(apiErrorDetail(err, "Could not release results"), "error");
     }
   };
 
-  const handleCreateTestSubmit = async (newTest: any) => {
+  const createTest = async (draft: NewTestDraft): Promise<string | null> => {
     try {
       const res = await testsApi.create({
         course_id: courseId,
-        title: newTest.title,
-        description: newTest.description,
-        duration_minutes: newTest.duration_minutes,
-        passing_percentage: newTest.passing_percentage,
-        test_type: newTest.test_type,
-        show_results_immediately: !!newTest.show_results_immediately,
+        title: draft.title.trim(),
+        description: draft.description,
+        duration_minutes: draft.duration_minutes,
+        passing_percentage: draft.passing_percentage,
+        test_type: draft.test_type,
+        show_results_immediately: draft.show_results_immediately,
       });
-      return res.data.test?.id || res.data.test_id;
-    } catch (err: any) {
-      addToast(err.response?.data?.detail || "Failed to create test", "error");
+      loadTests();
+      return res.data.test?.id || res.data.test_id || null;
+    } catch (err) {
+      addToast(apiErrorDetail(err, "Could not create the test"), "error");
       return null;
     }
   };
 
-  const handleGenerateQuestionsSubmit = async (testId: string, newTest: any) => {
+  const generateQuestions = async (testId: string, request: GenerationRequest) => {
+    setGenerating(prev => ({ ...prev, [testId]: true }));
     try {
-      setIsGeneratingMap(prev => ({ ...prev, [testId]: true }));
-      const selectedDocs = documents.filter((d) => newTest.selected_documents.includes(d.id));
-      const docContext = selectedDocs.length > 0 ? `Focus on these documents:\n${selectedDocs.map((d) => `- ${d.filename}`).join("\n")}` : "Use all available course materials.";
-      const selectedTopics = graphNodes.filter((n) => newTest.selected_topics.includes(n.id));
-      const topicsList = selectedTopics.length > 0 ? selectedTopics.map((t) => t.label) : graphNodes.map((n) => n.label);
-
+      const chosenDocs = documents.filter(d => request.selected_documents.includes(d.id));
+      const docContext = chosenDocs.length
+        ? `Focus on these documents:\n${chosenDocs.map(d => `- ${d.filename}`).join("\n")}`
+        : "Use all available course materials.";
+      const chosenTopics = graphNodes.filter(n => request.selected_topics.includes(n.id));
       await testsApi.generateQuestions(testId, {
         course_id: courseId,
-        question_count: newTest.question_count,
-        question_types: newTest.question_types,
+        question_count: request.question_count,
+        question_types: request.question_types,
         document_context: docContext,
-        topics_filter: topicsList,
+        topics_filter: (chosenTopics.length ? chosenTopics : graphNodes).map(t => t.label),
       });
       loadTests();
-    } catch (err: any) {
-      addToast(err.response?.data?.detail || "Failed to generate questions", "error");
+    } catch (err) {
+      addToast(apiErrorDetail(err, "Could not generate questions"), "error");
+      throw err;
     } finally {
-      setIsGeneratingMap(prev => ({ ...prev, [testId]: false }));
+      setGenerating(prev => ({ ...prev, [testId]: false }));
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FCFCFC] flex items-center justify-center font-['Outfit']">
-        <div className="text-[#0A0A0A]/40 font-bold text-lg">Loading tests...</div>
+      <div className="min-h-[60vh] w-full bg-black flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#888888]" />
       </div>
     );
   }
 
-  const displayedTests = role === "professor" ? tests : tests.filter((t: any) => t.status === "published");
+  const visible = (isProfessor ? tests : tests.filter(t => t.status === "published"))
+    .slice()
+    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || "")); // newest first
+  const drafts = tests.filter(t => t.status === "draft").length;
+  const published = tests.filter(t => t.status === "published").length;
+  const toReview = tests.reduce((sum, t) => sum + (t.answers_to_review || 0), 0);
+  const shown = filter === "all" ? visible : visible.filter(t => t.status === filter);
+  const readyDocs = documents.filter(d => d.status === "ready").length;
 
   return (
-    <div className="min-h-screen bg-[#FCFCFC] text-[#0A0A0A]">
-      <div className="border-b-4 border-[#0A0A0A] bg-[#FFFFFF] shadow-[0_4px_0_rgba(0,0,0,0.05)]">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <button
-            onClick={() => navigate(role === "professor" ? `/professor/courses/${courseId}` : `/student/courses/${courseId}`)}
-            className="text-[#0A0A0A]/70 hover:text-black mb-6 transition-colors flex items-center gap-2 text-sm font-extrabold font-['Outfit'] border-2 border-[#0A0A0A] px-4 py-1.5 rounded-full shadow-[2px_2px_0_rgba(0,0,0,1)] hover:-translate-x-0.5 hover:-translate-y-0.5"
-          >
-            ← Back to Course
-          </button>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="min-h-screen w-full bg-black text-white p-8 lg:p-12">
+      <div className="max-w-6xl mx-auto space-y-10">
+        <div className="flex flex-col gap-6">
+          <Button onClick={() => navigate(courseRoute)} variant="ghost" className="w-fit -ml-4">
+            <ArrowLeft size={16} /> Back to course
+          </Button>
+          <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0A0A0A] mb-2 font-['Outfit'] tracking-tight" style={{ letterSpacing: "-0.5px" }}>
-                Tests & Assessments
-              </h1>
-              <p className="text-[#0A0A0A]/60 text-[15px] font-medium font-['Inter']">
-                {role === "professor" ? "Create, manage, and grade tests for your students" : "View and complete tests assigned by your professor"}
+              <h1 className="text-4xl font-outfit font-light tracking-tight">Tests & assessments</h1>
+              <p className="text-sm text-[#888888] mt-3 max-w-xl">
+                {isProfessor
+                  ? "The AI writes questions from your course materials. You review them, publish, and check the AI's grades."
+                  : "Tests your instructor has published for this course."}
               </p>
             </div>
-            {role === "professor" && (
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() => navigate(`/professor/courses/${courseId}/review`)}
-                  className="flex items-center gap-2 text-[#0A0A0A] bg-white px-6 py-3 rounded-full font-extrabold border-2 border-[#0A0A0A] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 shadow-[4px_4px_0_rgba(0,0,0,1)]"
-                  style={{ fontFamily: "'Outfit', sans-serif" }}
-                >
-                  <ClipboardCheck className="w-5 h-5" />
-                  Review AI Grades
-                </button>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="flex items-center gap-2 text-white px-6 py-3 rounded-full font-extrabold border-2 border-[#0A0A0A] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 shadow-[4px_4px_0_rgba(0,0,0,1)]"
-                  style={{ background: "#FF4D5B", fontFamily: "'Outfit', sans-serif" }}
-                >
-                  <Plus className="w-5 h-5 stroke-[3px]" />
-                  Create Test
-                </button>
+            {isProfessor && (
+              <div className="flex items-center gap-3">
+                <Button variant="outline" onClick={() => navigate(`/professor/courses/${courseId}/review`)}>
+                  <ClipboardCheck size={16} /> Review AI grades
+                  {toReview > 0 && <span className="ml-1 px-1.5 rounded-md bg-amber-500/20 text-amber-300 text-[11px] tabular-nums">{toReview}</span>}
+                </Button>
+                <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+                  <Plus size={16} /> Create test
+                </Button>
               </div>
             )}
-          </div>
+          </header>
         </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
-        {displayedTests.length === 0 ? (
-          <div className="text-center py-16 bg-[#FFFFFF] border-4 border-[#0A0A0A] rounded-2xl shadow-[6px_6px_0_rgba(0,0,0,1)]">
-            <FileText className="w-16 h-16 text-[#0A0A0A]/20 mx-auto mb-4" />
-            <h3 className="text-xl font-extrabold text-[#0A0A0A] mb-2 font-['Outfit']">No Tests Available</h3>
-            <p className="text-[#0A0A0A]/50 font-medium mb-6 px-4">
-              {role === "professor" ? "Create your first test with AI-assisted question generation" : "No tests have been published for this course yet."}
-            </p>
-            {role === "professor" && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center gap-2 bg-[#FF4D5B] text-white px-6 py-3 border-2 border-[#0A0A0A] rounded-full font-extrabold shadow-[4px_4px_0_rgba(0,0,0,1)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all font-['Outfit']"
-              >
-                <Sparkles className="w-5 h-5 fill-white" />
-                Create Your First Test
-              </button>
-            )}
+        {isProfessor && tests.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Summary label="Tests" value={tests.length} />
+            <Summary label="Published" value={published} tone="text-emerald-300" />
+            <Summary label="Drafts" value={drafts} tone={drafts ? "text-amber-300" : "text-white"} />
+            <Summary label="AI grades to review" value={toReview} tone={toReview ? "text-amber-300" : "text-white"}
+              onClick={toReview ? () => navigate(`/professor/courses/${courseId}/review`) : undefined} />
           </div>
+        )}
+
+        {isProfessor && tests.length > 0 && (
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A0A0A] border border-[#1A1A1A] w-fit" role="tablist">
+            {([["all", "All", tests.length], ["draft", "Drafts", drafts], ["published", "Published", published]] as const).map(([id, label, count]) => (
+              <button key={id} role="tab" aria-selected={filter === id} onClick={() => setFilter(id)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === id ? "bg-white text-black" : "text-[#888888] hover:text-white"}`}>
+                {label} <span className={filter === id ? "text-black/50" : "text-[#555555]"}>{count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {visible.length === 0 ? (
+          <Card className="p-10 md:p-14">
+            <div className="max-w-xl mx-auto text-center">
+              <div className="w-14 h-14 rounded-2xl bg-[#111111] border border-[#1A1A1A] flex items-center justify-center mx-auto mb-5">
+                <FileText className="w-6 h-6 text-[#888888]" />
+              </div>
+              <h2 className="text-xl font-outfit font-medium">{isProfessor ? "No tests yet" : "No tests published yet"}</h2>
+              <p className="text-sm text-[#888888] mt-2">
+                {isProfessor
+                  ? "Create a test and the AI drafts the questions from this course's materials."
+                  : "When your instructor publishes a test, it appears here."}
+              </p>
+
+              {isProfessor && (
+                <>
+                  <ol className="grid sm:grid-cols-3 gap-3 mt-8 text-left">
+                    {[
+                      ["Set the details", "Title, type, time limit and pass mark."],
+                      ["Choose the content", "All materials, or just some files and concepts."],
+                      ["Review and publish", "Check each question, then release it to students."],
+                    ].map(([title, text], i) => (
+                      <li key={title} className="p-4 rounded-xl border border-[#1A1A1A] bg-[#0D0D0D]">
+                        <span className="text-[11px] text-[#666666] tabular-nums">Step {i + 1}</span>
+                        <span className="block text-sm text-white mt-1">{title}</span>
+                        <span className="block text-xs text-[#888888] mt-1">{text}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  {readyDocs === 0 ? (
+                    <p className="mt-8 text-xs text-amber-300">
+                      This course has no processed files yet. Questions are written from them, so{" "}
+                      <button onClick={() => navigate(courseRoute)} className="underline hover:text-amber-200">upload materials first</button>.
+                    </p>
+                  ) : (
+                    <Button variant="primary" className="mt-8" onClick={() => setShowCreateModal(true)}>
+                      <Sparkles size={16} /> Create your first test
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          </Card>
+        ) : shown.length === 0 ? (
+          <p className="text-sm text-[#888888] py-10 text-center">No {filter === "draft" ? "drafts" : "published tests"}.</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {displayedTests.map((test) => (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {shown.map(test => (
               <TestCard
                 key={test.id}
                 test={test}
                 role={role}
-                isGenerating={!!isGeneratingMap[test.id]}
-                onPreview={handlePreviewTest}
-                onGenerate={(id) => handleGenerateQuestionsSubmit(id, {
-                    question_count: 10,
-                    question_types: ["mcq", "true_false", "short_answer"],
-                    selected_documents: [],
-                    selected_topics: []
-                })}
-                onPublish={handlePublishTest}
-                onReleaseResults={handleReleaseResults}
+                isGenerating={!!generating[test.id]}
+                onPreview={openPreview}
+                onGenerate={id => generateQuestions(id, DEFAULT_GENERATION).catch(() => undefined)}
+                onPublish={publish}
+                onReleaseResults={releaseResults}
               />
             ))}
           </div>
         )}
       </div>
 
-      {showPreviewModal && previewTest && (
-        <PreviewTestModal
-          previewTest={previewTest}
-          onClose={() => setShowPreviewModal(false)}
-          editable={role === "professor"}
-        />
+      {previewTest && (
+        <PreviewTestModal previewTest={previewTest} onClose={() => setPreviewTest(null)} editable={isProfessor} />
       )}
 
       {showCreateModal && (
@@ -252,9 +308,9 @@ export default function ProfessorTests() {
           documents={documents}
           graphNodes={graphNodes}
           onClose={() => setShowCreateModal(false)}
-          onCreateTest={handleCreateTestSubmit}
-          onGenerateQuestions={handleGenerateQuestionsSubmit}
-          onViewTest={(id) => navigate(`/tests/${id}`)}
+          onCreateTest={createTest}
+          onGenerateQuestions={generateQuestions}
+          onViewTest={id => { setShowCreateModal(false); openPreview(id); }}
         />
       )}
     </div>

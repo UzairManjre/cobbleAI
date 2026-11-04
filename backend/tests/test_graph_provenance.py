@@ -190,3 +190,32 @@ def test_stratified_precision_weights_strata_by_size():
     graph = KnowledgeGraph(topic="t", created_by=uuid.uuid4(), nodes=nodes, edges=edges)
     est = stratified_precision(graph, [edges[0], edges[9]])
     assert est["value"] == pytest.approx(0.9) and est["coverage"] == 1.0
+
+
+def test_link_is_supported_when_both_concepts_are_verified_in_one_passage():
+    """The AI's names need not match the slide's wording: "Missing Data Handling" is verified
+    on the slide that says "Handling Missing Data", next to "Data Cleaning"."""
+    slide = prov.EvidenceChunk(ref="E1", chunk_id="deck:9", filename="deck.pptx", slide=9,
+                               text="Standard Data Cleaning. Handling Missing Data (NaN): isolate them with "
+                                    ".isnull().sum(), drop rows with df.dropna() or fill them with df.fillna(0).")
+    other = prov.EvidenceChunk(ref="E2", chunk_id="deck:3", filename="deck.pptx", slide=3, text="Group observations.")
+    concepts = [
+        {"name": "Data Cleaning", "evidence": []},  # found by mention
+        {"name": "Missing Data Handling", "evidence": [{"ref": "E1", "quote": "drop rows with df.dropna()"}]},
+        {"name": "Grouping", "evidence": [{"ref": "E2", "quote": "Group observations."}]},
+    ]
+    relationships = [
+        {"from": "Data Cleaning", "to": "Missing Data Handling", "relation": "is_part_of"},  # no quote given
+        {"from": "Grouping", "to": "Missing Data Handling", "relation": "relates_to"},
+    ]
+    nodes, edges = prov.attach_provenance("c1", concepts, relationships, [slide, other])
+    part_of, unrelated = edges
+    assert part_of["supported"] and part_of["provenance"][0]["method"] == "co_mention"
+    assert part_of["provenance"][0]["slide"] == 9
+    assert unrelated["supported"] is False  # never verified in the same passage
+
+    # Maps built before the check get the same answer without another AI call
+    for e in edges:
+        e["supported"], e["provenance"] = False, []
+    assert prov.recheck_unsupported_edges(nodes, edges, [slide, other]) == 1
+    assert edges[0]["supported"] and not edges[1]["supported"]

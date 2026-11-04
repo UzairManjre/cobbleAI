@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { useGraphStore } from '../../store/graphStore';
-import { Send, MessageSquare, CheckCircle, Sparkles, HelpCircle, Award, GraduationCap, Link2, ListChecks } from 'lucide-react';
+import { Send, MessageSquare, CheckCircle, Sparkles, HelpCircle, GraduationCap, Link2, ListChecks } from 'lucide-react';
 import { tutorApi } from '../../api/tutor';
 import type { HintLevel, TutorPolicyInfo } from '../../types/tutor';
 import HintLadder from '../tutor/HintLadder';
 import TutorMessageView from '../tutor/TutorMessageView';
+import VoiceInputButton from '../tutor/VoiceInputButton';
 
 interface TutorChatProps {
   nodeId: string;
@@ -17,7 +18,7 @@ interface TutorChatProps {
 const TutorChat = ({ nodeId, isMassive, mode = 'teach' }: TutorChatProps) => {
   const [input, setInput] = useState('');
   const { courseId } = useParams();
-  const { nodes, chatHistory, askQuestion, isLoading, masteredNodes, toggleMastered } = useGraphStore();
+  const { nodes, chatHistory, askQuestion, isLoading, masteredNodes } = useGraphStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [policy, setPolicy] = useState<TutorPolicyInfo | null>(null);
   const [hintLevel, setHintLevel] = useState<HintLevel>('guiding_question');
@@ -69,55 +70,27 @@ const TutorChat = ({ nodeId, isMassive, mode = 'teach' }: TutorChatProps) => {
   ];
 
   return (
-    <div className={`flex flex-col h-full bg-[#0A0A0A] text-white font-sans ${isMassive ? '' : 'border-t border-[#1A1A1A]'}`}>
+    <div className="flex flex-col h-full min-h-0 bg-[#0A0A0A] text-white font-sans">
 
-      {/* Contextual Active Node Header */}
+      {/* Which concept the tutor is answering about (details and mastery live in the concept panel) */}
       {activeNode && (
-        <div className="bg-[#111111] border-b border-[#1A1A1A] px-5 py-3.5 flex items-center justify-between shrink-0">
-          <div className="min-w-0 flex-1 pr-3">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-blue-400">
-                {teachBack ? 'Teach it back' : mode === 'review' ? 'Reviewing' : 'Active Concept'}
-              </span>
-              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase ${
-                activeNode.difficulty === 'advanced' ? 'bg-amber-500/20 text-amber-300' :
-                activeNode.difficulty === 'beginner' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'
-              }`}>
-                {activeNode.difficulty || 'Core'}
-              </span>
-            </div>
-            <h3 className="text-sm font-medium text-white truncate" title={activeNode.label}>
-              {activeNode.label}
-            </h3>
-          </div>
-
-          <button
-            onClick={() => toggleMastered(nodeId)}
-            className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 ${
-              isMastered
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30'
-                : 'bg-[#1A1A1A] text-[#888888] border-[#333333] hover:text-white hover:border-[#888888]'
-            }`}
-          >
-            {isMastered ? (
-              <>
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Mastered</span>
-              </>
-            ) : (
-              <>
-                <Award className="w-3.5 h-3.5" />
-                <span>Mark Mastered</span>
-              </>
-            )}
-          </button>
+        <div className="h-12 bg-[#0A0A0A] border-b border-[#1A1A1A] px-5 flex items-center gap-2 shrink-0 min-w-0">
+          <MessageSquare className="w-4 h-4 text-blue-400 shrink-0" />
+          <span className="text-xs font-semibold text-white shrink-0">
+            {teachBack ? 'Teach it back' : mode === 'review' ? 'Review tutor' : 'Tutor'}
+          </span>
+          <span className="text-xs text-[#555555] shrink-0">·</span>
+          <span className="text-xs text-[#888888] truncate" title={activeNode.label}>{activeNode.label}</span>
+          {isMastered && <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 ml-auto" aria-label="Mastered" />}
         </div>
       )}
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-[#050505]">
+      <div className="flex-1 overflow-y-auto bg-[#050505]">
+      {/* With the map hidden the chat is page-wide: keep lines a readable length */}
+      <div className={`p-5 space-y-5 min-h-full flex flex-col ${isMassive ? 'max-w-3xl mx-auto' : ''}`}>
         {chatHistory.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4">
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-4">
             <div className="w-12 h-12 bg-[#111111] border border-[#1A1A1A] rounded-2xl flex items-center justify-center text-[#888888]">
               <MessageSquare className="w-6 h-6" />
             </div>
@@ -174,6 +147,7 @@ const TutorChat = ({ nodeId, isMassive, mode = 'teach' }: TutorChatProps) => {
         )}
         <div ref={messagesEndRef} />
       </div>
+      </div>
 
       {/* Help level, teach-back toggle and input */}
       <form onSubmit={handleSubmit} className="p-4 border-t border-[#1A1A1A] bg-[#0A0A0A] space-y-3">
@@ -203,6 +177,7 @@ const TutorChat = ({ nodeId, isMassive, mode = 'teach' }: TutorChatProps) => {
             className="flex-1 bg-[#111111] border border-[#1A1A1A] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#888888] focus:outline-none focus:border-[#333333] transition-all"
             disabled={isLoading}
           />
+          <VoiceInputButton courseId={courseId} disabled={isLoading || streaming} onTranscript={(text) => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))} />
           <button
             type="submit"
             disabled={!input.trim() || isLoading || streaming}

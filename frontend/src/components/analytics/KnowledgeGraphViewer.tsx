@@ -55,7 +55,7 @@ export default function KnowledgeGraphViewer({ data }: Props) {
         border: '1px solid rgba(0, 0, 0, 0.06)'
       }}>
         <Brain size={36} className="text-slate-400 mb-2 animate-pulse" />
-        <p style={{ margin: '8px 0 4px 0', fontWeight: 600, color: '#1e293b' }}>No concepts extracted yet.</p>
+        <p style={{ margin: '8px 0 4px 0', fontWeight: 600, color: '#e4e4e7' }}>No concepts extracted yet.</p>
         <span style={{ fontSize: '12px', color: '#64748b' }}>Upload documents to train your AI brain.</span>
       </div>
     );
@@ -127,10 +127,10 @@ export default function KnowledgeGraphViewer({ data }: Props) {
         fontSize: '12px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569' }}>
-          <Sparkles size={14} style={{ color: '#FF4D5B' }} />
+          <Sparkles size={14} style={{ color: '#073dea' }} />
           <span>AI Concept Extraction Model</span>
         </div>
-        <div style={{ color: '#0f172a', fontWeight: 600 }}>
+        <div style={{ color: '#282828', fontWeight: 600 }}>
           {documents.length} Docs · {concepts.length} Concepts
         </div>
       </div>
@@ -151,7 +151,7 @@ export default function KnowledgeGraphViewer({ data }: Props) {
             <div 
               key={doc.id}
               style={{
-                background: '#ffffff',
+                background: '#282828',
                 border: '1px solid rgba(0, 0, 0, 0.08)',
                 borderRadius: '10px',
                 padding: '14px',
@@ -179,12 +179,12 @@ export default function KnowledgeGraphViewer({ data }: Props) {
                     justifyContent: 'center',
                     border: '1px solid rgba(255, 77, 91, 0.15)'
                   }}>
-                    <FileText size={16} style={{ color: '#FF4D5B' }} />
+                    <FileText size={16} style={{ color: '#073dea' }} />
                   </div>
                   <div>
                     <h5 style={{ 
                       margin: 0, 
-                      color: '#0f172a', 
+                      color: '#282828', 
                       fontSize: '14px', 
                       fontWeight: 600,
                       wordBreak: 'break-all'
@@ -249,7 +249,7 @@ export default function KnowledgeGraphViewer({ data }: Props) {
                         onMouseEnter={(e) => {
                           if (!isSelected) {
                             e.currentTarget.style.background = 'rgba(0, 0, 0, 0.06)';
-                            e.currentTarget.style.color = '#0f172a';
+                            e.currentTarget.style.color = '#282828';
                           }
                         }}
                         onMouseLeave={(e) => {
@@ -259,7 +259,7 @@ export default function KnowledgeGraphViewer({ data }: Props) {
                           }
                         }}
                       >
-                        <Cpu size={10} style={{ color: isSelected ? '#FF4D5B' : '#64748b' }} />
+                        <Cpu size={10} style={{ color: isSelected ? '#073dea' : '#64748b' }} />
                         <span>{concept.name}</span>
                       </button>
                     );
@@ -272,7 +272,7 @@ export default function KnowledgeGraphViewer({ data }: Props) {
                 <div style={{
                   marginTop: '8px',
                   padding: '10px 12px',
-                  background: '#f8fafc',
+                  background: '#000000',
                   border: '1px solid rgba(255, 77, 91, 0.25)',
                   borderRadius: '8px',
                   display: 'flex',
@@ -288,12 +288,12 @@ export default function KnowledgeGraphViewer({ data }: Props) {
                     <span style={{ 
                       fontSize: '12px', 
                       fontWeight: 600, 
-                      color: '#0f172a',
+                      color: '#282828',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px'
                     }}>
-                      <Info size={12} style={{ color: '#FF4D5B' }} />
+                      <Info size={12} style={{ color: '#073dea' }} />
                       {selectedConcept.name}
                     </span>
 

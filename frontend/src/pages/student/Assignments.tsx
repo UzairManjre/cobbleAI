@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
   FileText, 
   Plus, 
@@ -14,11 +14,14 @@ import { useAuthStore } from '../../store/authStore';
 import { useToastStore } from '../../store/toastStore';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 export default function Assignments() {
   const { token, user } = useAuthStore();
   const navigate = useNavigate();
   const addToast = useToastStore(state => state.addToast);
+  // Inside a course (its Tests tab) only that course's tests are listed
+  const { courseId: scopedCourseId } = useParams();
 
   // Data state
   const [courses, setCourses] = useState<any[]>([]);
@@ -36,7 +39,7 @@ export default function Assignments() {
 
   useEffect(() => {
     loadData();
-  }, [token]);
+  }, [token, scopedCourseId]);
 
   const loadData = async () => {
     if (!token) return;
@@ -45,7 +48,7 @@ export default function Assignments() {
     let coursesList: any[] = [];
     try {
       const coursesRes = await coursesApi.list();
-      coursesList = coursesRes.data || [];
+      coursesList = (coursesRes.data || []).filter((c: any) => !scopedCourseId || c.id === scopedCourseId);
       setCourses(coursesList);
       if (coursesList.length > 0) {
         setCourseId(coursesList[0].id);
@@ -65,9 +68,11 @@ export default function Assignments() {
         // Fetch assignments for ALL enrolled courses for students
         const allTestsPromises = coursesList.map((c: any) => testsApi.getByCourse(c.id));
         const results = await Promise.all(allTestsPromises);
-        const allTests = results.flatMap((r: any) => r.data || []);
-        const filteredAssignments = allTests.filter((t: any) => t.test_type === 'assignment');
-        setAssignments(filteredAssignments);
+        // Students have no other page listing tests, so show every published test (quiz, exam, assignment)
+        // the student list omits course_id; the per-course counts need it
+        const allTests = results.flatMap((r: any, i: number) =>
+          (r.data || []).map((t: any) => ({ ...t, course_id: t.course_id ?? coursesList[i].id })));
+        setAssignments(allTests);
       } else {
         setAssignments([]);
       }
@@ -164,52 +169,33 @@ export default function Assignments() {
   }, [courses, assignments]);
 
   return (
-    <div className="min-h-screen bg-black text-white p-8 lg:p-12">
-      <div className="max-w-7xl mx-auto space-y-12">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#1A1A1A]">
-          <div>
-            <h1 className="text-4xl font-outfit font-light text-white tracking-tight mb-2">
-              Assignments
-            </h1>
-            <p className="text-sm text-[#888888] font-medium tracking-wide">
-              Create, manage, and track class assignments.
-            </p>
-          </div>
+    <div className="w-full px-5 md:px-8 lg:px-12">
+      <div className={`max-w-6xl mx-auto ${scopedCourseId ? 'py-8' : 'pt-10 md:pt-14 pb-24'} space-y-12`}>
 
-          <div className="flex gap-4">
-            <div className="text-right">
-              <div className="text-sm text-[#A3A3A3] tracking-wide mb-1 uppercase">Total</div>
-              <div className="text-2xl font-light text-white">{totalCount}</div>
-            </div>
-            <div className="w-px h-12 bg-[#1A1A1A]" />
-            <div className="text-right">
-              <div className="text-sm text-[#A3A3A3] tracking-wide mb-1 uppercase">Published</div>
-              <div className="text-2xl font-light text-white">{publishedCount}</div>
-            </div>
-          </div>
-        </div>
-
+        {/* Header (the course page already has one) */}
+        {!scopedCourseId && (
+          <PageHeader
+            title="assignments"
+            lead="Tests and assignments from all your classes, soonest due first."
+            actions={<span className="annot text-ink-3 tabular">{publishedCount} published · {totalCount} total</span>}
+          />
+        )}
         {/* Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          
+
           {/* Main List */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center gap-3 text-[#888888] mb-6">
-              <Calendar size={18} />
-              <h3 className="text-sm font-outfit font-medium tracking-widest uppercase text-white">Your Assignments</h3>
-            </div>
+          <div className={`${scopedCourseId ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-6`}>
+            <h2 className="font-display text-2xl tracking-[-0.03em] pb-3 border-b border-ink">{scopedCourseId ? 'tests in this course' : 'your tests'}</h2>
 
             {isLoading ? (
-              <div className="py-20 flex flex-col items-center justify-center text-[#888888]">
-                <div className="w-6 h-6 border-2 border-[#1A1A1A] border-t-white rounded-full animate-spin mb-4" />
+              <div className="py-20 flex flex-col items-center justify-center text-ink-3">
+                <div className="w-6 h-6 border-2 border-line border-t-accent rounded-full animate-spin mb-4" />
                 <span className="text-sm tracking-wide">Loading assignments...</span>
               </div>
             ) : displayAssignments.length === 0 ? (
-              <div className="py-20 flex flex-col items-center justify-center text-[#444444] border border-[#1A1A1A] rounded-2xl bg-[#050505]">
+              <div className="py-20 flex flex-col items-center justify-center text-ink-4 border border-line rounded-2xl bg-surface">
                 <FolderOpen size={32} className="mb-4" />
-                <p className="text-sm tracking-wide">No assignments found.</p>
+                <p className="text-sm tracking-wide">No tests yet. Your professor has not published any.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -223,35 +209,35 @@ export default function Assignments() {
                       key={ass.id} 
                       variant="hoverable"
                       className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5"
-                      onClick={() => navigate(user?.role === 'professor' ? `/professor/courses/${ass.course_id}/tests` : `/tests/${ass.id}`)}
+                      onClick={() => navigate(user?.role === 'professor' ? `/courses/${ass.course_id}/tests` : `/tests/${ass.id}`)}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl border border-[#1A1A1A] bg-[#111111] flex items-center justify-center text-[#888888] shrink-0 group-hover:text-white transition-colors">
+                        <div className="w-12 h-12 rounded-xl border border-line bg-sunken flex items-center justify-center text-ink-3 shrink-0 group-hover:text-ink transition-colors">
                           <FileText size={20} />
                         </div>
                         <div>
                           <div className="flex items-center gap-3 mb-1">
-                            <h4 className="text-lg font-light text-white tracking-wide">{ass.title}</h4>
+                            <h4 className="text-lg font-light text-ink tracking-wide">{ass.title}</h4>
                             <span className={`px-2 py-0.5 text-[10px] uppercase tracking-widest rounded-md border ${
-                              isDraft ? 'bg-[#111111] border-[#333333] text-[#888888]' : 'bg-[#111111] border-[#333333] text-white'
+                              isDraft ? 'bg-sunken border-line-strong text-ink-3' : 'bg-sunken border-line-strong text-ink'
                             }`}>
                               {isDraft ? 'DRAFT' : 'PUBLISHED'}
                             </span>
                           </div>
-                          <span className="text-sm text-[#A3A3A3] tracking-wide">{ass.course_title}</span>
+                          <span className="text-sm text-ink-3 tracking-wide">{ass.course_title}</span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <div className="text-sm text-[#888888] mb-1">{isDraft ? 'Not Published' : formatDate(ass.available_until)}</div>
+                          <div className="text-sm text-ink-3 mb-1">{isDraft ? 'Not Published' : formatDate(ass.available_until)}</div>
                           {!isDraft && (
-                            <span className={`text-xs ${isOverdue ? 'text-red-400' : 'text-white'}`}>
+                            <span className={`text-xs ${isOverdue ? 'text-red-600' : 'text-ink'}`}>
                               {daysLeft}
                             </span>
                           )}
                         </div>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[#444444] group-hover:text-white group-hover:bg-[#1A1A1A] transition-all">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-ink-4 group-hover:text-ink group-hover:bg-sunken-2 transition-all">
                           <ChevronRight size={18} />
                         </div>
                       </div>
@@ -263,25 +249,25 @@ export default function Assignments() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-8">
+          <div className={`space-y-8 ${scopedCourseId ? 'hidden' : ''}`}>
             
             {/* Create Action */}
             {user?.role === 'professor' && (
               <Card>
                 <CardContent>
-                  <div className="flex items-center gap-2 text-[#888888] mb-6">
+                  <div className="flex items-center gap-2 text-ink-3 mb-6">
                     <PenTool size={16} />
-                    <h4 className="text-sm font-outfit font-medium tracking-widest uppercase text-white">Create</h4>
+                    <h4 className="text-sm font-outfit font-medium tracking-widest uppercase text-ink">Create</h4>
                   </div>
 
                 <button 
                   onClick={() => setShowModal(true)}
-                  className="w-full flex flex-col items-center justify-center py-10 px-6 border border-dashed border-[#333333] rounded-xl hover:border-white hover:bg-[#111111] transition-all group"
+                  className="w-full flex flex-col items-center justify-center py-10 px-6 border border-dashed border-line-strong rounded-xl hover:border-accent hover:bg-sunken transition-all group"
                 >
-                  <div className="w-12 h-12 rounded-full bg-[#111111] border border-[#333333] flex items-center justify-center mb-4 group-hover:border-white transition-colors">
-                    <Plus size={20} className="text-[#888888] group-hover:text-white" />
+                  <div className="w-12 h-12 rounded-full bg-sunken border border-line-strong flex items-center justify-center mb-4 group-hover:border-accent transition-colors">
+                    <Plus size={20} className="text-ink-3 group-hover:text-ink" />
                   </div>
-                  <span className="text-sm text-white font-medium tracking-wide">New Assignment</span>
+                  <span className="text-sm text-ink font-medium tracking-wide">New Assignment</span>
                 </button>
                 </CardContent>
               </Card>
@@ -290,27 +276,27 @@ export default function Assignments() {
             {/* By Course Summary */}
             <Card>
               <CardContent>
-                <div className="flex items-center gap-2 text-[#888888] mb-6">
+                <div className="flex items-center gap-2 text-ink-3 mb-6">
                   <Send size={16} />
-                  <h4 className="text-sm font-outfit font-medium tracking-widest uppercase text-white">By Course</h4>
+                  <h4 className="text-sm font-outfit font-medium tracking-widest uppercase text-ink">By Course</h4>
                 </div>
 
               {isLoading ? (
-                <div className="py-8 text-center text-[#444444] text-sm">Loading list...</div>
+                <div className="py-8 text-center text-ink-4 text-sm">Loading list...</div>
               ) : courseAssignmentCounts.length === 0 ? (
-                <div className="py-8 text-center text-[#444444] text-sm">No courses yet.</div>
+                <div className="py-8 text-center text-ink-4 text-sm">No courses yet.</div>
               ) : (
                 <div className="space-y-2">
                   {courseAssignmentCounts.map((course) => (
                     <div 
                       key={course.id} 
-                      className="group flex items-center justify-between p-3 rounded-lg border border-transparent hover:border-[#1A1A1A] hover:bg-[#050505] transition-all cursor-pointer"
-                      onClick={() => navigate(user?.role === 'professor' ? `/professor/courses/${course.id}/tests` : `/student/courses/${course.id}`)}
+                      className="group flex items-center justify-between p-3 rounded-lg border border-transparent hover:border-line hover:bg-surface transition-all cursor-pointer"
+                      onClick={() => navigate(`/courses/${course.id}/tests`)}
                     >
-                      <span className="text-sm text-white tracking-wide truncate">{course.title}</span>
+                      <span className="text-sm text-ink tracking-wide truncate">{course.title}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-[#888888]">{course.count} total</span>
-                        <ChevronRight size={14} className="text-[#444444] group-hover:text-white transition-colors" />
+                        <span className="text-xs text-ink-3">{course.count} total</span>
+                        <ChevronRight size={14} className="text-ink-4 group-hover:text-ink transition-colors" />
                       </div>
                     </div>
                   ))}
@@ -325,14 +311,14 @@ export default function Assignments() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-ink/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <Card className="p-8 max-w-lg w-full shadow-2xl">
             
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-xl font-outfit font-light text-white tracking-wide">Create Assignment</h3>
+              <h3 className="text-xl font-outfit font-light text-ink tracking-wide">Create Assignment</h3>
               <button 
                 onClick={() => setShowModal(false)} 
-                className="text-[#A3A3A3] hover:text-white transition-colors"
+                className="text-ink-3 hover:text-ink transition-colors"
               >
                 &times;
               </button>
@@ -341,12 +327,12 @@ export default function Assignments() {
             <form onSubmit={handleCreateAssignment} className="space-y-5">
               
               <div className="space-y-2">
-                <label className="text-xs text-[#888888] uppercase tracking-widest">Select Class</label>
+                <label className="text-xs text-ink-3 uppercase tracking-widest">Select Class</label>
                 <select 
                   required 
                   value={courseId}
                   onChange={(e) => setCourseId(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#111111] border border-[#1A1A1A] rounded-xl text-white text-sm focus:outline-none focus:border-white transition-colors appearance-none cursor-pointer"
+                  className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
                 >
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -357,62 +343,62 @@ export default function Assignments() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-[#888888] uppercase tracking-widest">Assignment Title</label>
+                <label className="text-xs text-ink-3 uppercase tracking-widest">Assignment Title</label>
                 <input 
                   type="text" 
                   required 
                   placeholder="e.g. Quadratic Equations Worksheet"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#111111] border border-[#1A1A1A] rounded-xl text-white text-sm focus:outline-none focus:border-white transition-colors"
+                  className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-[#888888] uppercase tracking-widest">Description</label>
+                <label className="text-xs text-ink-3 uppercase tracking-widest">Description</label>
                 <textarea 
                   required
                   placeholder="Task details and instructions..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#111111] border border-[#1A1A1A] rounded-xl text-white text-sm focus:outline-none focus:border-white transition-colors resize-none"
+                  className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors resize-none"
                   rows={4}
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-[#888888] uppercase tracking-widest">Due Date</label>
+                <label className="text-xs text-ink-3 uppercase tracking-widest">Due Date</label>
                 <input 
                   type="datetime-local" 
                   required
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#111111] border border-[#1A1A1A] rounded-xl text-white text-sm focus:outline-none focus:border-white transition-colors"
+                  className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors"
                   style={{ colorScheme: 'dark' }}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs text-[#888888] uppercase tracking-widest">Duration (Min)</label>
+                  <label className="text-xs text-ink-3 uppercase tracking-widest">Duration (Min)</label>
                   <input 
                     type="number" 
                     min={5}
                     max={180}
                     value={durationMinutes}
                     onChange={(e) => setDurationMinutes(parseInt(e.target.value))}
-                    className="w-full px-4 py-3 bg-[#111111] border border-[#1A1A1A] rounded-xl text-white text-sm focus:outline-none focus:border-white transition-colors"
+                    className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs text-[#888888] uppercase tracking-widest">Passing (%)</label>
+                  <label className="text-xs text-ink-3 uppercase tracking-widest">Passing (%)</label>
                   <input 
                     type="number" 
                     min={0}
                     max={100}
                     value={passingPercentage}
                     onChange={(e) => setPassingPercentage(parseInt(e.target.value))}
-                    className="w-full px-4 py-3 bg-[#111111] border border-[#1A1A1A] rounded-xl text-white text-sm focus:outline-none focus:border-white transition-colors"
+                    className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors"
                   />
                 </div>
               </div>

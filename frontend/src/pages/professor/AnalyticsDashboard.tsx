@@ -9,7 +9,9 @@ import VectorTreemap from '../../components/analytics/VectorTreemap';
 import VectorSpace3D from '../../components/analytics/VectorSpace3D';
 import IntentRadar from '../../components/analytics/IntentRadar';
 import ConfusionFlagsList from '../../components/analytics/ConfusionFlagsList';
-import { Loader2, Brain, Box, Activity, Target } from 'lucide-react';
+import { Loader2, ArrowUpRight } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Page, PageHeader } from '../../components/ui/PageHeader';
 
 export default function AnalyticsDashboard() {
   const [data, setData] = useState<any>(null);
@@ -48,185 +50,62 @@ export default function AnalyticsDashboard() {
 
   if (loading || !data) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-[#888888]">
-        <Loader2 className="w-8 h-8 animate-spin mb-4" />
-        <div className="text-sm font-medium tracking-wide">Loading intelligence engine...</div>
-      </div>
+      <Page>
+        <div className="flex items-center gap-3 text-ink-3" aria-busy="true">
+          <Loader2 className="w-5 h-5 animate-spin" /> <span>Loading analytics</span>
+        </div>
+      </Page>
     );
   }
 
+  const panel = (title: string, note: string, body: ReactNode, wide = false, minH = 420) => (
+    <section className={`border-t border-ink pt-4 flex flex-col ${wide ? 'lg:col-span-2' : ''}`} style={{ minHeight: minH }}>
+      <div className="flex items-baseline justify-between gap-4 mb-5">
+        <h2 className="font-display text-xl tracking-[-0.025em]">{title}</h2>
+        <span className="annot text-ink-3 text-right">{note}</span>
+      </div>
+      <div className="flex-1 min-h-0 rounded-xl overflow-hidden">{body}</div>
+    </section>
+  );
+
+  const events = data.engagement?.intent_radar?.reduce((s: number, r: any) => s + (r.count || 0), 0) || 0;
+
   return (
-    <div className="min-h-screen bg-black text-white p-8 lg:p-12 relative overflow-hidden">
-      
-      <div className="max-w-7xl mx-auto space-y-10 relative z-10">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2 border-b border-[#1A1A1A]">
-          <div>
-            <h1 className="text-4xl font-outfit font-light text-white tracking-tight mb-2">
-              Intelligence Center
-            </h1>
-            <p className="text-sm text-[#888888] font-medium tracking-wide">
-              Real-time telemetry and semantic insights.
-            </p>
-          </div>
-          
-          <div className="w-full md:w-64 space-y-2">
+    <Page>
+      <PageHeader
+        title="analytics"
+        lead="What your students are doing with the tutor, and what your materials cover. Panels without data say so."
+        actions={
+          <div className="flex flex-col items-end gap-2">
+            <label htmlFor="analytics-course" className="sr-only">Course</label>
+            <select
+              id="analytics-course"
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              className="h-11 min-w-64 bg-surface border border-line-strong text-ink text-sm rounded-full px-4 focus:outline-none focus:border-accent cursor-pointer"
+            >
+              <option value="">All courses</option>
+              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
             {selectedCourse && (
-              <Link to={`/professor/courses/${selectedCourse}/insights`} className="block text-right text-xs text-[#888888] hover:text-white">
-                Question insights, coverage gaps and reports →
+              <Link to={`/courses/${selectedCourse}/insights`} className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                Question insights and reports <ArrowUpRight size={14} />
               </Link>
             )}
-            <select 
-              value={selectedCourse} 
-              onChange={(e) => setSelectedCourse(e.target.value)}
-              className="w-full bg-[#0A0A0A] border border-[#1A1A1A] text-white text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-[#333333] transition-all appearance-none font-medium"
-            >
-              <option value="">Global Network (All Courses)</option>
-              {courses.map(c => (
-                <option key={c.id} value={c.id}>{c.title}</option>
-              ))}
-            </select>
           </div>
-        </div>
+        }
+      />
 
-        {/* Quick Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col justify-between hover:border-[#333333] transition-colors">
-            <div className="flex justify-between items-start text-[#888888] mb-4">
-              <span className="text-[10px] font-bold uppercase tracking-widest">Knowledge Graph</span>
-              <Brain size={16} />
-            </div>
-            <div>
-              <span className="block text-3xl font-light text-white mb-1">{data.content?.knowledge_graph?.nodes?.length || 0}</span>
-              <span className="text-xs text-[#888888]">Concepts extracted</span>
-            </div>
-          </div>
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col justify-between hover:border-[#333333] transition-colors">
-            <div className="flex justify-between items-start text-[#888888] mb-4">
-              <span className="text-[10px] font-bold uppercase tracking-widest">Total Ingestion</span>
-              <Box size={16} />
-            </div>
-            <div>
-              <span className="block text-3xl font-light text-white mb-1">{data.content?.total_docs || 0}</span>
-              <span className="text-xs text-[#888888]">{data.content?.total_chunks || 0} Chunks processed</span>
-            </div>
-          </div>
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col justify-between hover:border-[#333333] transition-colors">
-            <div className="flex justify-between items-start text-[#888888] mb-4">
-              <span className="text-[10px] font-bold uppercase tracking-widest">Intent Signals</span>
-              <Activity size={16} />
-            </div>
-            <div>
-              <span className="block text-3xl font-light text-white mb-1">{data.engagement?.intent_radar?.reduce((s: number, r: any) => s + (r.count || 0), 0) || 0}</span>
-              <span className="text-xs text-[#888888]">Total telemetry events</span>
-            </div>
-          </div>
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col justify-between hover:border-[#333333] transition-colors">
-            <div className="flex justify-between items-start text-[#888888] mb-4">
-              <span className="text-[10px] font-bold uppercase tracking-widest">Active Modes</span>
-              <Target size={16} />
-            </div>
-            <div>
-              <span className="block text-3xl font-light text-white mb-1">{data.engagement?.intent_radar?.length || 0}</span>
-              <span className="text-xs text-[#888888]">Intent categories mapped</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Telemetry Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* Brain Visualizer (Full Width) */}
-          <div className="lg:col-span-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '600px' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Brain Visualizer</h3>
-            </div>
-            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
-              <KnowledgeGraphViewer data={data.content?.knowledge_graph} />
-            </div>
-          </div>
-
-          {/* Vector Space 3D (Full Width) */}
-          <div className="lg:col-span-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '600px' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
-              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Semantic Vector Space</h3>
-            </div>
-            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
-               <VectorSpace3D data={data.content?.vector_space_3d} />
-            </div>
-          </div>
-
-          {/* Knowledge Hierarchy */}
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '450px' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
-              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Knowledge Hierarchy</h3>
-            </div>
-            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
-              <VectorTreemap data={data.content?.treemap} />
-            </div>
-          </div>
-
-          {/* RAG Pipeline Flow */}
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '450px' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Tutor Answer Flow</h3>
-            </div>
-            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
-              <SankeyPipeline data={data.content?.sankey_flow} />
-            </div>
-          </div>
-
-          {/* System Telemetry */}
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '450px' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></div>
-              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">System Telemetry</h3>
-            </div>
-            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
-              <TelemetryCluster data={data.telemetry} />
-            </div>
-          </div>
-
-          {/* Intent Profile */}
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '450px' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></div>
-              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Intent Profile</h3>
-            </div>
-            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505] flex items-center justify-center p-4">
-              <IntentRadar data={data.engagement?.intent_radar} />
-            </div>
-          </div>
-
-          {/* Engagement Heatmap (Full Width) */}
-          <div className="lg:col-span-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '500px' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
-              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Global Heatmap</h3>
-            </div>
-            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
-              <StudyHeatmap data={data.engagement?.study_heatmap} />
-            </div>
-          </div>
-
-          {/* Concepts students struggle with, and why */}
-          <div className="lg:col-span-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6 flex flex-col" style={{ minHeight: '240px' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-              <h3 className="text-sm font-outfit font-medium text-white tracking-widest uppercase">Concepts Students Struggle With</h3>
-            </div>
-            <div className="flex-1 rounded-xl overflow-hidden border border-[#1A1A1A] bg-[#050505]">
-              <ConfusionFlagsList flags={data.engagement?.confusion_flags} />
-            </div>
-          </div>
-
-        </div>
+      <div className="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-14">
+        {panel('Concepts students struggle with', 'With reasons', <ConfusionFlagsList flags={data.engagement?.confusion_flags} />, true, 220)}
+        {panel('Concept map', `${data.content?.knowledge_graph?.nodes?.length || 0} concepts`, <KnowledgeGraphViewer data={data.content?.knowledge_graph} />, true, 560)}
+        {panel('How the tutor answered', 'Retrieval to answer', <SankeyPipeline data={data.content?.sankey_flow} />)}
+        {panel('What students asked for', `${events} tutor events`, <div className="h-full flex items-center justify-center p-4"><IntentRadar data={data.engagement?.intent_radar} /></div>)}
+        {panel('When students study', 'Hour by day', <StudyHeatmap data={data.engagement?.study_heatmap} />, true, 460)}
+        {panel('Material by topic', `${data.content?.total_docs || 0} files · ${data.content?.total_chunks || 0} passages`, <VectorTreemap data={data.content?.treemap} />)}
+        {panel('System', 'Response times and load', <TelemetryCluster data={data.telemetry} />)}
+        {panel('Passages in meaning space', '3D projection of embeddings', <VectorSpace3D data={data.content?.vector_space_3d} />, true, 560)}
       </div>
-    </div>
+    </Page>
   );
 }

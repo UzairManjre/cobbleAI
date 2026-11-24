@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import { useToastStore } from "../../store/toastStore";
-import { ArrowLeft, ClipboardCheck, FileText, Loader2, Plus, Sparkles } from "lucide-react";
+import { ClipboardCheck, FileText, Loader2, Plus, Sparkles } from "lucide-react";
 import { testsApi, documentsApi, graphsApi } from "../../api";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
@@ -22,17 +22,17 @@ const DEFAULT_GENERATION: GenerationRequest = {
   selected_topics: [],
 };
 
-function Summary({ label, value, tone = "text-white", onClick }: { label: string; value: number; tone?: string; onClick?: () => void }) {
+function Summary({ label, value, tone = "text-ink", onClick }: { label: string; value: number; tone?: string; onClick?: () => void }) {
   const body = (
     <>
       <span className={`block text-2xl font-light tabular-nums ${tone}`}>{value}</span>
-      <span className="text-[10px] uppercase tracking-widest text-[#666666]">{label}</span>
+      <span className="text-[10px] uppercase tracking-widest text-ink-4">{label}</span>
     </>
   );
   return onClick ? (
-    <button onClick={onClick} className="text-left p-5 rounded-2xl bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] transition-colors">{body}</button>
+    <button onClick={onClick} className="text-left p-5 rounded-2xl bg-surface border border-line hover:border-line-strong transition-colors">{body}</button>
   ) : (
-    <div className="p-5 rounded-2xl bg-[#0A0A0A] border border-[#1A1A1A]">{body}</div>
+    <div className="p-5 rounded-2xl bg-surface border border-line">{body}</div>
   );
 }
 
@@ -52,11 +52,11 @@ export default function ProfessorTests() {
   const [graphNodes, setGraphNodes] = useState<TestTopic[]>([]);
   const [generating, setGenerating] = useState<Record<string, boolean>>({});
 
-  const courseRoute = isProfessor ? `/professor/courses/${courseId}` : `/student/courses/${courseId}`;
+  const courseRoute = isProfessor ? `/courses/${courseId}` : `/courses/${courseId}`;
   const handleAuthError = (err: unknown) => {
     if ((err as { response?: { status?: number } })?.response?.status === 401) {
       useAuthStore.getState().logout();
-      navigate(role === "student" ? "/login/student" : "/login/professor");
+      navigate("/signin");
     }
   };
 
@@ -88,7 +88,7 @@ export default function ProfessorTests() {
       loadTests();
       loadCourseData();
     } else if (!token) {
-      navigate(role === "student" ? "/login/student" : "/login/professor");
+      navigate("/signin");
     }
   }, [courseId, token]);
 
@@ -170,8 +170,8 @@ export default function ProfessorTests() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] w-full bg-black flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#888888]" />
+      <div className="min-h-[60vh] w-full bg-canvas flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-ink-3" />
       </div>
     );
   }
@@ -186,16 +186,13 @@ export default function ProfessorTests() {
   const readyDocs = documents.filter(d => d.status === "ready").length;
 
   return (
-    <div className="min-h-screen w-full bg-black text-white p-8 lg:p-12">
+    <div className="w-full bg-canvas text-ink px-8 lg:px-12 py-8">
       <div className="max-w-6xl mx-auto space-y-10">
         <div className="flex flex-col gap-6">
-          <Button onClick={() => navigate(courseRoute)} variant="ghost" className="w-fit -ml-4">
-            <ArrowLeft size={16} /> Back to course
-          </Button>
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <h1 className="text-4xl font-outfit font-light tracking-tight">Tests & assessments</h1>
-              <p className="text-sm text-[#888888] mt-3 max-w-xl">
+              <h2 className="text-2xl font-outfit font-light tracking-tight">Tests & assessments</h2>
+              <p className="text-sm text-ink-3 mt-3 max-w-xl">
                 {isProfessor
                   ? "The AI writes questions from your course materials. You review them, publish, and check the AI's grades."
                   : "Tests your instructor has published for this course."}
@@ -203,9 +200,9 @@ export default function ProfessorTests() {
             </div>
             {isProfessor && (
               <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={() => navigate(`/professor/courses/${courseId}/review`)}>
+                <Button variant="outline" onClick={() => navigate(`/courses/${courseId}/review`)}>
                   <ClipboardCheck size={16} /> Review AI grades
-                  {toReview > 0 && <span className="ml-1 px-1.5 rounded-md bg-amber-500/20 text-amber-300 text-[11px] tabular-nums">{toReview}</span>}
+                  {toReview > 0 && <span className="ml-1 px-1.5 rounded-md bg-amber-500/20 text-amber-700 text-[11px] tabular-nums">{toReview}</span>}
                 </Button>
                 <Button variant="primary" onClick={() => setShowCreateModal(true)}>
                   <Plus size={16} /> Create test
@@ -218,19 +215,19 @@ export default function ProfessorTests() {
         {isProfessor && tests.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Summary label="Tests" value={tests.length} />
-            <Summary label="Published" value={published} tone="text-emerald-300" />
-            <Summary label="Drafts" value={drafts} tone={drafts ? "text-amber-300" : "text-white"} />
-            <Summary label="AI grades to review" value={toReview} tone={toReview ? "text-amber-300" : "text-white"}
-              onClick={toReview ? () => navigate(`/professor/courses/${courseId}/review`) : undefined} />
+            <Summary label="Published" value={published} tone="text-emerald-700" />
+            <Summary label="Drafts" value={drafts} tone={drafts ? "text-amber-700" : "text-ink"} />
+            <Summary label="AI grades to review" value={toReview} tone={toReview ? "text-amber-700" : "text-ink"}
+              onClick={toReview ? () => navigate(`/courses/${courseId}/review`) : undefined} />
           </div>
         )}
 
         {isProfessor && tests.length > 0 && (
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A0A0A] border border-[#1A1A1A] w-fit" role="tablist">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-surface border border-line w-fit" role="tablist">
             {([["all", "All", tests.length], ["draft", "Drafts", drafts], ["published", "Published", published]] as const).map(([id, label, count]) => (
               <button key={id} role="tab" aria-selected={filter === id} onClick={() => setFilter(id)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === id ? "bg-white text-black" : "text-[#888888] hover:text-white"}`}>
-                {label} <span className={filter === id ? "text-black/50" : "text-[#555555]"}>{count}</span>
+                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === id ? "bg-accent text-white" : "text-ink-3 hover:text-ink"}`}>
+                {label} <span className={filter === id ? "text-ink/50" : "text-ink-4"}>{count}</span>
               </button>
             ))}
           </div>
@@ -239,11 +236,11 @@ export default function ProfessorTests() {
         {visible.length === 0 ? (
           <Card className="p-10 md:p-14">
             <div className="max-w-xl mx-auto text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[#111111] border border-[#1A1A1A] flex items-center justify-center mx-auto mb-5">
-                <FileText className="w-6 h-6 text-[#888888]" />
+              <div className="w-14 h-14 rounded-2xl bg-sunken border border-line flex items-center justify-center mx-auto mb-5">
+                <FileText className="w-6 h-6 text-ink-3" />
               </div>
               <h2 className="text-xl font-outfit font-medium">{isProfessor ? "No tests yet" : "No tests published yet"}</h2>
-              <p className="text-sm text-[#888888] mt-2">
+              <p className="text-sm text-ink-3 mt-2">
                 {isProfessor
                   ? "Create a test and the AI drafts the questions from this course's materials."
                   : "When your instructor publishes a test, it appears here."}
@@ -257,17 +254,17 @@ export default function ProfessorTests() {
                       ["Choose the content", "All materials, or just some files and concepts."],
                       ["Review and publish", "Check each question, then release it to students."],
                     ].map(([title, text], i) => (
-                      <li key={title} className="p-4 rounded-xl border border-[#1A1A1A] bg-[#0D0D0D]">
-                        <span className="text-[11px] text-[#666666] tabular-nums">Step {i + 1}</span>
-                        <span className="block text-sm text-white mt-1">{title}</span>
-                        <span className="block text-xs text-[#888888] mt-1">{text}</span>
+                      <li key={title} className="p-4 rounded-xl border border-line bg-surface">
+                        <span className="text-[11px] text-ink-4 tabular-nums">Step {i + 1}</span>
+                        <span className="block text-sm text-ink mt-1">{title}</span>
+                        <span className="block text-xs text-ink-3 mt-1">{text}</span>
                       </li>
                     ))}
                   </ol>
                   {readyDocs === 0 ? (
-                    <p className="mt-8 text-xs text-amber-300">
+                    <p className="mt-8 text-xs text-amber-700">
                       This course has no processed files yet. Questions are written from them, so{" "}
-                      <button onClick={() => navigate(courseRoute)} className="underline hover:text-amber-200">upload materials first</button>.
+                      <button onClick={() => navigate(courseRoute)} className="underline hover:text-amber-700">upload materials first</button>.
                     </p>
                   ) : (
                     <Button variant="primary" className="mt-8" onClick={() => setShowCreateModal(true)}>
@@ -279,7 +276,7 @@ export default function ProfessorTests() {
             </div>
           </Card>
         ) : shown.length === 0 ? (
-          <p className="text-sm text-[#888888] py-10 text-center">No {filter === "draft" ? "drafts" : "published tests"}.</p>
+          <p className="text-sm text-ink-3 py-10 text-center">No {filter === "draft" ? "drafts" : "published tests"}.</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {shown.map(test => (

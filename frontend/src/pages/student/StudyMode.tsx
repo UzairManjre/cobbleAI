@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useGraphStore } from '../../store/graphStore';
 import { useAuthStore } from '../../store/authStore';
@@ -6,81 +6,93 @@ import KnowledgeGraph from '../../components/graph/KnowledgeGraph';
 import TutorChat from '../../components/graph/TutorChat';
 import NodeInfo from '../../components/graph/NodeInfo';
 import ConceptNavigator from '../../components/graph/ConceptNavigator';
-import {
-  ArrowLeft, BookOpen, RefreshCw, GraduationCap,
-  RotateCcw, CheckCircle2, Sparkles, ChevronLeft,
-  ChevronRight, Award, HelpCircle, MessageSquare, Network, PanelRightOpen
-} from 'lucide-react';
+import MapNotReady from '../../components/graph/MapNotReady';
+import { Button } from '../../components/ui/Button';
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Loader2, Network, X } from 'lucide-react';
+
+const MAP_PREF = 'cobble.study.showMap';
+
+function readMapPref(): boolean {
+  try { return localStorage.getItem(MAP_PREF) === '1'; } catch { return false; }
+}
+
+/** Pill segmented control: sunken track, white thumb (DESIGN: segmented control). */
+function Segmented<T extends string>({ value, options, onChange, label }: {
+  value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string;
+}) {
+  return (
+    <div role="tablist" aria-label={label} className="flex items-center gap-0.5 p-0.5 rounded-full bg-sunken">
+      {options.map(o => (
+        <button
+          key={o.value}
+          role="tab"
+          aria-selected={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={`h-8 px-4 rounded-full font-display text-sm tracking-[-0.01em] transition-colors duration-200 ${
+            value === o.value ? 'bg-surface text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12)]' : 'text-ink-3 hover:text-ink'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function StudyMode() {
   const { courseId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { role } = useAuthStore();
-  const dashboardRoute = role === 'professor' ? '/professor/dashboard' : '/student/dashboard';
 
   const {
-    nodes,
-    edges,
-    currentNodeId,
-    visitedNodes,
-    masteredNodes,
-    generateGraph,
-    generateFromDocs,
-    navigateToNode,
-    isLoading,
-    error,
-    fetchCourseGraph,
-    setCurrentNode,
-    toggleMastered
+    nodes, currentNodeId, visitedNodes, masteredNodes, navigateToNode,
+    isLoading, error, fetchCourseGraph, setCurrentNode, toggleMastered,
   } = useGraphStore();
 
-  const [topic, setTopic] = useState('');
   const [showGenerator, setShowGenerator] = useState(true);
-  const [generatorMode, setGeneratorMode] = useState<'topic' | 'docs'>('docs');
   const [isCheckingGraph, setIsCheckingGraph] = useState(false);
-  const [isGraphCollapsed, setIsGraphCollapsed] = useState(false);
-  const [mobileActiveTab, setMobileActiveTab] = useState<'content' | 'chat'>('content');
-
-  // Mode switcher: 'teach' = Socratic Graph Exploration, 'review' = Active Recall & Flashcards
+  // The map is a way to find your bearings, not the lesson: closed until the student asks for it
+  const [showMap, setShowMap] = useState(readMapPref);
+  const [mobilePane, setMobilePane] = useState<'concept' | 'tutor'>('concept');
   const [studyTab, setStudyTab] = useState<'teach' | 'review'>('teach');
-
-  // Flashcard state for Review Mode
   const [isCardFlipped, setIsCardFlipped] = useState(false);
 
-  // Handle node query parameter from StudyPlan
+  const toggleMap = () => {
+    setShowMap(v => {
+      try { localStorage.setItem(MAP_PREF, v ? '0' : '1'); } catch { /* private mode: not remembered */ }
+      return !v;
+    });
+  };
+
+  // Handle node query parameter from StudyPlan / map. Only once per ?node= value: asking a question
+  // toggles isLoading, and re-navigating then aborted the streaming answer and cleared the chat.
+  const handledNodeParam = useRef<string | null>(null);
   useEffect(() => {
     const nodeId = searchParams.get('node');
-    if (nodeId && nodes.length > 0 && !isLoading) {
+    if (nodeId && nodeId !== handledNodeParam.current && nodes.length > 0 && !isLoading) {
+      handledNodeParam.current = nodeId;
       setCurrentNode(nodeId);
       navigateToNode(nodeId);
     }
   }, [nodes.length, isLoading, searchParams, setCurrentNode, navigateToNode]);
 
-  // Check for existing graph on mount
   useEffect(() => {
-    if (courseId) {
-      initStudySession();
-    }
+    if (courseId) initStudySession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
-  // Reset card flip when navigating to a new node
-  useEffect(() => {
-    setIsCardFlipped(false);
-  }, [currentNodeId]);
+  useEffect(() => { setIsCardFlipped(false); }, [currentNodeId]);
 
   const initStudySession = async () => {
     setIsCheckingGraph(true);
     try {
       await fetchCourseGraph(courseId!);
       const state = useGraphStore.getState();
-      
       if (state.nodes && state.nodes.length > 0) {
         setShowGenerator(false);
         // A rebuilt map can drop the concept the student was on: start from the first one then
-        if (!state.nodes.some(n => n.id === state.currentNodeId)) {
-          setCurrentNode(state.nodes[0].id);
-        }
+        if (!state.nodes.some(n => n.id === state.currentNodeId)) setCurrentNode(state.nodes[0].id);
       }
     } catch (err) {
       console.log('No existing graph found, showing generator:', err);
@@ -89,513 +101,188 @@ export default function StudyMode() {
     }
   };
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!topic.trim() && generatorMode === 'topic') return;
-
-    if (generatorMode === 'docs' && courseId) {
-      await generateFromDocs(courseId);
-    } else {
-      await generateGraph(topic.trim(), courseId);
-    }
-    setShowGenerator(false);
-  };
-
-  const handleNodeClick = (nodeId: string) => {
-    navigateToNode(nodeId);
-  };
-
-  // Node navigation helpers
   const currentIndex = nodes.findIndex(n => n.id === currentNodeId);
   const currentNode = nodes[currentIndex] || nodes[0];
   const canGoPrevious = currentIndex > 0;
   const canGoNext = currentIndex < nodes.length - 1;
-
-  const handlePreviousNode = () => {
-    if (canGoPrevious) {
-      const prevId = nodes[currentIndex - 1].id;
-      navigateToNode(prevId);
-    }
-  };
-
-  const handleNextNode = () => {
-    if (canGoNext) {
-      const nextId = nodes[currentIndex + 1].id;
-      navigateToNode(nextId);
-    }
-  };
-
-  const masteredCount = masteredNodes.length;
-  const masteryPercentage = nodes.length > 0 ? Math.round((masteredCount / nodes.length) * 100) : 0;
+  const goNext = () => { if (canGoNext) navigateToNode(nodes[currentIndex + 1].id); };
+  const goPrevious = () => { if (canGoPrevious) navigateToNode(nodes[currentIndex - 1].id); };
 
   if (isCheckingGraph) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-8">
-        <div className="text-center">
-          <RefreshCw className="w-10 h-10 text-white animate-spin mx-auto mb-4" />
-          <div className="text-[#888888] font-medium tracking-widest uppercase text-sm">LOADING STUDY SESSION...</div>
-        </div>
+      <div className="min-h-[60vh] flex items-center justify-center gap-3 text-ink-3">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span className="text-sm">Loading your concepts</span>
       </div>
     );
   }
 
-  if (error) {
+  if (error && nodes.length === 0) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-8">
-        <div className="max-w-md text-center bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-8">
-          <div className="w-16 h-16 bg-[#111111] border border-[#1A1A1A] rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-            ⚠️
-          </div>
-          <h2 className="text-xl font-light text-white mb-2">Error Loading Graph</h2>
-          <p className="text-[#888888] text-sm mb-6">{error}</p>
-          <button
-            onClick={() => initStudySession()}
-            className="px-6 py-2.5 bg-white text-black hover:bg-neutral-200 rounded-xl font-semibold text-sm transition-all"
-          >
-            Retry
-          </button>
+      <div className="min-h-[60vh] flex items-center justify-center p-8">
+        <div className="max-w-sm text-center space-y-4">
+          <h2 className="font-display text-xl tracking-[-0.025em]">The concept map didn't load</h2>
+          <p className="text-sm text-ink-3">{error}</p>
+          <Button onClick={() => initStudySession()}>Try again</Button>
         </div>
       </div>
     );
   }
 
   if (showGenerator) {
+    // No concept map yet: the same status card the 3D map shows (build progress, or what has to happen first)
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-8">
-        <div className="max-w-xl w-full">
-          <button
-            onClick={() => navigate(courseId ? `/${role}/courses/${courseId}` : dashboardRoute)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#0A0A0A] text-white border border-[#1A1A1A] hover:border-[#333333] rounded-xl font-medium transition-all mb-8 w-fit text-sm"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
-          </button>
-
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-3xl p-8">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-[#111111] border border-[#1A1A1A] flex items-center justify-center text-white">
-                <BookOpen className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-light text-white tracking-tight">Generate Knowledge Graph</h1>
-                <p className="text-xs text-[#888888] mt-0.5 uppercase tracking-widest font-semibold">Choose how to build your learning graph</p>
-              </div>
-            </div>
-
-            {/* Generator Mode Toggle */}
-            <div className="flex gap-3 mb-6">
-              <button
-                onClick={() => setGeneratorMode('topic')}
-                className={`flex-1 py-3 px-4 border rounded-xl text-sm font-semibold transition-all ${
-                  generatorMode === 'topic' ? 'bg-white text-black border-white' : 'bg-[#111111] text-[#888888] border-[#1A1A1A] hover:text-white'
-                }`}
-              >
-                From Topic
-              </button>
-              <button
-                onClick={() => setGeneratorMode('docs')}
-                className={`flex-1 py-3 px-4 border rounded-xl text-sm font-semibold transition-all ${
-                  generatorMode === 'docs' ? 'bg-white text-black border-white' : 'bg-[#111111] text-[#888888] border-[#1A1A1A] hover:text-white'
-                }`}
-              >
-                From Documents
-              </button>
-            </div>
-
-            <form onSubmit={handleGenerate} className="space-y-5">
-              {generatorMode === 'topic' ? (
-                <input
-                  type="text"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g., Machine Learning, Quantum Physics"
-                  className="w-full bg-[#111111] border border-[#1A1A1A] rounded-xl px-4 py-3 text-sm text-white placeholder:text-[#888888] focus:outline-none focus:border-[#333333] transition-all"
-                  disabled={isLoading}
-                />
-              ) : (
-                <div className="p-4 bg-[#111111] border border-[#1A1A1A] rounded-xl text-xs text-[#888888] text-center leading-relaxed font-medium">
-                  Will extract concepts from all uploaded course documents and build a connected knowledge graph.
-                </div>
-              )}
-              <button
-                type="submit"
-                disabled={isLoading || (generatorMode === 'topic' && !topic.trim())}
-                className="w-full bg-white text-black hover:bg-neutral-200 disabled:opacity-50 py-3.5 rounded-xl text-sm font-semibold transition-all flex justify-center items-center gap-2"
-              >
-                {isLoading ? (
-                   <>
-                     <RefreshCw className="w-4 h-4 animate-spin" />
-                     {generatorMode === 'docs' ? 'Extracting...' : 'Generating...'}
-                   </>
-                ) : (
-                  generatorMode === 'docs' ? 'Generate from Documents' : 'Generate Graph'
-                )}
-              </button>
-            </form>
-
-            {error && (
-              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 font-medium text-xs">
-                {error}
-              </div>
-            )}
-          </div>
-        </div>
+      <div className="flex items-center justify-center px-8 py-16">
+        {courseId && (
+          <MapNotReady
+            courseId={courseId}
+            role={role}
+            onReady={() => initStudySession()}
+            onBack={() => navigate(`/courses/${courseId}`)}
+          />
+        )}
       </div>
     );
   }
 
   const activeNodeId = nodes.some(n => n.id === currentNodeId) ? currentNodeId : (nodes[0]?.id ?? null);
-
   if (!activeNodeId) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-sm font-semibold uppercase tracking-widest text-[#888888]">No active session</div>
-      </div>
-    );
+    return <div className="min-h-[60vh] flex items-center justify-center text-sm text-ink-3">No concept to study yet.</div>;
   }
 
-  const visitedPct = nodes.length > 0 ? Math.round((visitedNodes.length / nodes.length) * 100) : 0;
+  const isMastered = !!currentNode && masteredNodes.includes(currentNode.id);
+  const teach = studyTab === 'teach';
 
   return (
     // Full window, like the 3D map: the app's centred page layout leaves the study tools cramped
-    <div className="fixed inset-0 z-[60] bg-black text-white flex flex-col font-sans">
+    <div className="fixed inset-0 z-[60] bg-canvas text-ink flex flex-col">
 
-      {/* Top bar */}
-      <header className="h-14 bg-[#0A0A0A] border-b border-[#1A1A1A] flex items-center gap-4 px-4 shrink-0 z-20">
-        <div className="flex items-center gap-3 min-w-0 lg:min-w-[300px]">
+      <header className="h-16 border-b border-line flex items-center gap-3 px-3 md:px-5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0 md:flex-1">
           <button
-            onClick={() => navigate(courseId ? `/${role}/courses/${courseId}` : dashboardRoute)}
+            onClick={() => navigate(`/courses/${courseId}`)}
             aria-label="Back to the course"
-            className="p-2 bg-[#111111] border border-[#1A1A1A] rounded-lg hover:border-[#333333] transition-all text-[#888888] hover:text-white"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-ink-3 hover:text-ink hover:bg-sunken transition-colors shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="min-w-0">
-            <h1 className="text-sm font-medium text-white">Study Space</h1>
-            <p className="text-[11px] text-[#888888] truncate">{nodes.length} concepts · {edges.length} connections</p>
-          </div>
+          <ConceptNavigator nodes={nodes} currentIndex={Math.max(currentIndex, 0)} onPick={navigateToNode} />
         </div>
 
-        {/* Mode switcher */}
-        <div className="mx-auto bg-[#111111] border border-[#1A1A1A] p-1 rounded-xl flex items-center gap-1">
-          <button
-            onClick={() => setStudyTab('teach')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
-              studyTab === 'teach' ? 'bg-white text-black shadow-sm' : 'text-[#888888] hover:text-white'
-            }`}
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>Learn</span>
-          </button>
-          <button
-            onClick={() => setStudyTab('review')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${
-              studyTab === 'review' ? 'bg-white text-black shadow-sm' : 'text-[#888888] hover:text-white'
-            }`}
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Review</span>
-            {masteredCount > 0 && (
-              <span className="bg-emerald-500/20 text-emerald-400 px-1.5 rounded text-[10px]">{masteredCount}</span>
-            )}
-          </button>
+        <div className="ml-auto md:ml-0 shrink-0">
+        <Segmented
+          label="Study mode"
+          value={studyTab}
+          onChange={setStudyTab}
+          options={[{ value: 'teach', label: 'Learn' }, { value: 'review', label: 'Review' }]}
+        />
         </div>
 
-        {/* Progress and layout */}
-        <div className="flex items-center justify-end gap-3 shrink-0 lg:min-w-[300px]">
-          <div className="hidden md:flex items-center gap-4 text-[11px] text-[#888888]">
-            <div className="w-28" title={`${visitedNodes.length} of ${nodes.length} concepts visited`}>
-              <div className="flex justify-between mb-1">
-                <span>Visited</span>
-                <span className="text-white tabular-nums">{visitedNodes.length}/{nodes.length}</span>
-              </div>
-              <div className="h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 transition-all" style={{ width: `${visitedPct}%` }} />
-              </div>
-            </div>
-            <div className="w-24" title={`${masteredCount} of ${nodes.length} concepts mastered`}>
-              <div className="flex justify-between mb-1">
-                <span className="flex items-center gap-1"><Award className="w-3 h-3 text-emerald-400" /> Mastered</span>
-                <span className="text-emerald-400 tabular-nums">{masteryPercentage}%</span>
-              </div>
-              <div className="h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-400 transition-all" style={{ width: `${masteryPercentage}%` }} />
-              </div>
-            </div>
-          </div>
-
-          {studyTab === 'teach' && (
+        <div className="hidden md:flex items-center justify-end gap-4 flex-1 min-w-0">
+          <p className="hidden md:block annot text-ink-3 tabular-nums whitespace-nowrap"
+            title={`${visitedNodes.length} of ${nodes.length} concepts opened, ${masteredNodes.length} marked mastered`}>
+            {masteredNodes.length} mastered · {visitedNodes.length}/{nodes.length} seen
+          </p>
+          {teach && (
             <button
-              onClick={() => setIsGraphCollapsed(!isGraphCollapsed)}
-              aria-pressed={!isGraphCollapsed}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 whitespace-nowrap bg-[#111111] text-[#AAAAAA] hover:text-white border border-[#1A1A1A] hover:border-[#333333] rounded-lg font-medium transition-all text-xs"
+              onClick={toggleMap}
+              aria-pressed={showMap}
+              className={`hidden lg:inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-sm font-display transition-colors ${
+                showMap ? 'bg-ink text-white' : 'text-ink-3 hover:text-ink hover:bg-sunken'
+              }`}
             >
-              {isGraphCollapsed ? <Network className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
-              {isGraphCollapsed ? 'Show map' : 'Hide map'}
+              {showMap ? <X className="w-3.5 h-3.5" /> : <Network className="w-3.5 h-3.5" />}
+              Map
             </button>
           )}
         </div>
       </header>
 
-      {/* Main Workspace Area */}
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden relative w-full">
-
-        {/* =========================================================================
-            LEARN MODE: the concept, the map around it, and the tutor
-           ========================================================================= */}
-        {studyTab === 'teach' && (
-          <>
-            {/* Concept panel and map: stacked (map on top) below xl, side by side from xl */}
-            <div className={`min-h-0 min-w-0 flex-col-reverse xl:flex-row overflow-hidden ${
-              isGraphCollapsed ? 'lg:w-[420px] lg:flex-none' : 'flex-1'
-            } ${mobileActiveTab === 'content' ? 'flex flex-1' : 'hidden lg:flex'}`}>
-              <aside className={`min-h-0 flex flex-col bg-[#080808] border-[#1A1A1A] ${
-                isGraphCollapsed ? 'flex-1' : 'h-[55%] xl:h-auto xl:w-[380px] 2xl:w-[420px] xl:flex-none border-t xl:border-t-0 xl:border-r'
-              }`}>
-                <ConceptNavigator nodes={nodes} currentIndex={Math.max(currentIndex, 0)} onPick={handleNodeClick} />
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                  <NodeInfo nodeId={activeNodeId} onNavigate={handleNodeClick} />
-                </div>
-              </aside>
-              {!isGraphCollapsed && (
-                <div className="flex-1 min-h-0 relative bg-[#050505]">
-                  <KnowledgeGraph onNodeClick={handleNodeClick} />
-                </div>
-              )}
-            </div>
-
-            {/* Tutor */}
-            <div className={`min-h-0 lg:border-l border-[#1A1A1A] flex-col ${mobileActiveTab === 'chat' ? 'flex flex-1' : 'hidden lg:flex'} ${
-              isGraphCollapsed ? 'lg:flex-1' : 'lg:w-[400px] 2xl:w-[460px] lg:shrink-0'
-            }`}>
-              <TutorChat key={activeNodeId} nodeId={activeNodeId} mode="teach" isMassive={isGraphCollapsed} />
-            </div>
-          </>
-        )}
-
-        {/* =========================================================================
-            REVIEW MODE (Active Recall, Flashcards & Concept Mastery Audit)
-           ========================================================================= */}
-        {studyTab === 'review' && (
-          <>
-            {/* Left 60%: Active Recall Flashcards */}
-            <div className={`flex-1 overflow-y-auto p-4 md:p-8 bg-[#050505] flex-col justify-between ${mobileActiveTab === 'content' ? 'flex' : 'hidden lg:flex'}`}>
-              
-              {/* Mastery Header Progress */}
-              <div className="max-w-2xl mx-auto w-full mb-8">
-                <div className="flex items-center justify-between text-xs font-semibold text-[#888888] mb-2 uppercase tracking-widest">
-                  <span className="flex items-center gap-2 text-white">
-                    <Sparkles className="w-4 h-4 text-emerald-400" />
-                    Overall Graph Mastery
-                  </span>
-                  <span className="text-emerald-400">{masteredCount} of {nodes.length} Mastered ({masteryPercentage}%)</span>
-                </div>
-                <div className="h-2 bg-[#1A1A1A] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-400 transition-all duration-500"
-                    style={{ width: `${masteryPercentage}%` }}
-                  />
-                </div>
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        {/* Concept (Learn) or flashcard (Review) */}
+        <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${mobilePane === 'concept' ? 'block' : 'hidden lg:block'}`}>
+          {teach ? (
+            <NodeInfo nodeId={activeNodeId} onNavigate={navigateToNode} />
+          ) : currentNode && (
+            <div className="max-w-xl mx-auto px-6 py-12 md:py-20 min-h-full flex flex-col">
+              <div className="flex items-center justify-between">
+                <span className="annot text-ink-3 tabular-nums">Card {currentIndex + 1} of {nodes.length}</span>
+                {isMastered && <span className="annot text-ink-3 flex items-center gap-1"><Check className="w-3 h-3" /> Mastered</span>}
               </div>
 
-              {/* Active Concept Flashcard */}
-              <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col justify-center my-4">
-                <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-3xl p-8 min-h-[320px] flex flex-col justify-between relative shadow-2xl transition-all">
-                  
-                  {/* Card Header */}
-                  <div className="flex items-center justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-semibold uppercase tracking-widest bg-[#111111] text-[#888888] px-2.5 py-1 rounded-md border border-[#1A1A1A]">
-                        Card {currentIndex + 1} / {nodes.length}
-                      </span>
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                        currentNode?.difficulty === 'advanced' ? 'bg-amber-500/20 text-amber-300' :
-                        currentNode?.difficulty === 'beginner' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'
-                      }`}>
-                        {currentNode?.difficulty || 'Core'}
-                      </span>
+              <div className="flex-1 flex flex-col justify-center py-10">
+                <h2 className="font-display text-3xl md:text-4xl tracking-[-0.03em] leading-[1.05] text-balance">{currentNode.label}</h2>
+                {!isCardFlipped ? (
+                  <>
+                    <p className="mt-4 text-ink-3">Say the definition, how it works and where it's used. Then check yourself.</p>
+                    <div className="mt-8">
+                      <Button onClick={() => setIsCardFlipped(true)}>Show the answer</Button>
                     </div>
-
-                    <button
-                      onClick={() => toggleMastered(currentNode.id)}
-                      className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 ${
-                        masteredNodes.includes(currentNode.id)
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                          : 'bg-[#111111] text-[#888888] border-[#1A1A1A] hover:text-white'
-                      }`}
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>{masteredNodes.includes(currentNode.id) ? 'Mastered' : 'Mark Mastered'}</span>
-                    </button>
-                  </div>
-
-                  {/* Card Content (Front vs Back) */}
-                  {!isCardFlipped ? (
-                    /* FRONT SIDE: Active Recall Challenge */
-                    <div className="my-auto text-center space-y-4 py-6">
-                      <span className="text-xs font-semibold uppercase tracking-widest text-blue-400">
-                        Concept Prompt
-                      </span>
-                      <h2 className="text-2xl font-light text-white leading-snug max-w-lg mx-auto">
-                        {currentNode?.label}
-                      </h2>
-                      <p className="text-sm text-[#888888] max-w-md mx-auto leading-relaxed">
-                        Can you recall the core definition, key mechanics, and practical applications of this concept?
-                      </p>
-                      <button
-                        onClick={() => setIsCardFlipped(true)}
-                        className="mt-6 px-6 py-3 bg-white text-black hover:bg-neutral-200 rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2"
-                      >
-                        <HelpCircle className="w-4 h-4" /> Flip to Reveal Answer & Explanation
-                      </button>
-                    </div>
-                  ) : (
-                    /* BACK SIDE: Explanation & Evaluation */
-                    <div className="my-auto space-y-5 py-4 animate-in fade-in duration-300">
-                      <div>
-                        <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-400 block mb-1">
-                          Core Explanation
-                        </span>
-                        <h3 className="text-xl font-medium text-white mb-2">{currentNode?.label}</h3>
-                        <p className="text-sm text-[#CCCCCC] leading-relaxed bg-[#111111] p-4 rounded-xl border border-[#1A1A1A]">
-                          {currentNode?.description}
-                        </p>
-                      </div>
-
-                      {/* Self Assessment Actions */}
-                      <div className="pt-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-widest text-[#888888] block mb-3 text-center">
-                          Rate Your Understanding
-                        </span>
-                        <div className="grid grid-cols-3 gap-3">
-                          <button
-                            onClick={() => {
-                              setIsCardFlipped(false);
-                              handleNextNode();
-                            }}
-                            className="py-2.5 px-3 bg-[#111111] hover:bg-[#1A1A1A] text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold transition-all text-center"
-                          >
-                            ❌ Needs Review
-                          </button>
-                          <button
-                            onClick={() => {
-                              setIsCardFlipped(false);
-                              handleNextNode();
-                            }}
-                            className="py-2.5 px-3 bg-[#111111] hover:bg-[#1A1A1A] text-amber-400 border border-amber-500/20 rounded-xl text-xs font-semibold transition-all text-center"
-                          >
-                            ⚡ Getting There
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (!masteredNodes.includes(currentNode.id)) {
-                                toggleMastered(currentNode.id);
-                              }
-                              setIsCardFlipped(false);
-                              handleNextNode();
-                            }}
-                            className="py-2.5 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold transition-all text-center"
-                          >
-                            ✅ Mastered!
-                          </button>
-                        </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-5 text-[17px] leading-relaxed text-ink-2">{currentNode.description}</p>
+                    <div className="mt-10 border-t border-line pt-6">
+                      <p className="text-sm text-ink-3 mb-3">How well did you know it?</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={goNext}>Not yet</Button>
+                        <Button variant="outline" size="sm" onClick={goNext}>Partly</Button>
+                        <Button size="sm" onClick={() => { if (!isMastered) toggleMastered(currentNode.id); goNext(); }}>
+                          <Check className="w-3.5 h-3.5" /> Knew it
+                        </Button>
                       </div>
                     </div>
-                  )}
-
-                  {/* Card Bottom Nav */}
-                  <div className="flex items-center justify-between pt-6 border-t border-[#1A1A1A] text-xs text-[#888888]">
-                    <button
-                      onClick={handlePreviousNode}
-                      disabled={!canGoPrevious}
-                      className="hover:text-white disabled:opacity-30 flex items-center gap-1"
-                    >
-                      <ChevronLeft className="w-4 h-4" /> Previous Concept
-                    </button>
-
-                    <button
-                      onClick={() => setIsCardFlipped(!isCardFlipped)}
-                      className="hover:text-white text-blue-400 flex items-center gap-1 font-medium"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" /> Flip Card
-                    </button>
-
-                    <button
-                      onClick={handleNextNode}
-                      disabled={!canGoNext}
-                      className="hover:text-white disabled:opacity-30 flex items-center gap-1"
-                    >
-                      Next Concept <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                </div>
+                  </>
+                )}
               </div>
 
-              {/* Bottom Quick Node Selector */}
-              <div className="max-w-2xl mx-auto w-full pt-4">
-                <div className="flex items-center justify-center gap-1.5 overflow-x-auto py-2 hide-scrollbar">
-                  {nodes.map((n, idx) => {
-                    const isM = masteredNodes.includes(n.id);
-                    const isC = n.id === currentNodeId;
-                    return (
-                      <button
-                        key={n.id}
-                        onClick={() => navigateToNode(n.id)}
-                        className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all flex items-center justify-center border ${
-                          isC
-                            ? 'bg-white text-black border-white'
-                            : isM
-                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                              : 'bg-[#0A0A0A] text-[#A3A3A3] border-[#1A1A1A] hover:text-white'
-                        }`}
-                        title={n.label}
-                      >
-                        {isM ? '✓' : idx + 1}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="flex items-center justify-between border-t border-line pt-4 text-sm">
+                <button onClick={goPrevious} disabled={!canGoPrevious}
+                  className="inline-flex items-center gap-1 text-ink-3 hover:text-ink disabled:opacity-30">
+                  <ChevronLeft className="w-4 h-4" /> Previous
+                </button>
+                <button onClick={goNext} disabled={!canGoNext}
+                  className="inline-flex items-center gap-1 text-ink-3 hover:text-ink disabled:opacity-30">
+                  Skip <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
-
             </div>
+          )}
+        </main>
 
-            {/* Right 40%: Targeted Review Chat */}
-            <div className={`min-h-0 lg:w-[400px] 2xl:w-[460px] shrink-0 lg:border-l border-[#1A1A1A] flex-col ${mobileActiveTab === 'chat' ? 'flex-1 flex' : 'hidden lg:flex'}`}>
-              <TutorChat key={activeNodeId} nodeId={activeNodeId} mode="review" />
-            </div>
-
-          </>
+        {teach && showMap && (
+          <section aria-label="Concept map" className="hidden lg:block flex-1 min-w-0 border-l border-line relative">
+            <KnowledgeGraph onNodeClick={navigateToNode} />
+            <button
+              onClick={() => navigate(`/courses/${courseId}/map`)}
+              className="absolute top-3 right-3 z-20 h-8 px-3 rounded-full bg-surface border border-line-strong text-xs font-display text-ink-2 hover:border-ink"
+            >
+              Open in 3D
+            </button>
+          </section>
         )}
 
+        <aside aria-label="Tutor"
+          className={`min-h-0 flex-col border-l border-line bg-surface lg:w-[420px] 2xl:w-[480px] lg:shrink-0 ${
+            mobilePane === 'tutor' ? 'flex flex-1' : 'hidden lg:flex'}`}>
+          <TutorChat key={`${studyTab}-${activeNodeId}`} nodeId={activeNodeId} mode={studyTab} />
+        </aside>
       </div>
 
       {error && (
-        <div className="fixed bottom-20 lg:bottom-6 right-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 font-medium text-xs max-w-md z-50">
+        <div role="alert" className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 px-4 py-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm max-w-md z-50">
           {error}
         </div>
       )}
 
-      {/* Mobile Tab Bar */}
-      <div className="lg:hidden flex items-center justify-between border-t border-[#1A1A1A] bg-[#0A0A0A] p-2 shrink-0 pb-safe">
-        <button
-          onClick={() => setMobileActiveTab('content')}
-          className={`flex-1 py-3 text-xs font-semibold rounded-lg flex justify-center items-center gap-2 transition-all ${
-            mobileActiveTab === 'content' ? 'bg-[#111111] text-white shadow-sm border border-[#1A1A1A]' : 'text-[#888888] hover:text-white'
-          }`}
-        >
-          {studyTab === 'teach' ? <BookOpen className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
-          {studyTab === 'teach' ? 'Concept & map' : 'Flashcard'}
-        </button>
-        <button
-          onClick={() => setMobileActiveTab('chat')}
-          className={`flex-1 py-3 text-xs font-semibold rounded-lg flex justify-center items-center gap-2 transition-all ${
-            mobileActiveTab === 'chat' ? 'bg-[#111111] text-white shadow-sm border border-[#1A1A1A]' : 'text-[#888888] hover:text-white'
-          }`}
-        >
-          <MessageSquare className="w-4 h-4" />
-          Tutor Chat
-        </button>
+      {/* Phone: one pane at a time */}
+      <div className="lg:hidden border-t border-line p-2 flex justify-center shrink-0">
+        <Segmented
+          label="Pane"
+          value={mobilePane}
+          onChange={setMobilePane}
+          options={[{ value: 'concept', label: teach ? 'Concept' : 'Card' }, { value: 'tutor', label: 'Tutor' }]}
+        />
       </div>
     </div>
   );

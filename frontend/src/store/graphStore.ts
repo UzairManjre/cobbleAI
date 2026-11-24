@@ -1,3 +1,4 @@
+import { apiErrorDetail } from '../utils/apiError';
 import { create } from 'zustand';
 import { graphsApi, sessionsApi } from '../api';
 import { analytics } from '../utils/analytics';
@@ -96,10 +97,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     } catch (err: any) {
       analytics.track('graph_generation_failed', {
         topic,
-        error: err.response?.data?.detail || err.message,
+        error: apiErrorDetail(err, err.message),
         durationMs: Date.now() - startTime,
       });
-      set({ error: err.response?.data?.detail || 'Failed to generate graph', isLoading: false });
+      set({ error: apiErrorDetail(err, 'Failed to generate graph'), isLoading: false });
     }
   },
 
@@ -119,7 +120,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         isLoading: false
       });
     } catch (err: any) {
-      set({ error: err.response?.data?.detail || 'Failed to generate graph from documents', isLoading: false });
+      set({ error: apiErrorDetail(err, 'Failed to generate graph from documents'), isLoading: false });
     }
   },
 
@@ -150,16 +151,20 @@ export const useGraphStore = create<GraphState>((set, get) => ({
           sessionId: sessionRes.data.id,
           // If user already navigated to a specific node, keep it.
           // Otherwise use session's default node.
-          currentNodeId: currentState.currentNodeId || sessionRes.data.current_node_id,
+          // (only a node of this graph: the store is shared, so it may still hold another course's node)
+          currentNodeId: graph.nodes.some((n: { id: string }) => n.id === currentState.currentNodeId)
+            ? currentState.currentNodeId
+            : sessionRes.data.current_node_id,
           visitedNodes: sessionRes.data.visited_nodes,
           chatHistory: normalizeHistory(sessionRes.data.chat_history),
           isLoading: false
         });
       } else {
-        set({ isLoading: false });
+        // This course has no map yet: drop any map left over from the last course viewed
+        set({ isLoading: false, graphId: null, sessionId: null, nodes: [], edges: [], currentNodeId: null, visitedNodes: [], chatHistory: [] });
       }
     } catch (err: any) {
-      set({ error: err.response?.data?.detail || 'Failed to fetch course graph', isLoading: false });
+      set({ error: apiErrorDetail(err, 'Failed to fetch course graph'), isLoading: false });
     }
   },
 
@@ -181,7 +186,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       const graphRes = await graphsApi.get(res.data.graph_id);
       set({ nodes: graphRes.data.nodes, edges: graphRes.data.edges });
     } catch (err: any) {
-      set({ error: err.response?.data?.detail || 'Failed to load session', isLoading: false });
+      set({ error: apiErrorDetail(err, 'Failed to load session'), isLoading: false });
     }
   },
 
@@ -226,7 +231,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     } catch (err: any) {
       // Revert on error if necessary, but usually we keep the UI state
       // or show an error toast. For now, we log the error.
-      set({ error: err.response?.data?.detail || 'Failed to navigate' });
+      set({ error: apiErrorDetail(err, 'Failed to navigate') });
     }
   },
 

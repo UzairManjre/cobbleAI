@@ -47,7 +47,7 @@ export default function ReadAloud({ text }: { text: string }) {
       title={speaking ? 'Stop reading' : 'Read aloud (on-device voice)'}
       aria-pressed={speaking}
       className={`px-2 py-1 rounded-lg text-[11px] flex items-center gap-1 border transition-colors ${
-        speaking ? 'text-blue-300 border-blue-500/40 bg-blue-500/10' : 'text-[#888888] border-transparent hover:text-white hover:border-[#333333]'
+        speaking ? 'text-accent border-accent/40 bg-accent/10' : 'text-ink-3 border-transparent hover:text-ink hover:border-line-strong'
       }`}
     >
       {speaking ? <Square className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}

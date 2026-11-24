@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { useGraphStore } from '../../store/graphStore';
-import { Send, MessageSquare, CheckCircle, Sparkles, HelpCircle, GraduationCap, Link2, ListChecks } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import { tutorApi } from '../../api/tutor';
 import type { HintLevel, TutorPolicyInfo } from '../../types/tutor';
 import HintLadder from '../tutor/HintLadder';
@@ -11,22 +11,21 @@ import VoiceInputButton from '../tutor/VoiceInputButton';
 
 interface TutorChatProps {
   nodeId: string;
-  isMassive?: boolean;
   mode?: 'teach' | 'review';
 }
 
-const TutorChat = ({ nodeId, isMassive, mode = 'teach' }: TutorChatProps) => {
+const TutorChat = ({ nodeId, mode = 'teach' }: TutorChatProps) => {
   const [input, setInput] = useState('');
   const { courseId } = useParams();
-  const { nodes, chatHistory, askQuestion, isLoading, masteredNodes } = useGraphStore();
+  const { nodes, chatHistory, askQuestion, isLoading } = useGraphStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [policy, setPolicy] = useState<TutorPolicyInfo | null>(null);
   const [hintLevel, setHintLevel] = useState<HintLevel>('guiding_question');
   const [teachBack, setTeachBack] = useState(false);
 
   const activeNode = nodes.find(n => n.id === nodeId);
-  const isMastered = masteredNodes.includes(nodeId);
   const streaming = chatHistory.some(m => m.decision === 'pending');
+  const busy = isLoading || streaming;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -47,7 +46,7 @@ const TutorChat = ({ nodeId, isMassive, mode = 'teach' }: TutorChatProps) => {
   }, [courseId, nodeId]);
 
   const send = (text: string) => {
-    if (!text.trim() || isLoading || streaming) return;
+    if (!text.trim() || busy) return;
     return askQuestion(nodeId, text.trim(), { mode: teachBack ? 'teach_back' : mode, hintLevel });
   };
 
@@ -59,131 +58,97 @@ const TutorChat = ({ nodeId, isMassive, mode = 'teach' }: TutorChatProps) => {
   };
 
   const label = activeNode?.label || 'this concept';
-  const promptChips = mode === 'review' ? [
-    { label: 'Quiz me', icon: HelpCircle, prompt: `Ask me two questions to check I understand ${label}.` },
-    { label: 'Common pitfalls', icon: Sparkles, prompt: `What mistakes do the course materials warn about for ${label}?` },
-    { label: 'Connections', icon: Link2, prompt: `How does ${label} connect to the related concepts?` },
+  const starters = mode === 'review' ? [
+    { label: 'Quiz me', prompt: `Ask me two questions to check I understand ${label}.` },
+    { label: 'Common mistakes', prompt: `What mistakes do the course materials warn about for ${label}?` },
+    { label: 'How it connects', prompt: `How does ${label} connect to the related concepts?` },
   ] : [
-    { label: 'Key idea', icon: Sparkles, prompt: `What is the key idea of ${label}?` },
-    { label: 'Example from the notes', icon: ListChecks, prompt: `Walk me through an example of ${label} from the course materials.` },
-    { label: 'Check my understanding', icon: HelpCircle, prompt: `Ask me two diagnostic questions about ${label}.` },
+    { label: 'Explain the key idea', prompt: `What is the key idea of ${label}?` },
+    { label: 'Show an example from the notes', prompt: `Walk me through an example of ${label} from the course materials.` },
+    { label: 'Check my understanding', prompt: `Ask me two diagnostic questions about ${label}.` },
   ];
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-[#0A0A0A] text-white font-sans">
-
-      {/* Which concept the tutor is answering about (details and mastery live in the concept panel) */}
-      {activeNode && (
-        <div className="h-12 bg-[#0A0A0A] border-b border-[#1A1A1A] px-5 flex items-center gap-2 shrink-0 min-w-0">
-          <MessageSquare className="w-4 h-4 text-blue-400 shrink-0" />
-          <span className="text-xs font-semibold text-white shrink-0">
-            {teachBack ? 'Teach it back' : mode === 'review' ? 'Review tutor' : 'Tutor'}
-          </span>
-          <span className="text-xs text-[#555555] shrink-0">·</span>
-          <span className="text-xs text-[#888888] truncate" title={activeNode.label}>{activeNode.label}</span>
-          {isMastered && <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 ml-auto" aria-label="Mastered" />}
-        </div>
-      )}
-
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto bg-[#050505]">
-      {/* With the map hidden the chat is page-wide: keep lines a readable length */}
-      <div className={`p-5 space-y-5 min-h-full flex flex-col ${isMassive ? 'max-w-3xl mx-auto' : ''}`}>
-        {chatHistory.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-4">
-            <div className="w-12 h-12 bg-[#111111] border border-[#1A1A1A] rounded-2xl flex items-center justify-center text-[#888888]">
-              <MessageSquare className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-white mb-1">
-                {teachBack ? 'Explain it in your own words' : mode === 'review' ? 'Review & Verification Assistant' : 'Socratic Tutor Ready'}
-              </h4>
-              <p className="text-xs text-[#888888] max-w-xs leading-relaxed">
+    <div className="flex flex-col h-full min-h-0 bg-surface text-ink">
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-5 py-6 space-y-5 min-h-full flex flex-col">
+          {chatHistory.length === 0 ? (
+            <div className="flex-1 flex flex-col justify-end pb-2">
+              <h2 className="font-display text-xl font-medium tracking-[-0.025em] leading-tight">
+                {teachBack ? `Explain ${label} in your own words.` : mode === 'review' ? `Test yourself on ${label}.` : `Ask about ${label}.`}
+              </h2>
+              <p className="mt-2 text-sm text-ink-3 leading-relaxed">
                 {teachBack
-                  ? <>Explain <span className="text-white font-medium">{label}</span> as if to a classmate. The tutor will ask a follow-up and point out anything that disagrees with your notes.</>
-                  : <>Ask a question about <span className="text-white font-medium">{label}</span>. Answers come only from your course materials, with sources.</>}
+                  ? 'The tutor asks a follow-up and points out anything your notes disagree with.'
+                  : 'Answers come only from your course materials, with sources.'}
               </p>
+              {!teachBack && (
+                <ul className="mt-5 border-t border-line" aria-label="Suggested questions">
+                  {starters.map(s => (
+                    <li key={s.label} className="border-b border-line">
+                      <button
+                        onClick={() => send(s.prompt)}
+                        disabled={busy}
+                        className="w-full text-left py-3 text-sm text-ink-2 hover:text-accent transition-colors disabled:opacity-50"
+                      >
+                        {s.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-
-            {!teachBack && (
-              <div className="flex flex-wrap justify-center gap-2 pt-2 max-w-sm" role="group" aria-label="Quick prompts">
-                {promptChips.map((chip) => (
-                  <button
-                    key={chip.label}
-                    onClick={() => send(chip.prompt)}
-                    disabled={isLoading || streaming}
-                    className="px-3 py-1.5 bg-[#111111] hover:bg-[#1A1A1A] text-xs text-[#CCCCCC] border border-[#1A1A1A] hover:border-[#333333] rounded-xl transition-all flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <chip.icon className="w-3.5 h-3.5 text-blue-400" />
-                    <span>{chip.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          chatHistory.map((msg, idx) => (
-            <TutorMessageView
-              key={msg.id || `${idx}-${msg.role}`}
-              message={msg}
-              courseId={courseId}
-              streaming={msg.decision === 'pending'}
-            />
-          ))
-        )}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl rounded-bl-none px-4 py-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#888888] font-semibold uppercase tracking-widest">Thinking</span>
-                <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0ms]" />
-                  <div className="w-1.5 h-1.5 bg-[#888888] rounded-full animate-bounce [animation-delay:150ms]" />
-                  <div className="w-1.5 h-1.5 bg-[#444444] rounded-full animate-bounce [animation-delay:300ms]" />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-      </div>
-
-      {/* Help level, teach-back toggle and input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-[#1A1A1A] bg-[#0A0A0A] space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {!teachBack ? (
-            <HintLadder value={hintLevel} onChange={setHintLevel} policy={policy} disabled={isLoading || streaming} />
           ) : (
-            <span className="text-[11px] text-[#888888]">Teach-back: the tutor checks your explanation against the notes.</span>
+            chatHistory.map((msg, idx) => (
+              <TutorMessageView
+                key={msg.id || `${idx}-${msg.role}`}
+                message={msg}
+                courseId={courseId}
+                streaming={msg.decision === 'pending'}
+              />
+            ))
           )}
-          <button
-            type="button"
-            onClick={() => setTeachBack(!teachBack)}
-            aria-pressed={teachBack}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border flex items-center gap-1 transition-colors ${
-              teachBack ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-[#111111] text-[#CCCCCC] border-[#1A1A1A] hover:border-[#333333]'
-            }`}
-          >
-            <GraduationCap className="w-3.5 h-3.5" /> Teach it back
-          </button>
+          {isLoading && (
+            <p className="flex items-center gap-2 text-sm text-ink-3" role="status">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> Looking through your notes
+            </p>
+          )}
+          <div ref={messagesEndRef} />
         </div>
-        <div className="flex gap-2">
+      </div>
+
+      <form onSubmit={handleSubmit} className="px-4 pt-3 pb-4 border-t border-line">
+        <div className="flex items-center gap-1 rounded-xl border border-line-strong bg-surface pl-4 pr-1.5 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent-50 transition-colors">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={teachBack ? `Explain ${label} in your own words...` : `Ask about ${label}...`}
-            className="flex-1 bg-[#111111] border border-[#1A1A1A] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#888888] focus:outline-none focus:border-[#333333] transition-all"
+            placeholder={teachBack ? `Explain ${label}…` : `Ask about ${label}…`}
+            aria-label={teachBack ? 'Your explanation' : 'Your question'}
+            className="flex-1 min-w-0 h-12 bg-transparent text-[15px] text-ink placeholder:text-ink-4 focus:outline-none"
             disabled={isLoading}
           />
-          <VoiceInputButton courseId={courseId} disabled={isLoading || streaming} onTranscript={(text) => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))} />
+          <VoiceInputButton courseId={courseId} disabled={busy} onTranscript={(text) => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))} />
           <button
             type="submit"
-            disabled={!input.trim() || isLoading || streaming}
-            className="px-4 bg-white text-black hover:bg-neutral-200 disabled:opacity-50 rounded-xl transition-all flex items-center justify-center shrink-0"
+            disabled={!input.trim() || busy}
+            aria-label="Send"
+            className="w-9 h-9 rounded-full bg-accent text-white hover:bg-accent-strong disabled:bg-sunken-2 disabled:text-ink-4 transition-colors flex items-center justify-center shrink-0"
           >
-            <Send className="w-4 h-4" />
+            <ArrowUp className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-3 px-1">
+          {teachBack
+            ? <span className="text-xs text-ink-3">Teach-back mode</span>
+            : <HintLadder compact value={hintLevel} onChange={setHintLevel} policy={policy} disabled={busy} />}
+          <button
+            type="button"
+            onClick={() => setTeachBack(!teachBack)}
+            aria-pressed={teachBack}
+            className="text-xs text-ink-3 hover:text-ink underline underline-offset-4 decoration-line-strong hover:decoration-ink"
+          >
+            {teachBack ? 'Back to questions' : 'Teach it back instead'}
           </button>
         </div>
       </form>

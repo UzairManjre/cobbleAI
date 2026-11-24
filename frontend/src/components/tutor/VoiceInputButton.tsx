@@ -96,7 +96,7 @@ export default function VoiceInputButton({ courseId, disabled, onTranscript }: P
   if (state === 'recording') {
     return (
       <button type="button" onClick={stop} aria-label="Stop recording"
-        className="px-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 hover:bg-red-500/25 flex items-center gap-2 text-xs tabular-nums shrink-0">
+        className="h-9 px-3 rounded-full bg-red-50 text-red-700 hover:bg-red-100 flex items-center gap-2 text-xs tabular-nums shrink-0">
         <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" aria-hidden />
         {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
         <Square className="w-3.5 h-3.5" />
@@ -111,7 +111,7 @@ export default function VoiceInputButton({ courseId, disabled, onTranscript }: P
       disabled={disabled || state === 'transcribing'}
       aria-label={state === 'transcribing' ? 'Transcribing your question' : 'Ask by voice'}
       title="Ask by voice. Your recording is transcribed on the course server and not kept."
-      className="px-3 rounded-xl bg-[#111111] border border-[#1A1A1A] text-[#AAAAAA] hover:text-white hover:border-[#333333] disabled:opacity-50 flex items-center justify-center shrink-0"
+      className="w-9 h-9 rounded-full text-ink-3 hover:text-ink hover:bg-sunken disabled:opacity-50 flex items-center justify-center shrink-0 self-center transition-colors"
     >
       {state === 'transcribing' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
     </button>

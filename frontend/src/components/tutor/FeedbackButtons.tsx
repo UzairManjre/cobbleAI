@@ -43,8 +43,8 @@ export default function FeedbackButtons({ messageId }: { messageId?: string }) {
           title={label}
           className={`px-2 py-1 rounded-lg text-[10px] flex items-center gap-1 border transition-colors ${
             rating === value
-              ? value === 'helpful' ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' : 'border-amber-500/40 text-amber-400 bg-amber-500/10'
-              : 'border-transparent text-[#666666] hover:text-[#CCCCCC] hover:border-[#1A1A1A]'
+              ? value === 'helpful' ? 'border-emerald-500/40 text-emerald-700 bg-emerald-500/10' : 'border-amber-500/40 text-amber-700 bg-amber-500/10'
+              : 'border-transparent text-ink-4 hover:text-ink-2 hover:border-line'
           }`}
         >
           <Icon className="w-3 h-3" />

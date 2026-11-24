@@ -16,10 +16,10 @@ interface Props {
 function DeclineNotice({ text }: { text: string }) {
   return (
     <div className="flex items-start gap-3" role="status">
-      <SearchX className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+      <SearchX className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
       <div>
-        <p className="text-xs font-semibold text-amber-300 uppercase tracking-widest mb-1">Not in your course materials</p>
-        <p className="text-sm text-[#CCCCCC] leading-relaxed">{text}</p>
+        <p className="text-xs font-semibold text-amber-700 uppercase tracking-widest mb-1">Not in your course materials</p>
+        <p className="text-sm text-ink-2 leading-relaxed">{text}</p>
       </div>
     </div>
   );
@@ -30,7 +30,7 @@ export default function TutorMessageView({ message, courseId, streaming, onSeekL
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-none px-4 py-3 text-sm bg-white text-black font-medium">
+        <div className="max-w-[85%] rounded-2xl rounded-br-none px-4 py-3 text-sm bg-accent text-white font-medium">
           <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
         </div>
       </div>
@@ -45,7 +45,7 @@ export default function TutorMessageView({ message, courseId, streaming, onSeekL
     <div className="space-y-2">
       <div className="flex justify-start">
         <div className={`max-w-[85%] rounded-2xl rounded-bl-none px-4 py-3 text-sm border ${
-          declined ? 'bg-amber-500/5 border-amber-500/20' : 'bg-[#0A0A0A] text-white border-[#1A1A1A]'
+          declined ? 'bg-amber-500/5 border-amber-500/20' : 'bg-surface text-ink border-line'
         }`}>
           {declined ? <DeclineNotice text={text} /> : <MessageContent content={message.content} thinking={message.thinking} />}
         </div>

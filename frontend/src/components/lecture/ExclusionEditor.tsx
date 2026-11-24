@@ -57,40 +57,40 @@ export default function ExclusionEditor({ lectureId, ranges, getCurrentTime, onS
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-start gap-2">
-        <EyeOff className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-        <p className="text-xs text-[#AAAAAA] leading-relaxed">
+        <EyeOff className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-ink-3 leading-relaxed">
           Excluded ranges are removed from captions, the transcript and the tutor's search. Use this for parts where students can be heard, such as classroom Q&amp;A.
         </p>
       </div>
       <ul className="space-y-2">
-        {draft.length === 0 && <li className="text-xs text-[#666666]">Nothing excluded.</li>}
+        {draft.length === 0 && <li className="text-xs text-ink-4">Nothing excluded.</li>}
         {draft.map((r, i) => (
-          <li key={`${r.start}-${r.end}`} className="flex items-center justify-between bg-[#111111] border border-[#1A1A1A] rounded-lg px-3 py-2 text-xs text-white">
+          <li key={`${r.start}-${r.end}`} className="flex items-center justify-between bg-sunken border border-line rounded-lg px-3 py-2 text-xs text-ink">
             <span className="font-mono">{formatTimestamp(r.start)} – {formatTimestamp(r.end)}</span>
-            <button type="button" onClick={() => setDraft(draft.filter((_, j) => j !== i))} className="text-[#888888] hover:text-red-400" title="Remove">
+            <button type="button" onClick={() => setDraft(draft.filter((_, j) => j !== i))} className="text-ink-3 hover:text-red-600" title="Remove">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </li>
         ))}
       </ul>
       <div className="flex items-end gap-2">
-        <label className="flex-1 text-[10px] text-[#888888] uppercase tracking-widest">From
+        <label className="flex-1 text-[10px] text-ink-3 uppercase tracking-widest">From
           <div className="flex gap-1 mt-1">
-            <input value={start} onChange={e => setStart(e.target.value)} placeholder="12:30" className="w-full bg-[#111111] border border-[#1A1A1A] rounded-lg px-2 py-1.5 text-xs text-white normal-case" />
-            <button type="button" onClick={() => setStart(now())} className="text-[10px] text-blue-400 px-1 normal-case">now</button>
+            <input value={start} onChange={e => setStart(e.target.value)} placeholder="12:30" className="w-full bg-sunken border border-line rounded-lg px-2 py-1.5 text-xs text-ink normal-case" />
+            <button type="button" onClick={() => setStart(now())} className="text-[10px] text-accent px-1 normal-case">now</button>
           </div>
         </label>
-        <label className="flex-1 text-[10px] text-[#888888] uppercase tracking-widest">To
+        <label className="flex-1 text-[10px] text-ink-3 uppercase tracking-widest">To
           <div className="flex gap-1 mt-1">
-            <input value={end} onChange={e => setEnd(e.target.value)} placeholder="15:00" className="w-full bg-[#111111] border border-[#1A1A1A] rounded-lg px-2 py-1.5 text-xs text-white normal-case" />
-            <button type="button" onClick={() => setEnd(now())} className="text-[10px] text-blue-400 px-1 normal-case">now</button>
+            <input value={end} onChange={e => setEnd(e.target.value)} placeholder="15:00" className="w-full bg-sunken border border-line rounded-lg px-2 py-1.5 text-xs text-ink normal-case" />
+            <button type="button" onClick={() => setEnd(now())} className="text-[10px] text-accent px-1 normal-case">now</button>
           </div>
         </label>
-        <button type="button" onClick={add} className="p-2 rounded-lg border border-[#1A1A1A] text-white hover:border-[#333333]" title="Add range">
+        <button type="button" onClick={add} className="p-2 rounded-lg border border-line text-ink hover:border-line-strong" title="Add range">
           <Plus className="w-4 h-4" />
         </button>
       </div>
-      <button type="button" onClick={save} disabled={saving} className="w-full py-2 rounded-xl bg-white text-black text-sm font-medium disabled:opacity-50">
+      <button type="button" onClick={save} disabled={saving} className="w-full py-2 rounded-xl bg-accent text-white text-sm font-medium disabled:opacity-50">
         {saving ? 'Saving…' : 'Save and re-index'}
       </button>
     </div>

@@ -21,7 +21,7 @@ export default function SourceCounts({ courseId, days }: { courseId: string; day
 
   const open = async (row: SourceCountRow) => {
     if (row.t_start !== undefined && row.t_start !== null) {
-      navigate(`/professor/courses/${courseId}/lectures/${row.doc_id}?t=${Math.floor(row.t_start)}`);
+      navigate(`/courses/${courseId}/lectures/${row.doc_id}?t=${Math.floor(row.t_start)}`);
       return;
     }
     const opened = await openInNewTab(async () => {
@@ -34,32 +34,32 @@ export default function SourceCounts({ courseId, days }: { courseId: string; day
   const max = Math.max(1, ...(data?.locations.map(r => r.retrieved) || [1]));
 
   return (
-    <section className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-5 space-y-4">
+    <section className="bg-surface border border-line rounded-2xl p-5 space-y-4">
       <div>
-        <h2 className="text-sm font-medium text-white flex items-center gap-2"><BarChart2 className="w-4 h-4 text-purple-400" /> Most-asked-about material</h2>
-        <p className="text-[11px] text-[#888888] mt-1">
+        <h2 className="text-sm font-medium text-ink flex items-center gap-2"><BarChart2 className="w-4 h-4 text-violet-700" /> Most-asked-about material</h2>
+        <p className="text-[11px] text-ink-3 mt-1">
           {data ? `${data.n_questions} answered questions in the last ${days} days. ${data.note}` : 'Question counts per slide, page and lecture moment.'}
         </p>
       </div>
       {!data ? null : data.locations.length === 0 ? (
-        <p className="text-xs text-[#666666]">No answered questions in this period.</p>
+        <p className="text-xs text-ink-4">No answered questions in this period.</p>
       ) : (
         <>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-white">
+            <table className="w-full text-xs text-ink">
               <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-[#888888] text-left">
+                <tr className="text-[10px] uppercase tracking-widest text-ink-3 text-left">
                   <th className="pb-2 pr-3">Material</th><th className="pb-2 pr-3">Where</th><th className="pb-2 pr-3 w-40">Questions</th><th className="pb-2 pr-3">Cited</th><th className="pb-2" />
                 </tr>
               </thead>
               <tbody>
                 {data.locations.map(row => (
-                  <tr key={`${row.doc_id}-${row.kind}-${row.location}`} className="border-t border-[#1A1A1A]">
+                  <tr key={`${row.doc_id}-${row.kind}-${row.location}`} className="border-t border-line">
                     <td className="py-2 pr-3 max-w-[220px] truncate" title={row.filename}>{row.filename}</td>
-                    <td className="py-2 pr-3 text-[#AAAAAA]">{row.location || 'whole file'}</td>
+                    <td className="py-2 pr-3 text-ink-3">{row.location || 'whole file'}</td>
                     <td className="py-2 pr-3">
                       <div className="flex items-center gap-2">
-                        <div className="h-1.5 bg-[#1A1A1A] rounded-full flex-1 overflow-hidden">
+                        <div className="h-1.5 bg-sunken-2 rounded-full flex-1 overflow-hidden">
                           <div className="h-full bg-purple-400" style={{ width: `${(row.retrieved / max) * 100}%` }} />
                         </div>
                         <span className="font-mono w-6 text-right">{row.retrieved}</span>
@@ -67,7 +67,7 @@ export default function SourceCounts({ courseId, days }: { courseId: string; day
                     </td>
                     <td className="py-2 pr-3 font-mono">{row.cited}</td>
                     <td className="py-2 text-right">
-                      <button onClick={() => open(row)} className="text-[#888888] hover:text-white" aria-label={`Open ${row.filename} ${row.location}`}>
+                      <button onClick={() => open(row)} className="text-ink-3 hover:text-ink" aria-label={`Open ${row.filename} ${row.location}`}>
                         <ExternalLink className="w-3.5 h-3.5" />
                       </button>
                     </td>
@@ -78,7 +78,7 @@ export default function SourceCounts({ courseId, days }: { courseId: string; day
           </div>
           <div className="flex flex-wrap gap-2">
             {data.documents.map(d => (
-              <span key={d.doc_id} className="text-[10px] px-2 py-1 rounded-lg border border-[#1A1A1A] text-[#AAAAAA]">
+              <span key={d.doc_id} className="text-[10px] px-2 py-1 rounded-lg border border-line text-ink-3">
                 {d.filename}: {d.questions} question{d.questions === 1 ? '' : 's'}
               </span>
             ))}

@@ -1,4 +1,5 @@
-import { Outlet } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import Topbar from './Topbar';
 import ResearchConsentBanner from '../common/ResearchConsent';
 import { useAuthStore } from '../../store/authStore';
@@ -6,10 +7,18 @@ import './AppLayout.css';
 
 const AppLayout = () => {
   const role = useAuthStore(s => s.role);
+  const { pathname } = useLocation();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // The content area (not the window) scrolls: start each new page at the top
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0);
+  }, [pathname]);
+
   return (
     <div className="app-container">
       <Topbar />
-      <div className="content-scrollable">
+      <div className="content-scrollable" ref={scrollRef}>
         {role === 'student' && <ResearchConsentBanner />}
         <Outlet />
       </div>

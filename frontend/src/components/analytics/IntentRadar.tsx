@@ -24,7 +24,7 @@ export default function IntentRadar({ data }: Props) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <RadarChart data={data} outerRadius="70%">
-        <PolarGrid stroke="#e2e8f0" />
+        <PolarGrid stroke="#282828" />
         <PolarAngleAxis
           dataKey="intent"
           tick={{ fill: '#475569', fontSize: 11, fontWeight: 500 }}
@@ -32,27 +32,27 @@ export default function IntentRadar({ data }: Props) {
         <PolarRadiusAxis
           angle={30}
           tick={{ fill: '#64748b', fontSize: 10 }}
-          stroke="#e2e8f0"
+          stroke="#282828"
         />
         <Radar
           name="Query Intent"
           dataKey="count"
-          stroke="#FF4D5B"
-          fill="#FF4D5B"
+          stroke="#073dea"
+          fill="#073dea"
           fillOpacity={0.2}
           strokeWidth={2}
           isAnimationActive={false}
         />
         <Tooltip
           contentStyle={{
-            backgroundColor: '#ffffff',
-            borderColor: '#e2e8f0',
+            backgroundColor: '#282828',
+            borderColor: '#282828',
             borderRadius: '8px',
-            color: '#0f172a',
+            color: '#282828',
             fontSize: '12px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
           }}
-          itemStyle={{ color: '#0f172a' }}
+          itemStyle={{ color: '#282828' }}
           animationDuration={0}
         />
       </RadarChart>

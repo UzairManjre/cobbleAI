@@ -16,19 +16,19 @@ interface TestCardProps {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  draft: "bg-amber-500/10 text-amber-300 border-amber-500/25",
-  published: "bg-emerald-500/10 text-emerald-300 border-emerald-500/25",
-  completed: "bg-blue-500/10 text-blue-300 border-blue-500/25",
+  draft: "bg-amber-500/10 text-amber-700 border-amber-500/25",
+  published: "bg-emerald-500/10 text-emerald-700 border-emerald-500/25",
+  completed: "bg-accent/10 text-accent border-accent/25",
 };
 
 const TYPE_LABEL: Record<string, string> = { assignment: "Assignment", quiz: "Quiz", exam: "Exam", mock_test: "Practice" };
 
 function Stat({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: string }) {
   return (
-    <div className="p-3 rounded-xl bg-[#050505] border border-[#1A1A1A]">
-      <Icon className="w-3.5 h-3.5 text-[#666666] mb-2" />
-      <span className="block text-sm text-white tabular-nums">{value}</span>
-      <span className="text-[10px] uppercase tracking-widest text-[#666666]">{label}</span>
+    <div className="p-3 rounded-xl bg-surface border border-line">
+      <Icon className="w-3.5 h-3.5 text-ink-4 mb-2" />
+      <span className="block text-sm text-ink tabular-nums">{value}</span>
+      <span className="text-[10px] uppercase tracking-widest text-ink-4">{label}</span>
     </div>
   );
 }
@@ -41,21 +41,21 @@ export function TestCard({ test, role, isGenerating, onPreview, onGenerate, onPu
   const resultsVisible = test.show_results_immediately || test.results_released;
 
   return (
-    <Card className="p-6 flex flex-col hover:border-[#2A2A2A] transition-colors">
+    <Card className="p-6 flex flex-col hover:border-line transition-colors">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className={`px-2 py-0.5 rounded-md border text-[10px] font-semibold uppercase tracking-wider ${STATUS_STYLE[test.status] || "bg-[#111111] text-[#AAAAAA] border-[#262626]"}`}>
+          <span className={`px-2 py-0.5 rounded-md border text-[10px] font-semibold uppercase tracking-wider ${STATUS_STYLE[test.status] || "bg-sunken text-ink-3 border-line"}`}>
             {test.status}
           </span>
-          <span className="px-2 py-0.5 rounded-md border border-[#262626] bg-[#111111] text-[10px] font-semibold uppercase tracking-wider text-[#AAAAAA]">
+          <span className="px-2 py-0.5 rounded-md border border-line bg-sunken text-[10px] font-semibold uppercase tracking-wider text-ink-3">
             {TYPE_LABEL[test.test_type] || test.test_type}
           </span>
         </div>
-        {test.created_at && <span className="text-[11px] text-[#666666]">Created {timeAgo(test.created_at)}</span>}
+        {test.created_at && <span className="text-[11px] text-ink-4">Created {timeAgo(test.created_at)}</span>}
       </div>
 
-      <h3 className="mt-4 text-lg font-outfit font-medium text-white leading-snug line-clamp-2">{test.title}</h3>
-      <p className="mt-1 text-sm text-[#888888] line-clamp-2">{test.description || "No description."}</p>
+      <h3 className="mt-4 text-lg font-outfit font-medium text-ink leading-snug line-clamp-2">{test.title}</h3>
+      <p className="mt-1 text-sm text-ink-3 line-clamp-2">{test.description || "No description."}</p>
 
       <div className="grid grid-cols-4 gap-2 mt-5">
         <Stat icon={Clock} label="Minutes" value={String(test.duration_minutes)} />
@@ -65,7 +65,7 @@ export function TestCard({ test, role, isGenerating, onPreview, onGenerate, onPu
       </div>
 
       {isProfessor && test.status === "draft" && questions === 0 && (
-        <p className="mt-4 text-xs text-[#888888]">
+        <p className="mt-4 text-xs text-ink-3">
           {isGenerating
             ? "The local AI model is writing questions from your course materials. This can take a few minutes."
             : "No questions yet. Generate them from your course materials, review them, then publish."}
@@ -74,13 +74,13 @@ export function TestCard({ test, role, isGenerating, onPreview, onGenerate, onPu
 
       {isProfessor && test.status === "published" && (
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-          <span className="text-[#AAAAAA]">{test.submissions ?? 0} submission{test.submissions === 1 ? "" : "s"}</span>
+          <span className="text-ink-3">{test.submissions ?? 0} submission{test.submissions === 1 ? "" : "s"}</span>
           {!!test.answers_to_review && courseId && (
-            <button onClick={() => navigate(`/professor/courses/${courseId}/review`)} className="text-amber-300 hover:text-amber-200">
+            <button onClick={() => navigate(`/courses/${courseId}/review`)} className="text-amber-700 hover:text-amber-700">
               {test.answers_to_review} AI grade{test.answers_to_review === 1 ? "" : "s"} to review
             </button>
           )}
-          <span className={resultsVisible ? "text-emerald-400 flex items-center gap-1" : "text-[#888888]"}>
+          <span className={resultsVisible ? "text-emerald-700 flex items-center gap-1" : "text-ink-3"}>
             {resultsVisible ? <><CheckCircle2 className="w-3.5 h-3.5" /> Results visible to students</> : "Results hidden until you release them"}
           </span>
         </div>
@@ -88,7 +88,7 @@ export function TestCard({ test, role, isGenerating, onPreview, onGenerate, onPu
 
       {/* Pushes the actions to the bottom so cards in a row line up */}
       <div className="flex-1 min-h-5" />
-      <div className="pt-4 border-t border-[#1A1A1A] flex flex-wrap items-center gap-2">
+      <div className="pt-4 border-t border-line flex flex-wrap items-center gap-2">
         {!isProfessor ? (
           <Button onClick={() => navigate(`/tests/${test.id}`)} variant="primary" className="w-full">
             <Play className="w-4 h-4" /> Start test
@@ -115,7 +115,7 @@ export function TestCard({ test, role, isGenerating, onPreview, onGenerate, onPu
             )}
 
             {test.status === "published" && test.test_type === "assignment" && courseId && (
-              <Button size="sm" variant="outline" onClick={() => navigate(`/professor/courses/${courseId}/tests/${test.id}/grading`)}>
+              <Button size="sm" variant="outline" onClick={() => navigate(`/courses/${courseId}/tests/${test.id}/grading`)}>
                 <ClipboardCheck className="w-3.5 h-3.5" /> Grade submissions
               </Button>
             )}

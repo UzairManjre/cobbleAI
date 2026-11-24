@@ -4,6 +4,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'raised' | 'hoverable' | 'glass';
 }
 
+/** A white panel on the White Smoke canvas: one hairline, no shadow. */
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(({
   children,
   className = '',
@@ -11,16 +12,28 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(({
   ...props
 }, ref) => {
   const variantStyles = {
-    default: 'bg-[#0A0A0A] border border-[#1A1A1A]',
-    raised: 'bg-[#111111] border border-[#1A1A1A]',
-    hoverable: 'bg-[#0A0A0A] border border-[#1A1A1A] hover:border-[#333333] hover:-translate-y-0.5 transition-all cursor-pointer',
-    glass: 'bg-[#0A0A0A]/90 backdrop-blur-xl border border-[#1A1A1A]',
+    default: 'bg-surface border border-line',
+    raised: 'bg-sunken border border-line',
+    hoverable: 'group bg-surface border border-line hover:border-ink transition-colors duration-200 cursor-pointer',
+    glass: 'bg-surface border border-line',
   };
+
+  // Clickable cards are reachable and operable from the keyboard
+  const interactive = props.onClick && variant === 'hoverable'
+    ? {
+        role: 'button',
+        tabIndex: 0,
+        onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLDivElement).click(); }
+        },
+      }
+    : {};
 
   return (
     <div
       ref={ref}
       className={`rounded-2xl ${variantStyles[variant]} ${className}`}
+      {...interactive}
       {...props}
     >
       {children}
@@ -35,11 +48,11 @@ export const CardHeader = ({ className = '', ...props }: React.HTMLAttributes<HT
 );
 
 export const CardTitle = ({ className = '', ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h3 className={`text-lg font-medium text-white tracking-tight ${className}`} {...props} />
+  <h3 className={`font-display text-lg font-medium text-ink tracking-tight ${className}`} {...props} />
 );
 
 export const CardDescription = ({ className = '', ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
-  <p className={`text-xs text-[#888888] mt-1 font-normal leading-relaxed ${className}`} {...props} />
+  <p className={`text-sm text-ink-3 mt-1 leading-relaxed ${className}`} {...props} />
 );
 
 export const CardContent = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (
@@ -47,5 +60,5 @@ export const CardContent = ({ className = '', ...props }: React.HTMLAttributes<H
 );
 
 export const CardFooter = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`p-6 pt-3 border-t border-[#1A1A1A] flex items-center justify-between ${className}`} {...props} />
+  <div className={`p-6 pt-3 border-t border-line flex items-center justify-between ${className}`} {...props} />
 );

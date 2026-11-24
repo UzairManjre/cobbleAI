@@ -1,10 +1,9 @@
-import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useGraphStore } from '../../store/graphStore';
-import { Award, CheckCircle, ChevronRight, Lock, TriangleAlert } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import CitationList from '../tutor/CitationList';
 import { evidenceToSource, type GraphEdge } from '../../types/graph';
-import { conceptState, missingPrerequisites, relationText, type ConceptState } from '../../utils/concepts';
+import { conceptState, missingPrerequisites, relationText } from '../../utils/concepts';
 import { sourceLocation } from '../../utils/format';
 
 interface NodeInfoProps {
@@ -12,28 +11,7 @@ interface NodeInfoProps {
   onNavigate: (nodeId: string) => void;
 }
 
-const STATE_CHIP: Record<ConceptState, { label: string; className: string }> = {
-  mastered: { label: 'Mastered', className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  visited: { label: 'Visited', className: 'bg-blue-500/10 text-blue-300 border-blue-500/30' },
-  locked: { label: 'Prerequisites first', className: 'bg-amber-500/10 text-amber-300 border-amber-500/20' },
-  open: { label: 'Not started', className: 'bg-[#111111] text-[#AAAAAA] border-[#262626]' },
-};
-
-const DIFFICULTY_CHIP: Record<string, string> = {
-  beginner: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
-  intermediate: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
-  advanced: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
-};
-
-const STATE_DOT: Record<ConceptState, string> = {
-  mastered: 'bg-emerald-400', visited: 'bg-blue-400', locked: 'bg-[#444444]', open: 'bg-[#777777]',
-};
-
-function SectionTitle({ children }: { children: ReactNode }) {
-  return <h4 className="text-[10px] font-semibold uppercase tracking-widest text-[#777777] mb-3">{children}</h4>;
-}
-
-/** The current concept: what it is, what to study first, where it comes from and what it links to. */
+/** The current concept as a reading page: what it is, what to study first, where it comes from, what it links to. */
 const NodeInfo = ({ nodeId, onNavigate }: NodeInfoProps) => {
   const nodes = useGraphStore(s => s.nodes);
   const edges = useGraphStore(s => s.edges);
@@ -45,11 +23,10 @@ const NodeInfo = ({ nodeId, onNavigate }: NodeInfoProps) => {
 
   const node = nodes.find(n => n.id === nodeId);
   if (!node) {
-    return <div className="p-6 text-sm text-[#888888] text-center">Select a concept on the map to see its details.</div>;
+    return <div className="p-6 text-sm text-ink-3 text-center">Pick a concept to see what it is.</div>;
   }
 
-  const state = conceptState(node.id, edges, visited, mastered);
-  const isMastered = state === 'mastered';
+  const isMastered = conceptState(node.id, edges, visited, mastered) === 'mastered';
   const prerequisites = missingPrerequisites(node.id, nodes, edges, visited, mastered);
 
   // The same passage can back a concept twice (a quote and a mention): list each place once
@@ -70,106 +47,81 @@ const NodeInfo = ({ nodeId, onNavigate }: NodeInfoProps) => {
   ];
 
   return (
-    <div className="p-6 space-y-8">
-      <section>
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md border ${DIFFICULTY_CHIP[node.difficulty || ''] || 'bg-[#111111] text-[#AAAAAA] border-[#262626]'}`}>
-            {node.difficulty || 'core'}
-          </span>
-          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md border ${STATE_CHIP[state].className}`}>
-            {STATE_CHIP[state].label}
-          </span>
-        </div>
-        <h2 className="text-2xl font-outfit font-light text-white leading-tight tracking-tight">{node.label}</h2>
-        {node.description && <p className="mt-3 text-sm leading-relaxed text-[#BBBBBB]">{node.description}</p>}
-        {node.supported === false && (
-          <p className="mt-3 flex items-start gap-1.5 text-xs text-amber-300">
-            <TriangleAlert className="w-3.5 h-3.5 mt-px shrink-0" /> No passage in the course materials states this concept. Treat it with care.
-          </p>
-        )}
-        <button
-          onClick={() => toggleMastered(node.id)}
-          className={`mt-5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 ${
-            isMastered
-              ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
-              : 'bg-white text-black border-white hover:bg-neutral-200'
-          }`}
-        >
-          {isMastered ? <CheckCircle className="w-3.5 h-3.5" /> : <Award className="w-3.5 h-3.5" />}
-          {isMastered ? 'Mastered (undo)' : 'Mark as mastered'}
-        </button>
-      </section>
-
-      {prerequisites.length > 0 && (
-        <section className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-amber-300">
-            <Lock className="w-3.5 h-3.5" /> Builds on {prerequisites.length === 1 ? 'a concept' : `${prerequisites.length} concepts`} you haven't studied yet
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {prerequisites.map(p => (
-              <button
-                key={p.id}
-                onClick={() => onNavigate(p.id)}
-                disabled={isLoading}
-                className="px-2.5 py-1 rounded-lg text-xs text-white bg-[#111111] border border-[#2A2A2A] hover:border-amber-500/50 disabled:opacity-50"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <p className="mt-3 text-[11px] text-[#888888]">You can still study this one; starting there makes it easier.</p>
-        </section>
+    <article className="max-w-[38rem] mx-auto px-6 md:px-10 py-10 md:py-14">
+      <h1 className="font-display text-3xl md:text-[2.5rem] font-medium tracking-[-0.03em] leading-[1.05] text-balance">
+        {node.label}
+      </h1>
+      <p className="mt-3 annot text-ink-3">{node.difficulty || 'core'}{isMastered ? ' · mastered' : ''}</p>
+      {node.description && <p className="mt-5 text-[17px] leading-relaxed text-ink-2">{node.description}</p>}
+      {node.supported === false && (
+        <p className="mt-4 text-sm text-ink-3">No passage in your course materials states this directly, so check it against your notes.</p>
       )}
 
+      {prerequisites.length > 0 && (
+        <p className="mt-6 text-sm text-ink-3 leading-relaxed">
+          Builds on{' '}
+          {prerequisites.map((p, i) => (
+            <span key={p.id}>
+              {i > 0 && (i === prerequisites.length - 1 ? ' and ' : ', ')}
+              <button onClick={() => onNavigate(p.id)} disabled={isLoading}
+                className="text-accent underline underline-offset-4 decoration-accent-100 hover:decoration-accent disabled:opacity-50">
+                {p.label}
+              </button>
+            </span>
+          ))}
+          , which you haven't studied yet.
+        </p>
+      )}
+
+      <button
+        onClick={() => toggleMastered(node.id)}
+        aria-pressed={isMastered}
+        className={`mt-8 inline-flex items-center gap-1.5 h-9 px-4 rounded-full border text-sm font-display transition-colors ${
+          isMastered ? 'bg-ink border-ink text-white hover:bg-ink-2' : 'border-line-strong text-ink hover:border-ink'
+        }`}
+      >
+        <Check className="w-3.5 h-3.5" /> {isMastered ? 'Mastered' : 'I know this'}
+      </button>
+
       {sources.length > 0 && (
-        <section>
-          <SectionTitle>Where this comes from</SectionTitle>
+        <section className="mt-12">
           <CitationList courseId={courseId} sources={sources} title="Sources" />
         </section>
       )}
 
       {connections.length > 0 && (
-        <section>
-          <SectionTitle>Connections · {connections.length}</SectionTitle>
-          <div className="space-y-2">
+        <section className="mt-12">
+          <h2 className="font-display text-base font-medium tracking-[-0.02em] pb-3 border-b border-ink">Related concepts</h2>
+          <ul>
             {connections.map(({ edge, incoming }) => {
               const otherId = incoming ? edge.from : edge.to;
               const other = nodes.find(n => n.id === otherId);
               if (!other) return null;
-              const otherState = conceptState(other.id, edges, visited, mastered);
-              const quote = edge.provenance?.[0]?.quote;
+              const inferred = edge.supported === false;
               return (
-                <button
-                  key={edge.id}
-                  onClick={() => onNavigate(otherId)}
-                  disabled={isLoading}
-                  className="w-full text-left p-3 rounded-xl border border-[#1A1A1A] bg-[#0A0A0A] hover:bg-[#111111] hover:border-[#333333] transition-colors disabled:opacity-50 group"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${STATE_DOT[otherState]}`} aria-hidden />
-                    <span className="flex-1 min-w-0 text-sm leading-snug">
-                      {incoming ? (
-                        <><span className="text-white font-medium">{other.label}</span> <span className="text-[#888888]">{relationText(edge.relation)} this</span></>
-                      ) : (
-                        <><span className="text-[#888888]">This {relationText(edge.relation)}</span> <span className="text-white font-medium">{other.label}</span></>
-                      )}
-                    </span>
-                    {edge.supported === false && (
-                      <span className="text-[10px] text-amber-300 border border-amber-500/30 rounded px-1.5 py-px shrink-0 cursor-help"
-                        title="No single passage in your materials discusses both concepts, so the AI inferred this link. Check it before relying on it.">
-                        AI-inferred
+                <li key={edge.id} className="border-b border-line">
+                  <button
+                    onClick={() => onNavigate(otherId)}
+                    disabled={isLoading}
+                    title={inferred ? 'No single passage in your materials discusses both concepts, so the AI inferred this link.' : undefined}
+                    className="group w-full text-left py-3.5 flex items-center gap-3 disabled:opacity-50"
+                  >
+                    <span className="flex-1 min-w-0 text-[15px] leading-snug">
+                      <span className="text-ink group-hover:text-accent transition-colors">{other.label}</span>
+                      <span className="block text-xs text-ink-3 mt-0.5">
+                        {incoming ? `${relationText(edge.relation)} this` : `this ${relationText(edge.relation)} it`}
+                        {inferred && ' · inferred link'}
                       </span>
-                    )}
-                    <ChevronRight className="w-4 h-4 text-[#555555] group-hover:text-white shrink-0" />
-                  </div>
-                  {quote && <p className="text-[11px] text-[#777777] mt-1.5 ml-5 line-clamp-2">“{quote}”</p>}
-                </button>
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-ink-4 group-hover:text-accent group-hover:translate-x-1 transition-all shrink-0" />
+                  </button>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </section>
       )}
-    </div>
+    </article>
   );
 };
 

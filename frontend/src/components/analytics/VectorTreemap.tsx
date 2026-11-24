@@ -24,15 +24,15 @@ export default function VectorTreemap({ data }: Props) {
         labelSkipSize={45}
         // Use a cleaner label function
         label={(node: any) => node.depth === 2 ? node.id.split('.').pop() : ''}
-        labelTextColor="#ffffff"
+        labelTextColor="#282828"
         orientLabel={false}
         parentLabel={(node: any) => node.depth === 1 ? node.id : ''}
         parentLabelSize={14}
         parentLabelPosition="top"
-        parentLabelTextColor="#0A0A0A"
+        parentLabelTextColor="#282828"
         // High-end neon palette
         colors={(node: any) => {
-          const colors = ['#6366f1', '#10b981', '#f43f5e', '#f59e0b', '#06b6d4', '#d946ef'];
+          const colors = ['#6366f1', '#059669', '#000000', '#b45309', '#8fadeb', '#4f75f7'];
           const path = node.path || '';
           const courseName = path.split('.')[1] || node.id;
           let hash = 0;
@@ -45,20 +45,20 @@ export default function VectorTreemap({ data }: Props) {
         }}
         nodeOpacity={0.9}
         borderWidth={2}
-        borderColor="#0A0A0A"
+        borderColor="#282828"
         enableParentLabel={true}
         tile="squarify"
         leavesOnly={false}
         innerPadding={3}
         outerPadding={3}
         theme={{
-          textColor: '#0A0A0A',
+          textColor: '#282828',
           fontSize: 10,
           fontFamily: "'Outfit', 'Inter', sans-serif",
           tooltip: {
             container: {
-              background: '#FFFFFF',
-              color: '#0A0A0A',
+              background: '#282828',
+              color: '#282828',
               fontSize: 12,
               borderRadius: '8px',
               border: '2px solid #0A0A0A',

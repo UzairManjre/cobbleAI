@@ -1,142 +1,130 @@
 /* =============================================================================
-   CobbleAI Design System — index.css
-   Aesthetic: Luxury Minimal / Dark Monochrome
-   Font: Outfit (single typeface, all weights)
-   Palette: True-black canvas, 1px hairline borders, blue accent
+   Cobble AI design tokens
+   Brand: Sol Blue #073dea, Charcoal Black #000, White Smoke #f9f9f9
+   Type: Space Grotesk (headings), SF Pro Display / system UI (body)
+   App surfaces are light; the landing and sign-in pages are drenched in blue.
    ============================================================================= */
 
-/* Google Fonts — Outfit only. Inter removed (unused). */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap');
 
 @import "tailwindcss";
 
-/* ─── Canonical Design Tokens ────────────────────────────────────────────── */
+@theme {
+  /* Fonts */
+  --font-sans: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Space Grotesk", -apple-system, "SF Pro Display", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+
+  /* Brand */
+  --color-accent: #073dea;          /* Sol Blue */
+  --color-accent-strong: #0532c4;   /* pressed / hover on blue */
+  --color-accent-400: #4f75f7;
+  --color-accent-300: #6a8ff0;
+  --color-accent-200: #8fadeb;
+  --color-accent-100: #b0c8ee;
+  --color-accent-50: #d4e1f4;
+  --color-accent-wash: #eef3fd;     /* tinted fill for selected rows, chips */
+
+  /* Neutrals (light app) */
+  --color-canvas: #f9f9f9;          /* White Smoke page */
+  --color-surface: #ffffff;         /* panels */
+  --color-sunken: #f2f2f3;          /* inputs, quiet fills */
+  --color-sunken-2: #e9e9eb;        /* tracks, hover on sunken */
+  --color-line: #e4e4e7;            /* hairlines */
+  --color-line-strong: #cdcdd2;     /* control borders, hover */
+  --color-ink: #000000;             /* Charcoal Black */
+  --color-ink-2: #282828;           /* strong secondary */
+  --color-ink-3: #5c5c62;           /* secondary text (AA on canvas) */
+  --color-ink-4: #8e8e93;           /* faint text, icons, placeholders */
+
+  /* Type scale extras */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @layer base {
   :root {
-    /* ── Backgrounds ──────────────────────────────────────────────────────── */
-    --bg:          #000000;   /* true-black canvas                             */
-    --bg-surface:  #0A0A0A;   /* card / panel surface                          */
-    --bg-raised:   #111111;   /* hover raised state, input background           */
-    --bg-elevated: #1A1A1A;   /* dividers, table headers, skeleton fills        */
-
-    /* ── Foreground (text) ────────────────────────────────────────────────── */
-    --fg:           rgba(255, 255, 255, 0.90);  /* primary text                */
-    --fg-secondary: rgba(255, 255, 255, 0.50);  /* secondary / #888888 equiv   */
-    --fg-muted:     rgba(255, 255, 255, 0.30);  /* placeholder, disabled text  */
-    --fg-subtle:    rgba(255, 255, 255, 0.15);  /* ghost text / watermarks     */
-
-    /* ── Borders ─────────────────────────────────────────────────────────── */
-    --border:        rgba(255, 255, 255, 0.06); /* hairline default            */
-    --border-hover:  rgba(255, 255, 255, 0.12); /* hover / focus               */
-    --border-strong: rgba(255, 255, 255, 0.20); /* strong / active             */
-
-    /* ── Accent — Cobble Blue ─────────────────────────────────────────────── */
-    --accent:         #3B82F6;                   /* blue-500                   */
-    --accent-hover:   #2563EB;                   /* blue-600                   */
-    --accent-surface: rgba(59, 130, 246, 0.10);  /* tinted fill                */
-    --accent-border:  rgba(59, 130, 246, 0.25);  /* accent-colored border      */
-
-    /* ── Muted fills ─────────────────────────────────────────────────────── */
-    --muted: #111111;
-
-    /* ── Semantic Status ─────────────────────────────────────────────────── */
-    --success:         #10B981;
-    --success-surface: rgba(16, 185, 129, 0.10);
-    --warning:         #F59E0B;
-    --warning-surface: rgba(245, 158, 11, 0.10);
-    --info:            #3B82F6;
-    --info-surface:    rgba(59, 130, 246, 0.10);
-    --danger:          #EF4444;
-    --danger-surface:  rgba(239, 68, 68, 0.10);
-
-    /* ── Badge palette ───────────────────────────────────────────────────── */
-    --badge-purple-bg:     rgba(168, 85, 247, 0.10);
-    --badge-purple-border: #a855f7;
-    --badge-purple-text:   #d8b4fe;
-    --badge-orange-bg:     rgba(249, 115, 22, 0.10);
-    --badge-orange-border: #f97316;
-    --badge-orange-text:   #fdba74;
-
-    /* ─── Legacy alias layer ─────────────────────────────────────────────────
-       Maps old --designer-* names onto the canonical tokens above.
-       This keeps existing CSS files (Topbar.css, Dashboard.css, etc.) working
-       without requiring a mass-rename on those files in this commit.
-       Remove this block once all consumer files are migrated.
-       ─────────────────────────────────────────────────────────────────────── */
-    --designer-bg:                 var(--bg);
-    --designer-sidebar-bg:         var(--bg);
-    --designer-card-bg:            var(--bg-surface);
-    --designer-card-bg-hover:      var(--bg-raised);
-    --designer-text-primary:       var(--fg);
-    --designer-text-secondary:     var(--fg-secondary);
-    --designer-border:             var(--border-strong); /* legacy used the darker tone */
-    --designer-accent-green:       var(--accent);
-    --designer-accent-green-dark:  var(--accent-hover);
-    --designer-accent-green-bg:    var(--accent-surface);
-    --designer-accent-green-bg-solid: #1e3a8a;
-    --designer-badge-purple-bg:    var(--badge-purple-bg);
-    --designer-badge-purple-border: var(--badge-purple-border);
-    --designer-badge-purple-text:  var(--badge-purple-text);
-    --designer-badge-orange-bg:    var(--badge-orange-bg);
-    --designer-badge-orange-border: var(--badge-orange-border);
-    --designer-badge-orange-text:  var(--badge-orange-text);
-    --designer-input-bg:           var(--bg-surface);
+    color-scheme: light;
+    /* Legacy names still read by a few CSS files */
+    --bg: var(--color-canvas);
+    --bg-surface: var(--color-surface);
+    --bg-raised: var(--color-sunken);
+    --bg-elevated: var(--color-sunken-2);
+    --fg: var(--color-ink);
+    --fg-secondary: var(--color-ink-3);
+    --border: var(--color-line);
+    --border-hover: var(--color-line-strong);
+    --border-strong: var(--color-line-strong);
+    --accent: var(--color-accent);
+    --accent-hover: var(--color-accent-strong);
+    --accent-surface: var(--color-accent-wash);
+    --accent-border: var(--color-accent-100);
+    --designer-bg: var(--color-canvas);
+    --designer-card-bg: var(--color-surface);
+    --designer-card-bg-hover: var(--color-sunken);
+    --designer-text-primary: var(--color-ink);
+    --designer-text-secondary: var(--color-ink-3);
+    --designer-border: var(--color-line);
+    --designer-accent-green: var(--color-accent);
   }
 
-  /* ─── Global Reset ───────────────────────────────────────────────────────── */
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  html {
+    -webkit-text-size-adjust: 100%;
   }
 
-  /* ─── Body ───────────────────────────────────────────────────────────────── */
-  /*
-     Outfit is applied here at the root. Tailwind's `font-sans` utility maps
-     to the same stack via tailwind.config.js → theme.extend.fontFamily.sans.
-     Both are in sync — no divergence possible.
-  */
   body {
-    font-family: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Outfit OpenType niceties */
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: var(--bg);
-    color: var(--fg);
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
     line-height: 1.5;
+    font-feature-settings: 'ss01';
   }
 
-  /* ─── Typography normalization ───────────────────────────────────────────── */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', sans-serif;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    line-height: 1.2;
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    text-wrap: balance;
   }
 
-  /* Remove any residual serif override (left from previous Playfair removal) */
-  .font-serif {
-    font-family: 'Outfit', sans-serif !important;
+  /* Old class names from the previous typeface, now the display face */
+  .font-outfit, .font-serif {
+    font-family: var(--font-display);
   }
 
-  /* ─── Form element normalization ─────────────────────────────────────────── */
-  select {
-    background-image: none;
+  ::selection {
+    background: var(--color-accent);
+    color: #ffffff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  input, textarea, select {
+    caret-color: var(--color-accent);
+  }
+
+  a {
+    text-underline-offset: 0.2em;
+  }
+
+  .tabular, table td, table th {
+    font-variant-numeric: tabular-nums;
   }
 
   select option {
-    background-color: var(--bg-elevated);
-    color: var(--fg);
-    padding: 8px 12px;
+    background-color: var(--color-surface);
+    color: var(--color-ink);
   }
 
-  select option:hover,
-  select option:checked {
-    background-color: var(--bg-raised);
-  }
-
-  /* Remove number input spinners */
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -146,268 +134,57 @@
     -moz-appearance: textfield;
   }
 
-  /* ─── Scrollbar — dark minimal ───────────────────────────────────────────── */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--border-hover) transparent;
+    scrollbar-color: var(--color-line-strong) transparent;
   }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-line-strong); border-radius: 999px; border: 2px solid var(--color-canvas); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-ink-4); }
 
-  ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
+}
 
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--border-hover);
-    border-radius: 999px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--border-strong);
-  }
-
-  ::-webkit-scrollbar-corner {
-    background: transparent;
-  }
-
-  /* ─── Shared component classes ───────────────────────────────────────────── */
-  /*
-     These replace the old .designer-btn / .designer-card etc. with canonical
-     names. Existing components using .designer-btn still work via the alias
-     variables above; new components should use Tailwind utilities directly.
-  */
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.875rem;
+@layer components {
+  /* Small uppercase annotation: figure captions, corner meta, data labels (not eyebrows above headings) */
+  .annot {
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
     font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-    border: 1px solid var(--border-strong);
-    background: transparent;
-    color: var(--fg);
-    white-space: nowrap;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.2;
   }
 
-  .btn:hover {
-    background: var(--bg-raised);
-    border-color: var(--border-hover);
+  /* Crosshair registration mark, drawn with two hairlines */
+  .crosshair {
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    pointer-events: none;
   }
-
-  .btn-primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
+  .crosshair::before, .crosshair::after {
+    content: '';
+    position: absolute;
+    background: currentColor;
   }
+  .crosshair::before { left: 6px; top: 0; width: 1px; height: 13px; }
+  .crosshair::after { top: 6px; left: 0; height: 1px; width: 13px; }
+}
 
-  .btn-primary:hover {
-    background: var(--accent-hover);
-    border-color: var(--accent-hover);
-  }
-
-  /* Alias — backwards compat with .designer-btn usage in existing components */
-  .designer-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-    border: 1px solid var(--border-strong);
-    background: transparent;
-    color: var(--fg);
-    white-space: nowrap;
-  }
-
-  .designer-btn:hover {
-    background: var(--bg-raised);
-    border-color: var(--border-hover);
-  }
-
-  .designer-btn-primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-
-  .designer-btn-primary:hover {
-    background: var(--accent-hover);
-    border-color: var(--accent-hover);
-  }
-
-  .card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-strong);
-    border-radius: 12px;
-    padding: 1.25rem;
-    transition: border-color 0.2s;
-  }
-
-  .card:hover {
-    border-color: var(--border-hover);
-  }
-
-  /* Alias */
-  .designer-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-strong);
-    border-radius: 12px;
-    padding: 1.25rem;
-    transition: border-color 0.2s;
-  }
-
-  .designer-card:hover {
-    border-color: var(--border-hover);
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border: 1px solid;
-  }
-
-  .badge-purple {
-    background: var(--badge-purple-bg);
-    border-color: var(--badge-purple-border);
-    color: var(--badge-purple-text);
-  }
-
-  .badge-orange {
-    background: var(--badge-orange-bg);
-    border-color: var(--badge-orange-border);
-    color: var(--badge-orange-text);
-  }
-
-  /* Aliases */
-  .designer-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border: 1px solid;
-  }
-
-  .designer-badge-purple {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border: 1px solid;
-    background: var(--badge-purple-bg);
-    border-color: var(--badge-purple-border);
-    color: var(--badge-purple-text);
-  }
-
-  .designer-badge-orange {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border: 1px solid;
-    background: var(--badge-orange-bg);
-    border-color: var(--badge-orange-border);
-    color: var(--badge-orange-text);
-  }
-
-  .avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-    background: var(--bg-elevated);
-    flex-shrink: 0;
-  }
-
-  /* Aliases */
-  .designer-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-    background: var(--bg-elevated);
-    flex-shrink: 0;
-  }
-
-  .designer-avatar-small {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
-    background: var(--bg-elevated);
-    flex-shrink: 0;
-  }
-
-  .search-input {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-strong);
-    color: var(--fg);
-    padding: 0.5rem 1rem 0.5rem 2.5rem;
-    border-radius: 8px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.875rem;
-    width: 100%;
-    max-width: 300px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .search-input:focus {
-    border-color: var(--accent-border);
-  }
-
-  .designer-search-input {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-strong);
-    color: var(--fg);
-    padding: 0.5rem 1rem 0.5rem 2.5rem;
-    border-radius: 8px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.875rem;
-    width: 100%;
-    max-width: 300px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .designer-search-input:focus {
-    border-color: var(--accent-border);
-  }
-
-  /* ─── Layout utility aliases (backwards compat) ──────────────────────────── */
-  .designer-flex           { display: flex; }
-  .designer-items-center   { align-items: center; }
-  .designer-justify-between{ justify-content: space-between; }
-  .designer-justify-center { justify-content: center; }
-  .designer-flex-col       { flex-direction: column; }
-  .designer-gap-2          { gap: 0.5rem; }
-  .designer-gap-3          { gap: 0.75rem; }
-  .designer-gap-4          { gap: 1rem; }
-  .designer-gap-6          { gap: 1.5rem; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes draw {
+  from { stroke-dashoffset: var(--len, 400); }
+  to { stroke-dashoffset: 0; }
 }

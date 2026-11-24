@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { coursesApi } from '../../api';
 import { Send, GraduationCap, PenTool, LayoutDashboard, Brain, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -30,21 +31,21 @@ const MsgContent = ({ content }: { content: string }) => {
   return (
     <div className="space-y-4">
       {reasoning && (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl overflow-hidden transition-all duration-300">
+        <div className="bg-accent/10 border border-accent/20 rounded-xl overflow-hidden transition-all duration-300">
           <button
             type="button"
             onClick={() => setShowReasoning(!showReasoning)}
-            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-blue-500/20 transition-colors focus:outline-none"
+            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-accent/20 transition-colors focus:outline-none"
           >
-            <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 uppercase tracking-wider">
-              <Brain size={14} className="text-blue-400" />
+            <div className="flex items-center gap-2 text-xs font-semibold text-accent uppercase tracking-wider">
+              <Brain size={14} className="text-accent" />
               Thinking Process
             </div>
-            {showReasoning ? <ChevronUp size={14} className="text-blue-400" /> : <ChevronDown size={14} className="text-blue-400" />}
+            {showReasoning ? <ChevronUp size={14} className="text-accent" /> : <ChevronDown size={14} className="text-accent" />}
           </button>
 
           {showReasoning && (
-            <div className="px-4 pb-4 text-xs text-[#CCCCCC] leading-relaxed border-t border-blue-500/20 pt-3 italic whitespace-pre-wrap">
+            <div className="px-4 pb-4 text-xs text-ink-2 leading-relaxed border-t border-accent/20 pt-3 italic whitespace-pre-wrap">
               {reasoning}
             </div>
           )}
@@ -52,13 +53,13 @@ const MsgContent = ({ content }: { content: string }) => {
       )}
 
       {cleanContent && (
-        <div className="prose prose-invert max-w-none text-sm leading-relaxed text-white">
+        <div className="prose prose-invert max-w-none text-sm leading-relaxed text-ink">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
               p: ({node, ...props}) => <p className="my-0 font-normal" {...props} />,
-              pre: ({node, ...props}) => <pre className="bg-[#050505] border border-[#1A1A1A] p-4 rounded-xl overflow-x-auto my-3 text-xs" {...props} />,
-              code: ({node, ...props}) => <code className="text-purple-300 bg-purple-500/10 font-mono text-xs px-1.5 py-0.5 rounded border border-purple-500/20" {...props} />
+              pre: ({node, ...props}) => <pre className="bg-surface border border-line p-4 rounded-xl overflow-x-auto my-3 text-xs" {...props} />,
+              code: ({node, ...props}) => <code className="text-violet-700 bg-purple-500/10 font-mono text-xs px-1.5 py-0.5 rounded border border-purple-500/20" {...props} />
             }}
           >
             {cleanContent}
@@ -93,7 +94,14 @@ function getOrCreateSessionId(): string {
 
 export default function Chat() {
   const [searchParams] = useSearchParams();
-  const courseId = searchParams.get('course');
+  // Inside a course (its Ask tab) the tutor answers from that course's materials; on /tutor it is a general chat
+  const { courseId: routeCourseId } = useParams();
+  const courseId = routeCourseId ?? null;
+  const navigate = useNavigate();
+  const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
+  useEffect(() => {
+    if (!courseId) coursesApi.list().then(res => setCourses(res.data || [])).catch(() => setCourses([]));
+  }, [courseId]);
   const initialTopic = searchParams.get('topic');
 
   const [messages, setMessages] = useState<Message[]>([
@@ -263,15 +271,15 @@ export default function Chat() {
   ];
 
   const chatPanel = (
-    <div className="flex flex-col h-full bg-black text-white">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[#1A1A1A] bg-[#0A0A0A] shrink-0 z-10">
+    <div className="flex flex-col h-full bg-canvas text-ink">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-surface shrink-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#111111] border border-[#1A1A1A] rounded-xl flex items-center justify-center text-white">
+          <div className="w-9 h-9 bg-sunken border border-line rounded-xl flex items-center justify-center text-ink">
             <Brain className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-medium text-white tracking-tight uppercase">Cobble AI</h2>
-            <p className="text-[10px] font-semibold text-[#888888] uppercase tracking-widest">{mode} mode</p>
+            <h2 className="font-display text-lg text-ink tracking-[-0.02em]">General tutor</h2>
+            <p className="annot text-ink-3">{mode} mode · not limited to a course</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -282,7 +290,7 @@ export default function Chat() {
               variant={mode === m.key ? 'primary' : 'outline'}
               size="sm"
               leftIcon={<m.icon size={14} />}
-              className={mode !== m.key ? 'text-[#888888] border-[#1A1A1A] bg-[#111111] hover:text-white' : ''}
+              className={mode !== m.key ? 'text-ink-3 border-line bg-sunken hover:text-ink' : ''}
             >
               {m.label}
             </Button>
@@ -290,14 +298,14 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-[#050505]">
+      <div className="flex-1 overflow-y-auto bg-surface">
         <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
           {messages.map((m, idx) => (
             <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`w-full max-w-[85%] ${
                 m.role === 'user'
-                  ? 'bg-white text-black rounded-2xl rounded-br-none p-4 font-medium text-sm'
-                  : 'bg-[#0A0A0A] text-white rounded-2xl rounded-bl-none p-5 border border-[#1A1A1A]'
+                  ? 'bg-accent text-white rounded-2xl rounded-br-none p-4 font-medium text-sm'
+                  : 'bg-surface text-ink rounded-2xl rounded-bl-none p-5 border border-line'
               }`}>
                 {m.role === 'user' ? (
                   <p className="text-sm font-medium leading-relaxed">{m.content}</p>
@@ -309,12 +317,12 @@ export default function Chat() {
           ))}
           {isTyping && (
             <div className="flex justify-start">
-              <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-2 w-fit">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#888888] mr-2">Thinking</span>
+              <div className="bg-surface border border-line rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-2 w-fit">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-3 mr-2">Thinking</span>
                 <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0ms]" />
-                  <span className="w-1.5 h-1.5 bg-[#888888] rounded-full animate-bounce [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 bg-[#444444] rounded-full animate-bounce [animation-delay:300ms]" />
+                  <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 bg-ink-4 rounded-full animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 bg-line-strong rounded-full animate-bounce [animation-delay:300ms]" />
                 </div>
               </div>
             </div>
@@ -323,7 +331,7 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="border-t border-[#1A1A1A] p-4 bg-[#0A0A0A] z-10">
+      <div className="border-t border-line p-4 bg-surface z-10">
         <div className="max-w-3xl mx-auto">
           <form onSubmit={handleSend} className="relative flex gap-3">
             <input
@@ -331,7 +339,7 @@ export default function Chat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="Message Cobble AI..."
-              className="w-full bg-[#111111] border border-[#1A1A1A] text-sm text-white placeholder:text-[#888888] rounded-xl px-4 py-3 focus:outline-none focus:border-[#333333] transition-all"
+              className="w-full bg-sunken border border-line text-sm text-ink placeholder:text-ink-4 rounded-xl px-4 py-3 focus:outline-none focus:border-line-strong transition-all"
               disabled={isTyping}
             />
             <Button
@@ -343,7 +351,7 @@ export default function Chat() {
               <Send size={18} />
             </Button>
           </form>
-          <p className="text-center text-[10px] text-[#888888] mt-2 font-medium uppercase tracking-wider">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
+          <p className="text-center text-[10px] text-ink-3 mt-2 font-medium uppercase tracking-wider">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
         </div>
       </div>
     </div>
@@ -351,20 +359,34 @@ export default function Chat() {
 
   if (!courseId) {
     return (
-      <div className="h-full bg-black text-white">
-        {chatPanel}
+      <div className="w-full h-[calc(100vh-10rem)] bg-canvas text-ink flex flex-col">
+        {courses.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-3 px-6 py-3 border-b border-line text-xs text-ink-3">
+            <span>For answers that cite your course notes, ask inside a course:</span>
+            <select
+              aria-label="Open a course's tutor"
+              defaultValue=""
+              onChange={e => e.target.value && navigate(`/courses/${e.target.value}/ask`)}
+              className="bg-sunken border border-line rounded-lg px-2 py-1 text-ink"
+            >
+              <option value="" disabled>Choose a course</option>
+              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="flex-1 min-h-0">{chatPanel}</div>
       </div>
     );
   }
 
   return (
-    <div className="h-full bg-black text-white flex overflow-hidden">
+    <div className="h-[calc(100vh-19rem)] min-h-[480px] mt-6 bg-canvas text-ink flex overflow-hidden border-t border-line">
       {/* Graph Panel */}
-      <div className="flex-1 border-r border-[#1A1A1A] bg-[#050505]">
+      <div className="flex-1 border-r border-line bg-surface">
         <div className="h-full flex flex-col">
-          <div className="px-6 py-4 border-b border-[#1A1A1A] bg-[#0A0A0A] shrink-0 flex items-center justify-between">
-            <h2 className="text-base font-medium text-white tracking-tight uppercase">Knowledge Graph</h2>
-            <span className="text-[11px] font-semibold text-[#888888] uppercase tracking-widest">{nodes.length} concepts</span>
+          <div className="px-6 py-4 border-b border-line bg-surface shrink-0 flex items-center justify-between">
+            <h2 className="font-display text-lg text-ink tracking-[-0.02em]">Concept map</h2>
+            <span className="annot text-ink-3 tabular">{nodes.length} concepts</span>
           </div>
           <div className="flex-1">
             <KnowledgeGraph onNodeClick={handleNodeClick} />
@@ -372,10 +394,10 @@ export default function Chat() {
         </div>
       </div>
       {/* Chat Panel: course-grounded tutor with citations (cite or decline) */}
-      <div className="w-[500px] flex flex-col border-l border-[#1A1A1A] bg-[#050505]">
-        <div className="px-6 py-4 border-b border-[#1A1A1A] bg-[#0A0A0A] shrink-0">
-          <h2 className="text-base font-medium text-white tracking-tight uppercase">Ask the Course</h2>
-          <p className="text-[10px] font-semibold text-[#888888] uppercase tracking-widest">Answers cite your notes and lectures</p>
+      <div className="w-[500px] flex flex-col border-l border-line bg-surface">
+        <div className="px-6 py-4 border-b border-line bg-surface shrink-0">
+          <h2 className="font-display text-lg text-ink tracking-[-0.02em]">Ask the course</h2>
+          <p className="annot text-ink-3">Answers cite your notes and lectures</p>
         </div>
         <div className="flex-1 min-h-0">
           <CourseTutorChat courseId={courseId} />

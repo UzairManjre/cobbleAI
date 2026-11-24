@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, Loader2 } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { graphsApi } from '../../api/graphs';
 import { insightsApi } from '../../api/insights';
 import type { ReportFile } from '../../api/insights';
@@ -72,20 +72,16 @@ export default function CourseInsights() {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 text-white">
+    <div className="w-full px-5 md:px-8 lg:px-12 py-8"><div className="max-w-6xl mx-auto space-y-6 text-ink">
       <div className="flex flex-wrap items-center gap-4">
-        <button onClick={() => navigate(`/professor/courses/${courseId}`)} aria-label="Back to course"
-          className="p-2 rounded-xl border border-[#1A1A1A] text-[#888888] hover:text-white">
-          <ArrowLeft className="w-4 h-4" />
-        </button>
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-[#888888]">Course</p>
-          <h1 className="text-xl font-light">Insights</h1>
+          <p className="text-[10px] uppercase tracking-widest text-ink-3">Course</p>
+          <h2 className="text-xl font-light">Insights</h2>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <label className="text-xs text-[#888888]">Period
+          <label className="text-xs text-ink-3">Period
             <select value={days} onChange={e => setDays(Number(e.target.value))}
-              className="ml-2 bg-[#111111] border border-[#1A1A1A] rounded-lg px-2 py-1 text-xs text-white">
+              className="ml-2 bg-sunken border border-line rounded-lg px-2 py-1 text-xs text-ink">
               <option value={7}>Last 7 days</option>
               <option value={30}>Last 30 days</option>
               <option value={120}>Last 120 days</option>
@@ -93,7 +89,7 @@ export default function CourseInsights() {
           </label>
           {REPORTS.map(r => (
             <button key={r.file} onClick={() => download(r.file)} disabled={downloading !== null}
-              className="px-2.5 py-1.5 rounded-lg text-xs border border-[#333333] flex items-center gap-1.5 hover:border-[#666666] disabled:opacity-40">
+              className="px-2.5 py-1.5 rounded-lg text-xs border border-line-strong flex items-center gap-1.5 hover:border-ink-4 disabled:opacity-40">
               {downloading === r.file ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} {r.label}
             </button>
           ))}
@@ -103,7 +99,7 @@ export default function CourseInsights() {
       <div className="flex flex-wrap gap-2" role="tablist">
         {TABS.map(t => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs border ${tab === t.id ? 'bg-white text-black border-white' : 'border-[#1A1A1A] text-[#AAAAAA] hover:border-[#333333]'}`}>
+            className={`px-3 py-1.5 rounded-lg text-xs border ${tab === t.id ? 'bg-accent text-white border-accent' : 'border-line text-ink-3 hover:border-line-strong'}`}>
             {t.label}
           </button>
         ))}
@@ -120,19 +116,19 @@ export default function CourseInsights() {
       {tab === 'concepts' && <ConceptFlagsPanel courseId={courseId} />}
 
       {tab === 'lectures' && (
-        <section className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-5 space-y-4">
+        <section className="bg-surface border border-line rounded-2xl p-5 space-y-4">
           {lectures.length === 0 ? (
-            <p className="text-xs text-[#666666]">No processed lecture recordings in this course yet.</p>
+            <p className="text-xs text-ink-4">No processed lecture recordings in this course yet.</p>
           ) : (
             <>
-              <label className="text-xs text-[#888888]">Lecture
+              <label className="text-xs text-ink-3">Lecture
                 <select value={selectedLecture} onChange={e => setLectureId(e.target.value)}
-                  className="ml-2 bg-[#111111] border border-[#1A1A1A] rounded-lg px-2 py-1 text-xs text-white">
+                  className="ml-2 bg-sunken border border-line rounded-lg px-2 py-1 text-xs text-ink">
                   {lectures.map(l => <option key={l.id} value={l.id}>{l.filename}</option>)}
                 </select>
               </label>
               <ConfusionTimeline key={selectedLecture} lectureId={selectedLecture}
-                onSeek={t => navigate(`/professor/courses/${courseId}/lectures/${selectedLecture}?t=${Math.floor(t)}`)} />
+                onSeek={t => navigate(`/courses/${courseId}/lectures/${selectedLecture}?t=${Math.floor(t)}`)} />
             </>
           )}
         </section>
@@ -144,10 +140,10 @@ export default function CourseInsights() {
         <div className="space-y-6">
           <FeedbackReviewList courseId={courseId} />
           {graphId ? <EdgeAuditPanel graphId={graphId} courseId={courseId} /> : (
-            <p className="text-xs text-[#666666]">Generate the course knowledge graph to audit its relationships.</p>
+            <p className="text-xs text-ink-4">Generate the course knowledge graph to audit its relationships.</p>
           )}
         </div>
       )}
-    </div>
+    </div></div>
   );
 }

@@ -59,7 +59,7 @@ export default function MapNotReady({ courseId, role, onReady, onBack }: Props) 
   const build = status?.status === 'building' ? status.build : undefined;
   const hasFiles = (status?.total_documents ?? 0) > 0;
   let title = 'No Map Yet';
-  let text = isProfessor ? 'Upload materials on the course page first.' : 'Your instructor has not added any materials yet.';
+  let text = isProfessor ? 'Upload materials on the Overview tab first.' : 'Your instructor has not added any materials yet.';
   if (build) {
     title = 'Building the Concept Map';
     text = isProfessor
@@ -75,55 +75,45 @@ export default function MapNotReady({ courseId, role, onReady, onBack }: Props) 
       ? 'Your files are processed, but the concept map has not been built yet.'
       : 'Your instructor has not built the concept map for this course yet.';
   }
-
+  const busy = Boolean(build) || status?.status === 'processing';
   return (
-    <div className="bg-white border-[3px] border-[#0A0A0A] rounded-2xl p-10 text-center shadow-[8px_8px_0_#0A0A0A] max-w-md w-full">
-      <div className="w-20 h-20 bg-gray-100 border-[3px] border-[#0A0A0A] rounded-full flex items-center justify-center mx-auto mb-6">
-        {build || status?.status === 'processing'
-          ? <Loader2 size={32} className="text-[#0A0A0A] animate-spin" />
-          : <MapIcon size={32} className="text-[#0A0A0A]" />}
+    <div className="w-full max-w-lg text-left">
+      <div className="flex items-center gap-3 text-accent">
+        {busy ? <Loader2 size={18} className="animate-spin" /> : <MapIcon size={18} />}
+        <span className="annot">{status ? (busy ? 'In progress' : 'Concept map') : 'Checking'}</span>
       </div>
-      <h2 className="text-2xl font-extrabold text-[#0A0A0A] mb-3">{status ? title : 'Checking the map...'}</h2>
-      {status && <p className="text-[#0A0A0A]/60 font-bold text-sm mb-6">{text}</p>}
+      <h2 className="font-display text-4xl font-medium tracking-[-0.035em] mt-4">{status ? title.toLowerCase() : 'checking the map…'}</h2>
+      {status && <p className="text-ink-3 mt-3 leading-relaxed">{text}</p>}
 
       {build && (
-        <div className="text-left mb-6">
-          <div className="flex justify-between text-xs font-extrabold text-[#0A0A0A] mb-2">
-            <span>{build.status === 'queued' ? 'Waiting to start' : `Step ${build.step} of ${build.total_steps}: ${BUILD_STEPS[build.step - 1] ?? build.message}`}</span>
-            <span>{build.percent}%</span>
+        <div className="mt-8">
+          <div className="flex justify-between gap-4 text-sm">
+            <span className="text-ink-2">{build.status === 'queued' ? 'Waiting to start' : `Step ${build.step} of ${build.total_steps}: ${BUILD_STEPS[build.step - 1] ?? build.message}`}</span>
+            <span className="font-display tabular">{build.percent}%</span>
           </div>
-          <div className="h-3 bg-gray-100 border-2 border-[#0A0A0A] rounded-full overflow-hidden">
-            <div className="h-full bg-[#FF4D5B] transition-all duration-500" style={{ width: `${Math.max(build.percent, 3)}%` }} />
+          <div className="h-1.5 bg-sunken-2 rounded-full overflow-hidden mt-2" role="progressbar" aria-valuenow={build.percent} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full bg-accent transition-[width] duration-500" style={{ width: `${Math.max(build.percent, 3)}%` }} />
           </div>
-          <p className="text-xs font-bold text-[#0A0A0A]/60 mt-2">
+          <p className="text-sm text-ink-3 mt-3">
             {build.detail || build.message}
             {build.eta_s !== null && ` · about ${formatDuration(build.eta_s)} left`}
           </p>
           {isProfessor && build.waiting_for_worker && (
-            <p className="text-xs font-bold text-amber-700 mt-2">
-              No worker has started it yet. Check that the media worker is running.
-            </p>
+            <p className="text-sm text-amber-700 mt-2">No worker has started it yet. Check that the media worker is running.</p>
           )}
         </div>
       )}
 
-      {error && <p className="text-xs font-bold text-red-600 mb-4">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600 mt-4">{error}</p>}
 
-      <div className="space-y-3">
+      <div className="flex flex-wrap gap-3 mt-8">
         {isProfessor && status && !build && status.status !== 'processing' && hasFiles && (
-          <button
-            onClick={startBuild}
-            disabled={starting}
-            className="w-full py-3 bg-[#0A0A0A] text-white border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[4px_4px_0_#FF4D5B] disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {starting && <Loader2 size={16} className="animate-spin" />} Build the Map
+          <button onClick={startBuild} disabled={starting} className="inline-flex h-11 items-center gap-2 rounded-full bg-accent px-6 font-display text-white hover:bg-accent-strong disabled:opacity-50 cursor-pointer">
+            {starting && <Loader2 size={16} className="animate-spin" />} Build the map
           </button>
         )}
-        <button
-          onClick={onBack}
-          className="w-full py-3 bg-[#FF4D5B] text-white border-2 border-[#0A0A0A] rounded-xl font-extrabold shadow-[4px_4px_0_#0A0A0A] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0A0A0A] transition-all"
-        >
-          {isProfessor && build ? 'See Details on the Course Page' : 'Return to Course Detail'}
+        <button onClick={onBack} className="inline-flex h-11 items-center rounded-full border border-line-strong bg-surface px-6 font-display text-ink hover:border-ink cursor-pointer">
+          {isProfessor && build ? 'See progress on the overview' : 'Back to course overview'}
         </button>
       </div>
     </div>

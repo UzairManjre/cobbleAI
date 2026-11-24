@@ -1,291 +1,271 @@
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Sparkles, GraduationCap, Cloud, Bell, X } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
+import { Link } from 'react-router-dom';
+import { ArrowUpRight, ArrowUp } from 'lucide-react';
+import { Logo } from '../../components/ui/Logo';
+
+/* The mark's geometry, shared by the hero figure (see components/ui/Logo.tsx) */
+const MARK = (
+  <>
+    <circle cx="4.75" cy="3.85" r="3.85" />
+    <rect x="0.5" y="8.1" width="5.2" height="13.9" rx="0.6" />
+    <rect x="0.5" y="8.1" width="11" height="5.5" rx="0.6" />
+    <circle cx="18.6" cy="9.75" r="3.85" />
+    <rect x="12.1" y="14.1" width="10.9" height="5.5" rx="0.6" />
+    <rect x="17.8" y="14.1" width="5.2" height="11.2" rx="0.6" />
+  </>
+);
+
+const rise = (delay: number) => ({ animation: `rise 900ms var(--ease-out-expo) ${delay}ms both` });
+
+/** Plus-shaped registration mark in SVG units */
+const Cross = ({ x, y }: { x: number; y: number }) => (
+  <g stroke="currentColor" strokeWidth="1" opacity="0.7">
+    <line x1={x - 7} y1={y} x2={x + 7} y2={y} />
+    <line x1={x} y1={y - 7} x2={x} y2={y + 7} />
+  </g>
+);
+
+/** A leader line that draws itself, ending in a small ring at the thing it labels */
+const Leader = ({ d, len, delay, ring }: { d: string; len: number; delay: number; ring: [number, number] }) => (
+  <g>
+    <path d={d} fill="none" stroke="currentColor" strokeWidth="1.2"
+      style={{ strokeDasharray: len, ['--len' as string]: len, animation: `draw 1100ms var(--ease-out-expo) ${delay}ms both` }} />
+    <circle cx={ring[0]} cy={ring[1]} r="5" fill="#073dea" stroke="currentColor" strokeWidth="1.2" style={rise(delay)} />
+  </g>
+);
+
+function HeroFigure() {
+  // Phones crop the wide figure to its centre instead of shrinking the whole thing
+  const narrow = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+  // Mark scaled x21 and centred; the citation's top crosses both figures' legs, never the reaching arm
+  const s = 21, ox = 390, oy = 50;
+  const p = (x: number, y: number): [number, number] => [ox + x * s, oy + y * s];
+  const tutorHead = p(4.75, 3.85), youHead = p(18.6, 9.75), hands = p(11.8, 13.85);
+  return (
+    <svg viewBox="0 0 1200 800" preserveAspectRatio={narrow ? 'xMidYMid slice' : 'xMidYMid meet'} className="w-full h-full text-white overflow-visible" role="img"
+      aria-label="Figure: the Cobble mark, two people, one helping the other up a step, crossed by a large 24 × 7 availability figure">
+      <defs>
+        <mask id="mark-mask"><g transform={`translate(${ox} ${oy}) scale(${s})`} fill="#fff">{MARK}</g></mask>
+      </defs>
+
+      <text x="340" y="56" className="font-display" fontSize="13" letterSpacing="1.2" fill="currentColor" style={rise(200)}>■ FIG. 01 · COBBLE</text>
+      <Cross x={340} y={76} /><Cross x={860} y={76} /><Cross x={340} y={712} /><Cross x={860} y={712} />
+
+      {/* Animate the outer group: a CSS transform on the inner one would replace its SVG scale */}
+      <g style={rise(100)}><g transform={`translate(${ox} ${oy}) scale(${s})`} fill="currentColor">{MARK}</g></g>
+
+      {/* Giant citation: white on blue, blue where it crosses the white figure */}
+      <g className="font-display" fontSize="165" fontWeight="500" letterSpacing="-5" textAnchor="middle" style={rise(350)}>
+        <text x="1020" y="666" fill="currentColor">24 × 7</text>
+        <text x="1020" y="666" fill="#073dea" mask="url(#mark-mask)">24 × 7</text>
+      </g>
+      <text x="1250" y="545" className="font-display" fontSize="56" fontWeight="500" fill="currentColor" style={rise(450)}>¹</text>
+
+      <Leader d={`M ${tutorHead[0] - 46} ${tutorHead[1] + 12} L 330 300 L 300 300`} len={260} delay={700} ring={[tutorHead[0] - 46, tutorHead[1] + 12]} />
+      <text x="294" y="305" textAnchor="end" className="font-display" fontSize="14" letterSpacing="1.4" fill="currentColor" style={rise(900)}>( TUTOR )</text>
+
+      <Leader d={`M ${youHead[0] + 40} ${youHead[1] - 8} L 860 180 L 900 180`} len={200} delay={850} ring={[youHead[0] + 40, youHead[1] - 8]} />
+      <text x="908" y="185" className="font-display" fontSize="14" letterSpacing="1.4" fill="currentColor" style={rise(1050)}>( YOU )</text>
+
+      <Leader d={`M ${hands[0]} ${hands[1] + 6} L 640 340 L 900 340`} len={340} delay={1000} ring={[hands[0], hands[1] + 6]} />
+      <text x="908" y="345" className="font-display" fontSize="14" letterSpacing="1.4" fill="currentColor" style={rise(1200)}>( HELP )</text>
+    </svg>
+  );
+}
+
+/** A synthetic example of a cited answer, drawn the way the app shows it */
+function AnswerFigure() {
+  return (
+    <figure className="relative">
+      <span className="crosshair -left-3 -top-3 text-accent" />
+      <span className="crosshair -right-3 -top-3 text-accent" />
+      <span className="crosshair -left-3 -bottom-3 text-accent" />
+      <span className="crosshair -right-3 -bottom-3 text-accent" />
+      <figcaption className="annot text-accent flex justify-between gap-4 mb-5">
+        <span>■ FIG. 02 · AN ANSWER</span>
+        <span>Example, not real course data</span>
+      </figcaption>
+      <div className="bg-surface border border-accent-100 rounded-2xl p-6 md:p-8 space-y-7">
+        <p className="ml-auto w-fit max-w-[85%] bg-accent text-white rounded-2xl rounded-br-md px-4 py-3 text-[15px]">
+          Why does a deeper network overfit faster?
+        </p>
+        <div className="max-w-[92%] space-y-4">
+          <p className="text-[15px] leading-relaxed text-ink-2">
+            More layers add parameters, so the model can fit noise in a small training set. Your notes show this as the
+            gap between training and validation loss widening after epoch 6, and suggest dropout or early stopping.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {['Lecture 7 · 18:42', 'regularisation.pdf · p. 14', 'Slide 22'].map(c => (
+              <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-accent-100 bg-accent-wash px-3 py-1 text-xs text-accent font-display">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent" />{c}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="border-t border-line pt-6 space-y-3">
+          <p className="ml-auto w-fit max-w-[85%] bg-accent text-white rounded-2xl rounded-br-md px-4 py-3 text-[15px]">
+            What will be on the final exam?
+          </p>
+          <p className="text-[15px] text-ink-3">
+            Your course materials don't cover that, so I won't guess. Ask your professor.
+          </p>
+        </div>
+      </div>
+    </figure>
+  );
+}
+
+const STUDENT = [
+  ['Learn', 'Work through the concept map, one idea at a time, with a tutor that teaches, quizzes and reviews.'],
+  ['Ask', 'Questions answered from your course only, with the page, slide or lecture second it came from.'],
+  ['Plan', 'A study plan for the whole course or one topic, built from what you have and have not mastered.'],
+  ['Test', 'Your professor’s tests, with a confidence check-in that shows how sure you were versus how right.'],
+];
+const PROFESSOR = [
+  ['Upload', 'Slides, notes and lecture recordings. Recordings are transcribed, captioned and split into chapters.'],
+  ['Set limits', 'Choose how much help the tutor gives, and switch to assessment mode during tests.'],
+  ['Grade', 'AI-drafted grades with evidence and a confidence score. You approve or override each one.'],
+  ['See gaps', 'Clusters of student questions, coverage gaps and the lecture moments that confuse people most.'],
+];
 
 export default function NewLanding() {
-  const navigate = useNavigate();
-
-  const handleStart = () => navigate('/role-select');
-
-  // Animation variants
-  const drawPath: any = {
-    hidden: { pathLength: 0, opacity: 0 },
-    visible: { 
-      pathLength: 1, 
-      opacity: 1, 
-      transition: { pathLength: { delay: 0.3, type: "spring", duration: 1.5, bounce: 0 }, opacity: { delay: 0.3, duration: 0.1 } } 
-    }
-  };
-
-  const fadeUp: any = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }
-  };
-
-  const staggerContainer: any = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.2 }
-    }
-  };
-
   return (
-    <div 
-      className="bg-background text-foreground selection:bg-accent selection:text-background overflow-x-hidden min-h-screen"
-    >
-      
-      {/* HEADER */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md flex items-center justify-between px-8 md:px-16 py-4 border-b border-border">
-        <h1 className="text-2xl font-bold tracking-tight">Cobble</h1>
-        <nav className="hidden md:flex items-center gap-8 text-[15px] font-semibold text-muted-foreground">
-          <a href="#about" className="hover:text-foreground transition-colors">About us</a>
-          <span className="text-border">|</span>
-          <a href="#how" className="hover:text-foreground transition-colors">How it Works</a>
-        </nav>
-        <Button onClick={handleStart} variant="primary" className="px-6 py-2.5">
-          Start Now
-        </Button>
-      </header>
+    <div className="bg-canvas text-ink overflow-x-hidden">
+      {/* ── 1. Drenched first viewport ─────────────────────────────── */}
+      <section className="relative min-h-[100dvh] bg-accent text-white selection:bg-white selection:text-accent">
+        {/* Running head, three zones */}
+        <header className="absolute inset-x-0 top-0 z-20 grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-6 px-5 md:px-8 h-16 font-display text-[15px] tracking-[-0.02em]">
+          <Link to="/" className="justify-self-start" aria-label="Cobble home"><Logo markClassName="h-[22px] w-auto" /></Link>
+          <p className="hidden md:block text-white/85">An AI tutor that only answers from your course</p>
+          <nav className="justify-self-end flex items-center gap-5">
+            <a href="#how" className="hidden sm:inline text-white/85 hover:text-white">How it works</a>
+            <Link to="/signin" className="inline-flex items-center gap-1 hover:underline">Sign in <ArrowUpRight size={15} /></Link>
+          </nav>
+        </header>
 
-      {/* HERO SECTION */}
-      <section className="min-h-screen relative flex flex-col items-center justify-center pt-20 px-6 max-w-4xl mx-auto text-center">
-        <div className="relative">
-          {/* Clean Looped Top Arrow */}
-          <motion.svg style={{ overflow: 'visible' }} width="100" height="100" viewBox="0 0 100 100" fill="none" className="absolute -top-24 -right-4 text-accent hidden md:block" initial="hidden" whileInView="visible" viewport={{ once: true }}>
-            {/* Loop path */}
-            <motion.path d="M 90 90 C 90 50, 70 30, 50 30 C 30 30, 20 45, 30 60 C 40 75, 60 70, 50 50 C 40 30, 20 50, 10 70" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" variants={drawPath}/>
-            {/* Arrow head */}
-            <motion.path d="M 25 65 L 10 70 L 15 55" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" variants={drawPath}/>
-          </motion.svg>
+        <div className="relative mx-auto max-w-[1440px] min-h-[100dvh] px-5 md:px-8 pt-20 pb-10 grid grid-rows-[auto_1fr_auto] md:block">
+          {/* Headline, top left */}
+          <div className="md:absolute md:left-8 md:top-28 max-w-[22rem] z-10" style={rise(150)}>
+            <h1 className="font-display font-medium text-[clamp(2.4rem,4.2vw,3.6rem)] leading-[0.98] tracking-[-0.04em]">
+              answers from your course. nothing else.
+            </h1>
+          </div>
 
-          {/* Sparkles (Left side) */}
-          <motion.div className="absolute top-10 -left-20 text-accent hidden md:flex flex-col items-center" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-             <Sparkles className="w-12 h-12 mb-2" strokeWidth={1.5} />
-             <Sparkles className="w-8 h-8 -ml-8" strokeWidth={1.5} />
-          </motion.div>
+          {/* Figure fills the field */}
+          <div className="relative md:absolute md:inset-0 md:px-[12%] md:pt-14 md:pb-24 -mx-5 md:mx-0 my-4 md:my-0 aspect-square md:aspect-auto">
+            <HeroFigure />
+          </div>
 
-          <motion.h2 className="text-7xl md:text-[9rem] font-extrabold tracking-tight mb-8 leading-[0.9]" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-            COBBLE
-            <br />
-            AI
-          </motion.h2>
-        </div>
+          {/* Offer and actions, bottom left */}
+          <div className="md:absolute md:left-8 md:bottom-12 max-w-[24rem] z-10 space-y-6" style={rise(500)}>
+            <p className="text-[17px] leading-snug tracking-[-0.01em]">
+              Upload slides, notes and lecture recordings. Cobble tutors your students from them, shows where every
+              answer came from, and says so when the material doesn't cover a question.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link to="/signin?mode=signup&role=student" className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 font-display font-medium text-accent hover:bg-accent-50 transition-colors">
+                Join a class
+              </Link>
+              <Link to="/signin?mode=signup&role=professor" className="inline-flex h-12 items-center gap-2 rounded-full border border-white/60 px-6 font-display font-medium text-white hover:bg-white/10 transition-colors">
+                Create a class
+              </Link>
+            </div>
+          </div>
 
-        <motion.div className="relative mb-16" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-          <p className="text-xl md:text-2xl font-medium font-mono text-muted-foreground">
-            Your new classmate just<br/>got a new upgrade
+          {/* Footnote, bottom right */}
+          <p className="md:absolute md:right-8 md:bottom-12 max-w-[20rem] md:text-right annot text-white/75 leading-relaxed mt-8 md:mt-0" style={rise(1300)}>
+            ¹ Every answer points to the page, slide or lecture moment it came from. Runs on campus hardware.
           </p>
-          <motion.svg width="300" height="30" viewBox="0 0 300 30" fill="none" className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-accent">
-            <motion.path d="M 10 15 Q 150 0, 290 20" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" variants={drawPath}/>
-            <motion.path d="M 30 22 Q 150 10, 270 25" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" variants={drawPath}/>
-          </motion.svg>
-        </motion.div>
-
-        <motion.div className="flex flex-col sm:flex-row gap-6 mt-8" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-          <Button onClick={() => navigate('/signup/student')} variant="primary" size="lg" className="px-10 py-4 text-xl rounded-full">
-            Join a Class
-          </Button>
-          <Button onClick={() => navigate('/signup/professor')} variant="secondary" size="lg" className="px-10 py-4 text-xl rounded-full">
-            Create a Class
-          </Button>
-        </motion.div>
+        </div>
       </section>
 
-      {/* WHY COBBLE AI */}
-      <section className="min-h-screen flex flex-col justify-center py-20 px-6 max-w-7xl mx-auto w-full">
-        <motion.div className="flex flex-col lg:flex-row items-center gap-16" initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={staggerContainer}>
-          <motion.div className="lg:w-1/3 relative" variants={fadeUp}>
-            <div className="flex flex-col">
-              <Sparkles className="text-accent w-12 h-12 mb-4" strokeWidth={1.5} />
-              <h2 className="text-6xl md:text-[6rem] font-bold tracking-tight mb-8 leading-[0.9]">WHY<br/>COBBLE AI?</h2>
-            </div>
-            {/* Loop Underline */}
-            <motion.svg style={{ overflow: 'visible' }} width="350" height="80" viewBox="0 0 350 80" fill="none" className="absolute -bottom-12 left-10 text-accent hidden lg:block">
-              <motion.path d="M 20 80 Q 140 120, 260 70 C 320 30, 270 0, 270 50 C 270 80, 300 60, 320 40" stroke="currentColor" strokeWidth="5" strokeLinecap="round" fill="none" variants={drawPath}/>
-            </motion.svg>
-          </motion.div>
-
-          <motion.div className="lg:w-2/3 w-full relative" variants={fadeUp}>
-            <Card className="p-8 md:p-12 relative z-10" style={{ borderBottomRightRadius: '40px' }}>
-              <div className="absolute top-4 right-4 flex gap-2">
-                  <div className="w-7 h-7 rounded-sm border-[3px] border-border flex items-center justify-center">
-                    <div className="w-3.5 h-[3px] bg-border translate-y-1 rounded-full" />
-                  </div>
-                  <div className="w-7 h-7 rounded-sm border-[3px] border-border flex flex-col">
-                    <div className="w-full h-2 border-b-[3px] border-border" />
-                  </div>
-                  <div className="w-7 h-7 rounded-sm border-[3px] border-border flex items-center justify-center">
-                    <X size={18} className="text-border" strokeWidth={4} />
-                  </div>
-              </div>
-              <div className="mt-12 space-y-10 font-mono text-base md:text-lg text-muted-foreground">
-                <p><span className="font-bold text-foreground">• The Problem:</span> Generic AI often gives flat, out-of-context answers that don't match your course material.</p>
-                <p><span className="font-bold text-foreground">• The Solution:</span> Cobble extracts the specific tone and knowledge from your professor's actual course notes.</p>
-                <p><span className="font-bold text-foreground">• The Result:</span> You get a 24/7 tutor that explains concepts exactly the way they'll appear on your exam.</p>
-              </div>
-            </Card>
-            <div className="absolute top-3 left-3 right-[-12px] bottom-[-12px] border-[5px] border-border/20 rounded-3xl z-0 pointer-events-none" style={{ borderBottomRightRadius: '40px' }}></div>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* THIS MONTH'S HIGHLIGHTS */}
-      <section className="min-h-screen flex flex-col justify-center py-24 px-6 max-w-7xl mx-auto w-full">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}>
-          <motion.div className="flex flex-col items-center mb-20 relative" variants={fadeUp}>
-            <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-center">THIS MONTH'S HIGHLIGHTS</h2>
-            <motion.svg width="350" height="30" viewBox="0 0 350 30" fill="none" className="absolute -bottom-10 text-accent">
-              <motion.path d="M 20 15 Q 80 -5, 140 15 T 240 15 T 320 15" stroke="currentColor" strokeWidth="5" strokeLinecap="round" fill="none" variants={drawPath}/>
-            </motion.svg>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mt-12">
-            {[
-              { img: 'bitcoin_pile.png', title: '1 Billion Tokens Analyzed', desc: 'Our LLM is now powered by over 1 billion high-quality educational tokens. This scale enables deep statistical learning and precise factual reasoning, moving far beyond standard, noisy web data.' },
-              { img: 'curated_documents.png', title: '968k+ Curated Documents', desc: 'We\'ve indexed a massive library of 968,670 discrete documents filtered for dense educational value. By using curated content, we\'ve drastically reduced misinformation and "AI noise" in student responses.' },
-              { img: 'hdfs_code.png', title: 'Zero-Latency HDFS Integration', desc: 'Our new Hadoop Distributed File System (HDFS) architecture ensures high-throughput data streaming. Even with a 2.90GB dataset, students experience instant response times during peak study sessions.' }
-            ].map((item, i) => (
-              <motion.div key={i} className="flex flex-col" variants={fadeUp}>
-                <div className="w-full aspect-[4/3] rounded-[2rem] overflow-hidden mb-8 bg-[#111111]">
-                  <img src={`/assets/images/${item.img}`} alt={item.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 opacity-80" />
+      {/* ── 2. The mechanism, on white ─────────────────────────────── */}
+      <section id="how" className="scroll-mt-4 px-5 md:px-8 py-24 md:py-36">
+        <div className="mx-auto max-w-[1440px] grid md:grid-cols-12 gap-12 md:gap-8 items-start">
+          <div className="md:col-span-5 md:sticky md:top-16">
+            <h2 className="font-display font-medium text-accent text-[clamp(2.2rem,4.6vw,4.4rem)] leading-[0.95] tracking-[-0.04em]">
+              it cites, or it says it doesn't know.
+            </h2>
+            <p className="mt-8 max-w-md text-lg text-ink-2 leading-relaxed">
+              The tutor reads only what your professor uploaded. A citation opens the PDF at the page or the lecture
+              at the second. When the materials don't cover a question, the tutor declines instead of guessing.
+            </p>
+            <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-5 max-w-md border-t border-line pt-6">
+              {[['Documents', 'PDF, DOCX, PPTX'], ['Recordings', 'MP4, WebM, MOV, MP3, M4A, WAV'], ['Help levels', 'Nudge, question, step, answer'], ['During tests', 'Full answers can be switched off']].map(([k, v]) => (
+                <div key={k}>
+                  <dt className="annot text-ink-3">{k}</dt>
+                  <dd className="mt-1.5 text-[15px] text-ink">{v}</dd>
                 </div>
-                <h3 className="text-3xl font-semibold mb-4 leading-tight">{item.title}</h3>
-                <p className="text-base font-mono text-muted-foreground leading-relaxed">
-                  {item.desc}
-                </p>
-              </motion.div>
-            ))}
+              ))}
+            </dl>
           </div>
-        </motion.div>
-      </section>
-
-      {/* PLATFORM UPDATES */}
-      <section className="min-h-screen flex flex-col justify-center py-24 px-6 max-w-7xl mx-auto w-full">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}>
-          <motion.h2 className="text-4xl md:text-6xl font-bold tracking-tight text-center mb-20" variants={fadeUp}>
-            PLATFORM UPDATES
-          </motion.h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            {[
-              { icon: GraduationCap, title: 'Profile Style Extraction', desc: 'Professors can now upload course notes (PDF, DOCX, TXT) and let Cobble AI extract their unique teaching tone and structure in seconds.' },
-              { icon: Cloud, title: 'Large-Scale Knowledge Base', desc: 'We\'ve successfully indexed over 1,000,180,358 high-quality educational tokens, providing deep factual reasoning for every student doubt.' },
-              { icon: Bell, title: 'Actionable Student Data', desc: 'Our new heatmap feature identifies topics needing review, allowing professors to send nudges or export detailed PDF progress reports.', hasArrow: true }
-            ].map((item, i) => (
-              <motion.div key={i} variants={fadeUp}>
-                <Card className="p-10 text-center flex flex-col items-center group h-full hover:border-accent">
-                  <div className="w-24 h-24 mb-8 text-accent relative flex justify-center items-center">
-                    <item.icon className="w-full h-full" strokeWidth={1.5} />
-                    {item.hasArrow && (
-                      <motion.svg width="60" height="30" viewBox="0 0 60 30" className="absolute -top-4 -right-10 hidden lg:block" initial="hidden" whileInView="visible" viewport={{ once: true }}>
-                        <motion.path d="M 10 20 Q 30 0, 50 20" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" variants={drawPath}/>
-                        <motion.path d="M 40 25 L 50 20 L 55 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" variants={drawPath}/>
-                      </motion.svg>
-                    )}
-                  </div>
-                  <h3 className="text-2xl font-bold mb-6 uppercase">{item.title}</h3>
-                  <p className="text-base font-mono text-muted-foreground leading-relaxed">
-                    {item.desc}
-                  </p>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </section>
-
-      {/* PROFESSOR SPOTLIGHT */}
-      <section className="min-h-screen flex flex-col justify-center py-24 px-6 max-w-7xl mx-auto w-full">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}>
-          <motion.div className="flex justify-center items-center gap-6 mb-20" variants={fadeUp}>
-            <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-center uppercase">Professor Spotlight</h2>
-            <Sparkles className="text-[#ff5c5c] w-10 h-10" strokeWidth={2} />
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            {[
-              { img: 'prof_1.png', name: 'DR. SANJAY KUMAR', desc: 'Leading project evaluation and core problem definition.' },
-              { img: 'prof_2.png', name: 'YOGESH CHAUDHARI', desc: 'Managing HDFS infrastructure for fast, scalable AI streaming.' },
-              { img: 'prof_3.png', name: 'DR JAIDEEPSINH RAULJI', desc: 'Guiding our 1-billion-token knowledge base for educational accuracy.' }
-            ].map((prof, i) => (
-              <motion.div key={i} variants={fadeUp}>
-                <Card className="overflow-hidden flex flex-col h-full">
-                  <div className="border-b border-border px-4 py-3 flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-border"></div>
-                    <div className="w-3 h-3 rounded-full bg-border"></div>
-                    <div className="w-3 h-3 rounded-full bg-border"></div>
-                  </div>
-                  <div className="p-8 flex-1 flex flex-col">
-                    <div className="w-full aspect-square rounded-2xl overflow-hidden mb-8 bg-[#111111]">
-                      <img src={`/assets/images/${prof.img}`} alt={prof.name} className="w-full h-full object-cover opacity-80" />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-4 text-center uppercase">{prof.name}</h3>
-                    <p className="text-base font-mono text-muted-foreground text-center leading-relaxed flex-1">
-                      {prof.desc}
-                    </p>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </section>
-
-      {/* CTA SECTION */}
-      <section className="min-h-screen flex flex-col justify-center py-24 px-6 max-w-3xl mx-auto text-center">
-        <motion.div className="flex flex-col items-center" initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.5 }} variants={staggerContainer}>
-          <motion.svg style={{ overflow: 'visible' }} width="100" height="200" viewBox="0 0 100 200" className="text-[#ff5c5c] mb-10" variants={fadeUp}>
-             {/* Smooth C1 continuous double-loop spring with wide visible loops and a downward tail */}
-             <motion.path d="M 50.0,55.0 L 54.4,55.8 L 58.7,56.2 L 62.9,56.3 L 66.9,55.9 L 70.6,55.3 L 74.0,54.3 L 77.0,53.0 L 79.6,51.4 L 81.7,49.7 L 83.3,47.8 L 84.4,45.7 L 84.9,43.6 L 84.9,41.5 L 84.4,39.4 L 83.3,37.4 L 81.7,35.4 L 79.6,33.7 L 77.0,32.2 L 74.0,30.9 L 70.6,29.9 L 66.9,29.2 L 62.9,28.9 L 58.7,28.9 L 54.4,29.3 L 50.0,30.1 L 45.6,31.3 L 41.3,32.9 L 37.1,34.9 L 33.1,37.2 L 29.4,39.9 L 26.0,42.9 L 23.0,46.2 L 20.4,49.8 L 18.3,53.5 L 16.7,57.5 L 15.6,61.5 L 15.1,65.6 L 15.1,69.8 L 15.6,73.9 L 16.7,77.9 L 18.3,81.9 L 20.4,85.6 L 23.0,89.2 L 26.0,92.5 L 29.4,95.5 L 33.1,98.2 L 37.1,100.5 L 41.3,102.5 L 45.6,104.1 L 50.0,105.3 L 54.4,106.1 L 58.7,106.5 L 62.9,106.5 L 66.9,106.2 L 70.6,105.5 L 74.0,104.5 L 77.0,103.2 L 79.6,101.7 L 81.7,100.0 L 83.3,98.0 L 84.4,96.0 L 84.9,93.9 L 84.9,91.8 L 84.4,89.7 L 83.3,87.6 L 81.7,85.7 L 79.6,84.0 L 77.0,82.4 L 74.0,81.1 L 70.6,80.1 L 66.9,79.5 L 62.9,79.1 L 58.7,79.2 L 54.4,79.6 L 50.0,80.4 L 45.6,81.6 L 41.3,83.2 L 37.1,85.2 L 33.1,87.5 L 29.4,90.2 L 26.0,93.2 L 23.0,96.5 L 20.4,100.0 L 18.3,103.8 L 16.7,107.7 L 15.6,111.8 L 15.1,115.9 L 15.1,120.0 L 15.6,124.2 L 16.7,128.2 L 18.3,132.1 L 20.4,135.9 L 23.0,139.4 L 26.0,142.7 L 29.4,145.7 L 33.1,148.4 L 37.1,150.8 L 41.3,152.7 L 45.6,154.3 L 50.0,155.5 C 70.0,160.0 60.0,165.0 60.0,180.0" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" variants={drawPath}/>
-             {/* Arrow head pointing straight down */}
-             <motion.path d="M 45,165 L 60,180 L 75,165" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" variants={drawPath}/>
-          </motion.svg>
-          
-          <motion.h2 className="text-5xl md:text-7xl font-black tracking-tight mb-8" variants={fadeUp}>
-            READY TO UPGRADE<br/>YOUR LEARNING?
-          </motion.h2>
-          
-          <motion.p className="text-xl font-mono text-muted-foreground mb-12" variants={fadeUp}>
-            Join your class today and start chatting with an<br/>AI that finally speaks your language.
-          </motion.p>
-
-          <motion.div variants={fadeUp}>
-            <Button onClick={handleStart} variant="primary" size="lg" className="px-12 py-5 text-2xl rounded-full">
-              Start a Class
-            </Button>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="bg-background border-t border-border text-foreground py-16 px-8">
-        <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex gap-6 font-medium text-lg">
-            <a href="#about" className="hover:text-white/80 transition-colors">About us</a>
-            <a href="#how" className="hover:text-white/80 transition-colors">How it Works</a>
-            <button onClick={handleStart} className="hover:text-white/80 transition-colors">Start Now</button>
-          </div>
-          
-          <div className="text-center">
-            <a href="mailto:support@cobbleai.com" className="font-mono text-base hover:text-foreground/80 transition-colors">
-              support@cobbleai.com
-            </a>
-          </div>
-
-          <div className="flex flex-col items-end gap-6">
-            <div className="flex gap-6">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="hover:text-white/80 cursor-pointer transition-colors"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="hover:text-white/80 cursor-pointer transition-colors"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="hover:text-white/80 cursor-pointer transition-colors"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
-            </div>
-            <p className="font-mono text-sm opacity-90">Cobble Ai Limited 2026</p>
+          <div className="md:col-start-7 md:col-span-6">
+            <AnswerFigure />
           </div>
         </div>
-      </footer>
-      
+      </section>
+
+      {/* ── 3. Two readers, two lists ──────────────────────────────── */}
+      <section className="bg-accent text-white px-5 md:px-8 py-24 md:py-32 selection:bg-white selection:text-accent">
+        <div className="mx-auto max-w-[1440px] grid md:grid-cols-2 gap-16 md:gap-10">
+          {([['for students', STUDENT, '/signin?mode=signup&role=student', 'Join a class'], ['for professors', PROFESSOR, '/signin?mode=signup&role=professor', 'Create a class']] as const).map(([title, items, href, cta]) => (
+            <div key={title}>
+              <h2 className="font-display font-medium text-[clamp(2rem,3.6vw,3.25rem)] tracking-[-0.04em] leading-none">{title}</h2>
+              <ol className="mt-10 border-t border-white/25">
+                {items.map(([k, v]) => (
+                  <li key={k} className="grid sm:grid-cols-[9rem_1fr] gap-x-6 gap-y-1 py-5 border-b border-white/25">
+                    <span className="font-display text-lg tracking-[-0.02em]">{k}</span>
+                    <span className="text-white/85 leading-relaxed">{v}</span>
+                  </li>
+                ))}
+              </ol>
+              <Link to={href} className="mt-8 inline-flex items-center gap-1.5 font-display hover:underline">{cta} <ArrowUpRight size={16} /></Link>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── 4. Where it runs ───────────────────────────────────────── */}
+      <section className="px-5 md:px-8 py-24 md:py-36">
+        <div className="mx-auto max-w-[1440px]">
+          <h2 className="font-display font-medium text-[clamp(2.6rem,7vw,6rem)] leading-[0.92] tracking-[-0.04em] max-w-5xl">
+            runs on your campus. <span className="text-accent">your course never leaves it.</span>
+          </h2>
+          <div className="mt-16 grid sm:grid-cols-3 border-t border-ink">
+            {[['Language model', 'Answers, plans and grades are written by a model on the course server.'], ['Speech to text', 'Lectures and voice questions are transcribed locally. No cloud speech service.'], ['Research', 'Opt-in and revocable. Exports use pseudonyms and cover consenting students only.']].map(([k, v]) => (
+              <div key={k} className="pt-6 pb-2 sm:pr-8 border-b sm:border-b-0 border-line">
+                <p className="font-display text-xl tracking-[-0.02em]">{k}</p>
+                <p className="mt-3 text-ink-3 leading-relaxed max-w-xs">{v}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 5. Close ───────────────────────────────────────────────── */}
+      <section className="bg-accent text-white px-5 md:px-8 pt-24 md:pt-32 pb-10 selection:bg-white selection:text-accent">
+        <div className="mx-auto max-w-[1440px]">
+          <h2 className="font-display font-medium text-[clamp(3rem,10vw,9rem)] leading-[0.88] tracking-[-0.04em]">bring your course.</h2>
+          <div className="mt-12 flex flex-wrap gap-3">
+            <Link to="/signin?mode=signup&role=professor" className="inline-flex h-12 items-center rounded-full bg-white px-6 font-display font-medium text-accent hover:bg-accent-50 transition-colors">Create a class</Link>
+            <Link to="/signin?mode=signup&role=student" className="inline-flex h-12 items-center rounded-full border border-white/60 px-6 font-display font-medium hover:bg-white/10 transition-colors">Join with a code</Link>
+            <Link to="/signin" className="inline-flex h-12 items-center px-4 font-display hover:underline">Sign in</Link>
+          </div>
+
+          <footer className="mt-28 md:mt-40 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-end gap-6 font-display text-[15px] tracking-[-0.015em] border-t border-white/25 pt-6">
+            <div className="space-y-1">
+              <Logo markClassName="h-5 w-auto" />
+              <p className="text-white/70 text-sm">With thanks to Dr. Sanjay Kumar, Yogesh Chaudhari and Dr Jaideepsinh Raulji.</p>
+            </div>
+            <a href="#top" onClick={e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="inline-flex items-center gap-1.5 hover:underline md:justify-self-center">
+              Back to the start <ArrowUp size={15} />
+            </a>
+            <div className="md:justify-self-end md:text-right space-y-1">
+              <a href="mailto:support@cobbleai.com" className="hover:underline">support@cobbleai.com</a>
+              <p className="text-white/70 text-sm">© 2026 Cobble AI</p>
+            </div>
+          </footer>
+        </div>
+      </section>
     </div>
   );
 }

@@ -10,8 +10,8 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint: strin
   return (
     <label className="flex items-start justify-between gap-3 py-2 cursor-pointer">
       <span>
-        <span className="block text-sm text-white">{label}</span>
-        <span className="block text-[11px] text-[#888888] mt-0.5">{hint}</span>
+        <span className="block text-sm text-ink">{label}</span>
+        <span className="block text-[11px] text-ink-3 mt-0.5">{hint}</span>
       </span>
       <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} className="mt-1 accent-white" />
     </label>
@@ -58,35 +58,35 @@ export default function TutorPolicyCard({ courseId }: { courseId: string }) {
   return (
     <Card className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <ShieldCheck className="w-4 h-4 text-blue-400" />
-        <h3 className="text-lg font-outfit font-medium text-white">Tutor Policy</h3>
-        {saving && <span className="ml-auto text-[10px] text-[#888888]">Saving…</span>}
+        <ShieldCheck className="w-4 h-4 text-accent" />
+        <h3 className="text-lg font-outfit font-medium text-ink">Tutor Policy</h3>
+        {saving && <span className="ml-auto text-[10px] text-ink-3">Saving…</span>}
       </div>
 
       <div className="space-y-4">
         <label className="block">
-          <span className="text-[10px] uppercase tracking-widest text-[#888888]">Most help allowed</span>
+          <span className="text-[10px] uppercase tracking-widest text-ink-3">Most help allowed</span>
           <select
             value={settings.max_hint_level}
             onChange={e => select('max_hint_level', e.target.value as HintLevel)}
-            className="mt-1 w-full bg-[#111111] border border-[#1A1A1A] rounded-lg px-3 py-2 text-sm text-white"
+            className="mt-1 w-full bg-sunken border border-line rounded-lg px-3 py-2 text-sm text-ink"
           >
             {HINT_LEVELS.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
           </select>
         </label>
         <label className="block">
-          <span className="text-[10px] uppercase tracking-widest text-[#888888]">Default help level</span>
+          <span className="text-[10px] uppercase tracking-widest text-ink-3">Default help level</span>
           <select
             value={settings.default_hint_level}
             onChange={e => select('default_hint_level', e.target.value as HintLevel)}
-            className="mt-1 w-full bg-[#111111] border border-[#1A1A1A] rounded-lg px-3 py-2 text-sm text-white"
+            className="mt-1 w-full bg-sunken border border-line rounded-lg px-3 py-2 text-sm text-ink"
           >
             {HINT_LEVELS.filter(h => HINT_LEVELS.findIndex(x => x.value === h.value) <= HINT_LEVELS.findIndex(x => x.value === settings.max_hint_level))
               .map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
           </select>
         </label>
 
-        <div className="divide-y divide-[#1A1A1A]">
+        <div className="divide-y divide-line">
           <Toggle label="Allow full answers" hint="Off: the tutor stops at worked steps." checked={settings.allow_full_answers} onChange={v => update({ allow_full_answers: v })} />
           <Toggle label="Assessment mode" hint="Hides answers for everyone (guiding questions only)." checked={settings.assessment_mode} onChange={v => update({ assessment_mode: v })} />
           <Toggle label="Automatic during tests" hint="Hides answers for a student while they have a test in progress." checked={settings.auto_assessment_mode} onChange={v => update({ auto_assessment_mode: v })} />

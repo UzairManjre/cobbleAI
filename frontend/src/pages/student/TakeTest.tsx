@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { testsApi } from '../../api';
 import { useToastStore } from '../../store/toastStore';
+import { apiErrorDetail } from '../../utils/apiError';
 import { answersFromAttempt, formatAnswers, remainingSeconds } from '../../utils/testAnswers';
 import ConfidenceCheckIn from '../../components/tests/ConfidenceCheckIn';
 
@@ -134,8 +135,10 @@ export default function TakeTest() {
         }
       }
       console.error('Failed to start test:', err);
-      useToastStore.getState().addToast(response?.data?.detail || 'Could not start the test', 'error');
-      navigate(-1);
+      useToastStore.getState().addToast(apiErrorDetail(err, 'Could not start the test'), 'error');
+      // Opened directly (new tab or link): there is no page to go back to
+      if (window.history.length > 1) navigate(-1);
+      else navigate('/assignments', { replace: true });
     }
   };
 
@@ -182,8 +185,8 @@ export default function TakeTest() {
 
   if (!test || !attempt) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-[#888888]">
-        <div className="w-8 h-8 border-2 border-[#1A1A1A] border-t-white rounded-full animate-spin mb-4" />
+      <div className="min-h-screen bg-canvas flex flex-col items-center justify-center text-ink-3">
+        <div className="w-8 h-8 border-2 border-line border-t-white rounded-full animate-spin mb-4" />
         <div className="text-sm tracking-wide font-medium">Loading Assessment...</div>
       </div>
     );
@@ -194,37 +197,37 @@ export default function TakeTest() {
   const progress = (answeredCount / totalQuestions) * 100;
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-[#222] selection:text-white pb-32">
+    <div className="min-h-screen bg-canvas text-ink selection:bg-[#222] selection:text-ink pb-32">
       
       {/* Top Progress Indicator */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-[#1A1A1A] z-50">
+      <div className="fixed top-0 left-0 right-0 h-1 bg-sunken-2 z-50">
         <div 
-          className="h-full bg-white transition-all duration-300 ease-out" 
+          className="h-full bg-accent transition-all duration-300 ease-out" 
           style={{ width: `${progress}%` }}
         />
       </div>
 
       {/* Floating Header */}
       <div className="fixed top-6 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 z-40">
-        <div className="bg-[#0A0A0A]/90 backdrop-blur-xl border border-[#1A1A1A] rounded-2xl px-6 py-4 flex items-center justify-between shadow-2xl">
+        <div className="bg-surface/90 backdrop-blur-xl border border-line rounded-2xl px-6 py-4 flex items-center justify-between shadow-2xl">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowConfirmSubmit(true)}
-              className="text-[#888888] hover:text-white transition-colors"
+              className="text-ink-3 hover:text-ink transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="h-6 w-px bg-[#1A1A1A]" />
+            <div className="h-6 w-px bg-sunken-2" />
             <div>
-              <h1 className="text-sm font-medium tracking-wide text-white">{test.title}</h1>
-              <p className="text-xs text-[#A3A3A3] tracking-wide mt-0.5">{answeredCount} of {totalQuestions} Completed</p>
+              <h1 className="text-sm font-medium tracking-wide text-ink">{test.title}</h1>
+              <p className="text-xs text-ink-3 tracking-wide mt-0.5">{answeredCount} of {totalQuestions} Completed</p>
             </div>
           </div>
           
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-mono tracking-wider transition-colors ${
             timeLeft < 300 
-              ? 'bg-red-500/10 border-red-500/30 text-red-400' 
-              : 'bg-[#111111] border-[#222222] text-[#AAAAAA]'
+              ? 'bg-red-500/10 border-red-500/30 text-red-600' 
+              : 'bg-sunken border-line text-ink-3'
           }`}>
             <Clock className="w-4 h-4" />
             {formatTime(timeLeft)}
@@ -238,15 +241,15 @@ export default function TakeTest() {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Question Header */}
             <div className="mb-10 flex items-start gap-6">
-              <div className="shrink-0 w-12 h-12 rounded-xl bg-[#0A0A0A] border border-[#1A1A1A] flex items-center justify-center text-sm font-outfit text-[#888888]">
+              <div className="shrink-0 w-12 h-12 rounded-xl bg-surface border border-line flex items-center justify-center text-sm font-outfit text-ink-3">
                 {currentQuestionIdx + 1}
               </div>
               <div className="pt-1">
                 <div className="flex items-center gap-3 mb-3 text-xs tracking-wider">
-                  <span className="text-[#A3A3A3] uppercase bg-[#111111] px-2 py-1 rounded-md">{currentQuestion.type.replace('_', ' ')}</span>
-                  <span className="text-[#A3A3A3]">{currentQuestion.marks} Pts</span>
+                  <span className="text-ink-3 uppercase bg-sunken px-2 py-1 rounded-md">{currentQuestion.type.replace('_', ' ')}</span>
+                  <span className="text-ink-3">{currentQuestion.marks} Pts</span>
                 </div>
-                <h2 className="text-2xl font-light text-white leading-snug">
+                <h2 className="text-2xl font-light text-ink leading-snug">
                   {currentQuestion.question_text}
                 </h2>
               </div>
@@ -268,14 +271,14 @@ export default function TakeTest() {
                         onClick={() => handleAnswer(currentQuestion.id, option.id, 'option')}
                         className={`w-full text-left p-5 rounded-xl border transition-all duration-200 flex items-center gap-4 ${
                           isSelected 
-                            ? 'bg-white text-black border-white' 
-                            : 'bg-[#0A0A0A] border-[#1A1A1A] text-[#AAAAAA] hover:border-[#333333] hover:text-white'
+                            ? 'bg-accent text-white border-accent' 
+                            : 'bg-surface border-line text-ink-3 hover:border-line-strong hover:text-ink'
                         }`}
                       >
                         <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
-                          isSelected ? 'border-black' : 'border-[#333333]'
+                          isSelected ? 'border-black' : 'border-line-strong'
                         }`}>
-                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-black" />}
+                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-canvas" />}
                         </div>
                         <span className="text-[15px] font-medium leading-relaxed">{option.text}</span>
                       </button>
@@ -293,8 +296,8 @@ export default function TakeTest() {
                     onClick={() => handleAnswer(currentQuestion.id, 'true', 'option')}
                     className={`p-6 rounded-xl border transition-all flex items-center justify-center gap-3 ${
                       answers[currentQuestion.id]?.value === 'true'
-                        ? 'bg-white text-black border-white'
-                        : 'bg-[#0A0A0A] border-[#1A1A1A] text-[#AAAAAA] hover:border-[#333333] hover:text-white'
+                        ? 'bg-accent text-white border-accent'
+                        : 'bg-surface border-line text-ink-3 hover:border-line-strong hover:text-ink'
                     }`}
                   >
                     <span className="text-lg font-medium">True</span>
@@ -305,8 +308,8 @@ export default function TakeTest() {
                     onClick={() => handleAnswer(currentQuestion.id, 'false', 'option')}
                     className={`p-6 rounded-xl border transition-all flex items-center justify-center gap-3 ${
                       answers[currentQuestion.id]?.value === 'false'
-                        ? 'bg-white text-black border-white'
-                        : 'bg-[#0A0A0A] border-[#1A1A1A] text-[#AAAAAA] hover:border-[#333333] hover:text-white'
+                        ? 'bg-accent text-white border-accent'
+                        : 'bg-surface border-line text-ink-3 hover:border-line-strong hover:text-ink'
                     }`}
                   >
                     <span className="text-lg font-medium">False</span>
@@ -321,7 +324,7 @@ export default function TakeTest() {
                   onChange={(e) => handleAnswer(currentQuestion.id, e.target.value, 'text')}
                   placeholder="Type your answer..."
                   rows={6}
-                  className="w-full bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl px-5 py-4 text-[15px] text-white placeholder:text-[#444444] focus:outline-none focus:border-white transition-colors resize-none leading-relaxed"
+                  className="w-full bg-surface border border-line rounded-xl px-5 py-4 text-[15px] text-ink placeholder:text-ink-4 focus:outline-none focus:border-accent transition-colors resize-none leading-relaxed"
                 />
               )}
 
@@ -329,8 +332,8 @@ export default function TakeTest() {
               {currentQuestion.type === 'code' && (
                 <div>
                   {currentQuestion.starter_code && (
-                    <div className="bg-[#111111] border border-[#1A1A1A] rounded-t-xl p-4 border-b-0">
-                      <pre className="text-[13px] font-mono text-[#888888] overflow-x-auto">
+                    <div className="bg-sunken border border-line rounded-t-xl p-4 border-b-0">
+                      <pre className="text-[13px] font-mono text-ink-3 overflow-x-auto">
                         {currentQuestion.starter_code}
                       </pre>
                     </div>
@@ -341,7 +344,7 @@ export default function TakeTest() {
                     placeholder="// Write your code solution here..."
                     spellCheck={false}
                     rows={12}
-                    className={`w-full bg-[#050505] border border-[#1A1A1A] px-5 py-4 text-[13px] font-mono text-white placeholder:text-[#444444] focus:outline-none focus:border-white transition-colors resize-none leading-relaxed ${
+                    className={`w-full bg-surface border border-line px-5 py-4 text-[13px] font-mono text-ink placeholder:text-ink-4 focus:outline-none focus:border-accent transition-colors resize-none leading-relaxed ${
                       currentQuestion.starter_code ? 'rounded-b-xl' : 'rounded-xl'
                     }`}
                   />
@@ -357,15 +360,15 @@ export default function TakeTest() {
 
               {/* Hints */}
               {currentQuestion.hints?.length > 0 && (
-                <div className="mt-8 p-5 bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl">
-                  <div className="flex items-center gap-2 text-[#888888] text-xs font-bold mb-3 uppercase tracking-wider">
+                <div className="mt-8 p-5 bg-surface border border-line rounded-xl">
+                  <div className="flex items-center gap-2 text-ink-3 text-xs font-bold mb-3 uppercase tracking-wider">
                     <Sparkles className="w-4 h-4" />
                     Hints
                   </div>
                   <ul className="space-y-3">
                     {currentQuestion.hints.map((hint: any, idx: number) => (
-                      <li key={idx} className="text-[14px] text-[#AAAAAA] flex gap-3 leading-relaxed">
-                        <span className="text-[#444444] mt-1">—</span> {hint}
+                      <li key={idx} className="text-[14px] text-ink-3 flex gap-3 leading-relaxed">
+                        <span className="text-ink-4 mt-1">—</span> {hint}
                       </li>
                     ))}
                   </ul>
@@ -378,12 +381,12 @@ export default function TakeTest() {
 
       {/* Floating Bottom Navigator */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 z-40">
-        <div className="bg-[#0A0A0A]/90 backdrop-blur-xl border border-[#1A1A1A] rounded-full p-2 flex items-center justify-between shadow-2xl">
+        <div className="bg-surface/90 backdrop-blur-xl border border-line rounded-full p-2 flex items-center justify-between shadow-2xl">
           
           <button
             onClick={() => setCurrentQuestionIdx(Math.max(0, currentQuestionIdx - 1))}
             disabled={currentQuestionIdx === 0}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-[#888888] hover:text-white hover:bg-[#1A1A1A] disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-ink-3 hover:text-ink hover:bg-sunken-2 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -399,10 +402,10 @@ export default function TakeTest() {
                   onClick={() => setCurrentQuestionIdx(idx)}
                   className={`w-8 h-8 shrink-0 rounded-full text-xs font-medium transition-all flex items-center justify-center ${
                     isActive 
-                      ? 'bg-white text-black' 
+                      ? 'bg-accent text-white' 
                       : isAnswered
-                        ? 'bg-[#1A1A1A] text-white hover:bg-[#222222]'
-                        : 'text-[#A3A3A3] hover:text-[#AAAAAA] hover:bg-[#111111]'
+                        ? 'bg-sunken-2 text-ink hover:bg-sunken-2'
+                        : 'text-ink-3 hover:text-ink-3 hover:bg-sunken'
                   }`}
                 >
                   {isAnswered && !isActive ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
@@ -414,14 +417,14 @@ export default function TakeTest() {
           {currentQuestionIdx < totalQuestions - 1 ? (
             <button
               onClick={() => setCurrentQuestionIdx(currentQuestionIdx + 1)}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-[#888888] hover:text-white hover:bg-[#1A1A1A] transition-all"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-ink-3 hover:text-ink hover:bg-sunken-2 transition-all"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
           ) : (
             <button
               onClick={() => setShowConfirmSubmit(true)}
-              className="px-4 h-10 rounded-full bg-white hover:bg-gray-200 text-black text-sm font-medium transition-all flex items-center gap-2 mr-1"
+              className="px-4 h-10 rounded-full bg-accent hover:bg-accent-strong text-white text-sm font-medium transition-all flex items-center gap-2 mr-1"
             >
               Submit
             </button>
@@ -432,15 +435,15 @@ export default function TakeTest() {
 
       {/* Confirm Submit Modal */}
       {showConfirmSubmit && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-3xl p-8 max-w-sm w-full shadow-2xl">
+        <div className="fixed inset-0 bg-ink/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-surface border border-line rounded-2xl p-8 max-w-sm w-full shadow-2xl">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-[#111111] border border-[#222222] rounded-full flex items-center justify-center mx-auto mb-6">
-                <AlertTriangle className="w-7 h-7 text-[#888888]" />
+              <div className="w-16 h-16 bg-sunken border border-line rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertTriangle className="w-7 h-7 text-ink-3" />
               </div>
-              <h3 className="text-xl font-outfit text-white mb-2">Submit Assessment?</h3>
-              <p className="text-[#888888] text-sm leading-relaxed">
-                You've completed <span className="text-white font-medium">{answeredCount}</span> of <span className="text-white font-medium">{totalQuestions}</span> questions.
+              <h3 className="text-xl font-outfit text-ink mb-2">Submit Assessment?</h3>
+              <p className="text-ink-3 text-sm leading-relaxed">
+                You've completed <span className="text-ink font-medium">{answeredCount}</span> of <span className="text-ink font-medium">{totalQuestions}</span> questions.
                 {answeredCount < totalQuestions && ' Some answers are blank.'}
               </p>
             </div>
@@ -449,7 +452,7 @@ export default function TakeTest() {
               <button
                 onClick={handleSubmitTest}
                 disabled={isSubmitting}
-                className="w-full py-3.5 bg-white hover:bg-gray-200 text-black rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-accent hover:bg-accent-strong text-white rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
@@ -459,7 +462,7 @@ export default function TakeTest() {
               </button>
               <button
                 onClick={() => setShowConfirmSubmit(false)}
-                className="w-full py-3.5 bg-transparent hover:bg-[#111111] text-[#888888] hover:text-white rounded-xl text-sm font-medium transition-all"
+                className="w-full py-3.5 bg-transparent hover:bg-sunken text-ink-3 hover:text-ink rounded-xl text-sm font-medium transition-all"
               >
                 Return to Assessment
               </button>

@@ -23,9 +23,9 @@ function isLecture(s: TutorSource) {
 }
 
 function SourceIcon({ source }: { source: TutorSource }) {
-  if (isLecture(source)) return <Play className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
-  if (source.slide_start !== undefined && source.slide_start !== null) return <Presentation className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
-  return <FileText className="w-3.5 h-3.5 text-purple-400 shrink-0" />;
+  if (isLecture(source)) return <Play className="w-3.5 h-3.5 text-emerald-700 shrink-0" />;
+  if (source.slide_start !== undefined && source.slide_start !== null) return <Presentation className="w-3.5 h-3.5 text-amber-700 shrink-0" />;
+  return <FileText className="w-3.5 h-3.5 text-violet-700 shrink-0" />;
 }
 
 export default function CitationList({ courseId, citations, sources, onSeekLecture, title }: Props) {
@@ -46,7 +46,7 @@ export default function CitationList({ courseId, citations, sources, onSeekLectu
     if (isLecture(source)) {
       const t = Math.max(0, Math.floor(source.t_start || 0));
       if (onSeekLecture?.(source.doc_id, t)) return;
-      navigate(`/${role}/courses/${courseId}/lectures/${source.doc_id}?t=${t}`);
+      navigate(`/courses/${courseId}/lectures/${source.doc_id}?t=${t}`);
       return;
     }
     if ((source.page_start !== undefined && source.page_start !== null) || /\.pdf$/i.test(source.filename)) {
@@ -63,10 +63,10 @@ export default function CitationList({ courseId, citations, sources, onSeekLectu
   };
 
   return (
-    <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl p-3 max-w-[85%]">
-      <div className="flex items-center gap-1.5 mb-2 border-b border-[#1A1A1A] pb-1.5">
-        <BookOpen className="w-3.5 h-3.5 text-purple-400" />
-        <span className="text-[10px] font-semibold text-[#888888] uppercase tracking-widest">
+    <div className="bg-surface border border-line rounded-xl p-3 max-w-[85%]">
+      <div className="flex items-center gap-1.5 mb-2 border-b border-line pb-1.5">
+        <BookOpen className="w-3.5 h-3.5 text-violet-700" />
+        <span className="text-[10px] font-semibold text-ink-3 uppercase tracking-widest">
           {title ? `${title} (${items.length})` : cited ? `Cited (${items.length})` : `Sources (${items.length})`}
         </span>
       </div>
@@ -80,15 +80,15 @@ export default function CitationList({ courseId, citations, sources, onSeekLectu
                 type="button"
                 onClick={() => open(source)}
                 title={source.snippet || source.filename}
-                className="w-full text-left text-xs text-[#CCCCCC] hover:text-white flex items-center gap-2 group"
+                className="w-full text-left text-xs text-ink-2 hover:text-ink flex items-center gap-2 group"
               >
-                {source.sid && <span className="text-[10px] font-mono text-purple-300 shrink-0">[{source.sid}]</span>}
+                {source.sid && <span className="text-[10px] font-mono text-violet-700 shrink-0">[{source.sid}]</span>}
                 <SourceIcon source={source} />
                 <span className="truncate flex-1">{source.filename || 'Unknown Document'}</span>
-                {where && <span className="text-[10px] text-[#888888] group-hover:text-[#CCCCCC] shrink-0">{where}</span>}
+                {where && <span className="text-[10px] text-ink-3 group-hover:text-ink-2 shrink-0">{where}</span>}
               </button>
               {expanded === key && source.snippet && (
-                <p className="mt-1.5 ml-6 text-[11px] text-[#AAAAAA] leading-relaxed border-l border-[#333333] pl-2">{source.snippet}</p>
+                <p className="mt-1.5 ml-6 text-[11px] text-ink-3 leading-relaxed border-l border-line-strong pl-2">{source.snippet}</p>
               )}
             </li>
           );

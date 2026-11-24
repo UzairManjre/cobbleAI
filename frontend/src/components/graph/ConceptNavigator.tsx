@@ -31,30 +31,22 @@ export default function ConceptNavigator({ nodes, currentIndex, onPick }: Props)
     if (next) onPick(next.id);
   };
 
+  const stepper = 'w-8 h-8 rounded-full flex items-center justify-center text-ink-3 hover:text-ink hover:bg-sunken disabled:opacity-30 disabled:hover:bg-transparent transition-colors';
+
   return (
-    <div className="px-4 py-3 border-b border-[#1A1A1A] bg-[#0A0A0A] flex items-center gap-2">
-      <button
-        onClick={() => go(-1)}
-        disabled={currentIndex <= 0}
-        aria-label="Previous concept"
-        className="p-2 rounded-lg border border-[#1A1A1A] bg-[#111111] text-[#AAAAAA] hover:text-white hover:border-[#333333] disabled:opacity-30"
-      >
+    <div className="flex items-center gap-1 min-w-0">
+      <button onClick={() => go(-1)} disabled={currentIndex <= 0} aria-label="Previous concept" className={stepper}>
         <ChevronLeft className="w-4 h-4" />
       </button>
-      <span className="text-[11px] text-[#888888] tabular-nums whitespace-nowrap px-1">
+      <span className="annot text-ink-3 tabular-nums whitespace-nowrap" aria-live="polite">
         {currentIndex + 1} / {nodes.length}
       </span>
-      <button
-        onClick={() => go(1)}
-        disabled={currentIndex >= nodes.length - 1}
-        aria-label="Next concept"
-        className="p-2 rounded-lg border border-[#1A1A1A] bg-[#111111] text-[#AAAAAA] hover:text-white hover:border-[#333333] disabled:opacity-30"
-      >
+      <button onClick={() => go(1)} disabled={currentIndex >= nodes.length - 1} aria-label="Next concept" className={stepper}>
         <ChevronRight className="w-4 h-4" />
       </button>
 
-      <div className="relative flex-1 min-w-0">
-        <Search className="w-3.5 h-3.5 text-[#666666] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className="relative hidden sm:block ml-2 w-56 min-w-0">
+        <Search className="w-3.5 h-3.5 text-ink-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           value={query}
           onChange={e => { setQuery(e.target.value); setOpen(true); }}
@@ -64,20 +56,20 @@ export default function ConceptNavigator({ nodes, currentIndex, onPick }: Props)
             if (e.key === 'Enter' && matches[0]) pick(matches[0].id);
             if (e.key === 'Escape') { setQuery(''); setOpen(false); }
           }}
-          placeholder="Jump to a concept"
-          aria-label="Search concepts"
-          className="w-full bg-[#111111] border border-[#1A1A1A] rounded-lg pl-8 pr-3 py-2 text-xs text-white placeholder:text-[#666666] focus:outline-none focus:border-[#333333]"
+          placeholder="Find a concept"
+          aria-label="Find a concept"
+          className="w-full h-9 bg-sunken rounded-full pl-8 pr-3 text-sm text-ink placeholder:text-ink-4 border border-transparent focus:outline-none focus:bg-surface focus:border-accent focus:ring-2 focus:ring-accent-50 transition-colors"
         />
         {open && query.trim() && (
-          <div className="absolute z-30 left-0 right-0 mt-1 bg-[#0A0A0A] border border-[#262626] rounded-xl shadow-2xl overflow-hidden">
+          <div className="absolute z-30 left-0 w-72 mt-2 bg-surface border border-line rounded-2xl shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] overflow-hidden py-1">
             {matches.length === 0 ? (
-              <p className="px-3 py-2.5 text-xs text-[#888888]">No concept matches “{query.trim()}”</p>
+              <p className="px-4 py-2.5 text-sm text-ink-3">No concept matches “{query.trim()}”</p>
             ) : matches.map(n => (
               <button
                 key={n.id}
                 onMouseDown={e => e.preventDefault()}
                 onClick={() => pick(n.id)}
-                className="w-full text-left px-3 py-2 text-xs text-[#DDDDDD] hover:bg-[#161616] hover:text-white"
+                className="w-full text-left px-4 py-2 text-sm text-ink-2 hover:bg-sunken hover:text-ink"
               >
                 {n.label}
               </button>

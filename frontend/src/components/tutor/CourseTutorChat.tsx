@@ -43,9 +43,9 @@ export default function CourseTutorChat({ courseId, lectureId, getCurrentTime, o
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center gap-3 p-6">
-            <MessageSquare className="w-6 h-6 text-[#888888]" />
-            <p className="text-sm text-white">{lectureId ? 'Ask about this lecture' : 'Ask about this course'}</p>
-            <p className="text-xs text-[#888888] max-w-xs">
+            <MessageSquare className="w-6 h-6 text-ink-3" />
+            <p className="text-sm text-ink">{lectureId ? 'Ask about this lecture' : 'Ask about this course'}</p>
+            <p className="text-xs text-ink-3 max-w-xs">
               {lectureId
                 ? 'Answers come from what was said and shown in this recording, with timestamps you can jump to.'
                 : 'Answers come only from your course notes, slides and lecture recordings, with sources. If they are not covered, the tutor says so.'}
@@ -61,20 +61,20 @@ export default function CourseTutorChat({ courseId, lectureId, getCurrentTime, o
             onSeekLecture={onSeekLecture}
           />
         ))}
-        {error && <p className="text-xs text-red-400" role="alert">{error}</p>}
+        {error && <p className="text-xs text-red-600" role="alert">{error}</p>}
         <div ref={endRef} />
       </div>
-      <form onSubmit={submit} className="p-3 border-t border-[#1A1A1A] space-y-2">
+      <form onSubmit={submit} className="p-3 border-t border-line space-y-2">
         <HintLadder value={effectiveHint} onChange={setHintLevel} policy={policy} disabled={isStreaming} />
         <div className="flex gap-2">
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder={lectureId ? 'Ask about something said in this lecture...' : 'Ask about the course...'}
-            className="flex-1 bg-[#111111] border border-[#1A1A1A] rounded-xl px-3 py-2 text-sm text-white placeholder:text-[#666666] focus:outline-none focus:border-[#333333]"
+            className="flex-1 bg-sunken border border-line rounded-xl px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:border-line-strong"
           />
           <VoiceInputButton courseId={courseId} disabled={isStreaming} onTranscript={(text) => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))} />
-          <button type="submit" disabled={!input.trim() || isStreaming} className="px-3 bg-white text-black rounded-xl disabled:opacity-50" aria-label="Send">
+          <button type="submit" disabled={!input.trim() || isStreaming} className="px-3 bg-accent text-white rounded-xl disabled:opacity-50" aria-label="Send">
             <Send className="w-4 h-4" />
           </button>
         </div>

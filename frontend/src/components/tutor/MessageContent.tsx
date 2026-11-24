@@ -22,7 +22,7 @@ export default function MessageContent({ content, thinking }: { content: string;
   return (
     <div className="space-y-3">
       {reasoning && (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl overflow-hidden">
+        <div className="bg-accent/10 border border-accent/20 rounded-xl overflow-hidden">
           <button
             type="button"
             aria-expanded={showReasoning}
@@ -31,15 +31,15 @@ export default function MessageContent({ content, thinking }: { content: string;
               setShowReasoning(!showReasoning);
               if (!showReasoning) analytics.track('thinking_expanded', {});
             }}
-            className="w-full px-3.5 py-2 flex items-center justify-between hover:bg-blue-500/20 transition-colors focus:outline-none"
+            className="w-full px-3.5 py-2 flex items-center justify-between hover:bg-accent/20 transition-colors focus:outline-none"
           >
-            <span className="flex items-center gap-2 text-xs font-medium text-blue-400">
+            <span className="flex items-center gap-2 text-xs font-medium text-accent">
               <Brain size={14} /> Thinking Process
             </span>
-            {showReasoning ? <ChevronUp size={14} className="text-blue-400" /> : <ChevronDown size={14} className="text-blue-400" />}
+            {showReasoning ? <ChevronUp size={14} className="text-accent" /> : <ChevronDown size={14} className="text-accent" />}
           </button>
           {showReasoning && (
-            <div id={reasoningId} className="px-3.5 pb-3 text-xs text-[#CCCCCC] leading-relaxed border-t border-blue-500/20 pt-2.5 italic whitespace-pre-wrap">
+            <div id={reasoningId} className="px-3.5 pb-3 text-xs text-ink-2 leading-relaxed border-t border-accent/20 pt-2.5 italic whitespace-pre-wrap">
               {reasoning}
             </div>
           )}
@@ -47,13 +47,13 @@ export default function MessageContent({ content, thinking }: { content: string;
       )}
 
       {text && (
-        <div className="max-w-none text-sm leading-relaxed text-white space-y-2">
+        <div className="max-w-none text-sm leading-relaxed text-ink space-y-2">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
               p: (props) => <p className="my-0 font-normal" {...withoutNode(props)} />,
-              pre: (props) => <pre className="bg-[#050505] border border-[#1A1A1A] p-3.5 rounded-xl overflow-x-auto my-2 text-xs" {...withoutNode(props)} />,
-              code: (props) => <code className="text-purple-300 bg-purple-500/10 font-mono text-xs px-1.5 py-0.5 rounded border border-purple-500/20" {...withoutNode(props)} />,
+              pre: (props) => <pre className="bg-surface border border-line p-3.5 rounded-xl overflow-x-auto my-2 text-xs" {...withoutNode(props)} />,
+              code: (props) => <code className="text-violet-700 bg-purple-500/10 font-mono text-xs px-1.5 py-0.5 rounded border border-purple-500/20" {...withoutNode(props)} />,
             }}
           >
             {text}

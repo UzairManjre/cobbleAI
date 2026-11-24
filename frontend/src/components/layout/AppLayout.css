@@ -1,17 +1,17 @@
 .app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  background-color: var(--designer-bg);
-  color: var(--designer-text-primary);
+  height: 100vh;
+  height: 100dvh; /* the content area scrolls, so the top bar stays in view */
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   overflow: hidden;
 }
 
 .content-scrollable {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 2rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
 }

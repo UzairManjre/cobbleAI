@@ -47,7 +47,7 @@ export default function StudyHeatmap({ data }: Props) {
         borderColor="rgba(0, 0, 0, 0.08)"
         enableLabels={false}
         theme={{
-          textColor: '#0A0A0A',
+          textColor: '#282828',
           fontSize: 11,
           axis: {
             domain: { line: { stroke: 'rgba(0, 0, 0, 0.1)' } },
@@ -55,8 +55,8 @@ export default function StudyHeatmap({ data }: Props) {
           },
           tooltip: {
             container: {
-              background: '#FFFFFF',
-              color: '#0A0A0A',
+              background: '#282828',
+              color: '#282828',
               fontSize: 12,
               borderRadius: '8px',
               border: '2px solid #0A0A0A',

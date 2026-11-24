@@ -122,8 +122,11 @@ async def grade_free_text(question: Question, answer_text: str, course_id: Optio
         raw = await adapter.generate_full_response(
             system="You are a fair, consistent grader. Return only JSON.",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=900,
+            # Thinking would spend the token budget before the JSON, and the JSON quotes student spans,
+            # so a long answer needs room: 900 tokens with thinking on cut most full answers off mid-object
+            max_tokens=2048,
             temperature=settings.GRADER_SAMPLE_TEMPERATURE if n > 1 else 0.0,
+            think=False,
         )
         return _parse(raw)
 

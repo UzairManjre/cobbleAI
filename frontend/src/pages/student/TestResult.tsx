@@ -1,3 +1,4 @@
+import { apiErrorDetail } from '../../utils/apiError';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, XCircle, Clock } from 'lucide-react';
@@ -74,22 +75,22 @@ export default function TestResult() {
     if (!attemptId) return;
     testsApi.getResult(attemptId)
       .then(res => setData(res.data))
-      .catch(err => setError(err.response?.data?.detail || 'Could not load your result.'));
+      .catch(err => setError(apiErrorDetail(err, 'Could not load your result.')));
   }, [attemptId]);
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 text-[#888888]">
+      <div className="min-h-screen bg-canvas flex flex-col items-center justify-center gap-4 text-ink-3">
         <p className="text-sm">{error}</p>
-        <button onClick={() => navigate('/student/assignments')} className="text-white text-sm underline">Back to assignments</button>
+        <button onClick={() => navigate('/assignments')} className="text-ink text-sm underline">Back to assignments</button>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-[#888888]">
-        <div className="w-8 h-8 border-2 border-[#1A1A1A] border-t-white rounded-full animate-spin mb-4" />
+      <div className="min-h-screen bg-canvas flex flex-col items-center justify-center text-ink-3">
+        <div className="w-8 h-8 border-2 border-line border-t-white rounded-full animate-spin mb-4" />
         <div className="text-sm tracking-wide font-medium">Loading Result...</div>
       </div>
     );
@@ -100,39 +101,39 @@ export default function TestResult() {
   const passed = attempt.percentage >= test.passing_percentage;
 
   return (
-    <div className="min-h-screen bg-black text-white pb-24">
+    <div className="min-h-screen bg-canvas text-ink pb-24">
       <div className="max-w-3xl mx-auto px-6 pt-12">
         <button
-          onClick={() => navigate('/student/assignments')}
-          className="flex items-center gap-2 text-sm text-[#888888] hover:text-white transition-colors mb-8"
+          onClick={() => navigate(`/courses/${attempt.course_id}/tests`)}
+          className="flex items-center gap-2 text-sm text-ink-3 hover:text-ink transition-colors mb-8"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to assignments
+          <ArrowLeft className="w-4 h-4" /> Back to course tests
         </button>
 
         <h1 className="text-2xl font-light mb-2">{test.title}</h1>
 
         {!revealed ? (
-          <div className="mt-8 bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-8 flex items-start gap-4">
-            <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="mt-8 bg-surface border border-line rounded-2xl p-8 flex items-start gap-4">
+            <Clock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm text-white">Your answers have been submitted.</p>
-              <p className="text-sm text-[#888888] mt-1">Results appear here once your instructor has reviewed them.</p>
+              <p className="text-sm text-ink">Your answers have been submitted.</p>
+              <p className="text-sm text-ink-3 mt-1">Results appear here once your instructor has reviewed them.</p>
             </div>
           </div>
         ) : (
           <>
             <div className="mt-6 grid grid-cols-3 gap-4">
-              <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-5">
-                <p className="text-[10px] uppercase tracking-widest text-[#888888]">Score</p>
+              <div className="bg-surface border border-line rounded-2xl p-5">
+                <p className="text-[10px] uppercase tracking-widest text-ink-3">Score</p>
                 <p className="text-2xl font-light mt-2">{attempt.total_marks_awarded} / {test.total_marks}</p>
               </div>
-              <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-5">
-                <p className="text-[10px] uppercase tracking-widest text-[#888888]">Percentage</p>
+              <div className="bg-surface border border-line rounded-2xl p-5">
+                <p className="text-[10px] uppercase tracking-widest text-ink-3">Percentage</p>
                 <p className="text-2xl font-light mt-2">{Math.round(attempt.percentage)}%</p>
               </div>
-              <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-5">
-                <p className="text-[10px] uppercase tracking-widest text-[#888888]">Result</p>
-                <p className={`text-2xl font-light mt-2 ${passed ? 'text-emerald-400' : 'text-red-400'}`}>{passed ? 'Passed' : 'Not passed'}</p>
+              <div className="bg-surface border border-line rounded-2xl p-5">
+                <p className="text-[10px] uppercase tracking-widest text-ink-3">Result</p>
+                <p className={`text-2xl font-light mt-2 ${passed ? 'text-emerald-700' : 'text-red-600'}`}>{passed ? 'Passed' : 'Not passed'}</p>
               </div>
             </div>
 
@@ -141,23 +142,23 @@ export default function TestResult() {
                 const a = answersById.get(q.id);
                 const correct = correctAnswerText(q);
                 return (
-                  <div key={q.id} className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-6">
+                  <div key={q.id} className="bg-surface border border-line rounded-2xl p-6">
                     <div className="flex items-start justify-between gap-4">
-                      <p className="text-sm text-white"><span className="text-[#888888] mr-2">{idx + 1}.</span>{q.question_text}</p>
-                      {a?.is_correct === true && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
-                      {a?.is_correct === false && <XCircle className="w-5 h-5 text-red-400 shrink-0" />}
+                      <p className="text-sm text-ink"><span className="text-ink-3 mr-2">{idx + 1}.</span>{q.question_text}</p>
+                      {a?.is_correct === true && <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />}
+                      {a?.is_correct === false && <XCircle className="w-5 h-5 text-red-600 shrink-0" />}
                     </div>
-                    <p className="text-xs text-[#888888] mt-4">Your answer</p>
-                    <p className="text-sm text-[#CCCCCC] mt-1 whitespace-pre-wrap">{studentAnswerText(q, a)}</p>
+                    <p className="text-xs text-ink-3 mt-4">Your answer</p>
+                    <p className="text-sm text-ink-2 mt-1 whitespace-pre-wrap">{studentAnswerText(q, a)}</p>
                     {correct && (
                       <>
-                        <p className="text-xs text-[#888888] mt-3">Correct answer</p>
-                        <p className="text-sm text-emerald-300 mt-1">{correct}</p>
+                        <p className="text-xs text-ink-3 mt-3">Correct answer</p>
+                        <p className="text-sm text-emerald-700 mt-1">{correct}</p>
                       </>
                     )}
-                    {a?.feedback && <p className="text-sm text-[#AAAAAA] mt-3 italic">{a.feedback}</p>}
-                    {q.explanation && <p className="text-xs text-[#888888] mt-3">{q.explanation}</p>}
-                    <p className="text-[10px] uppercase tracking-widest text-[#666666] mt-4">
+                    {a?.feedback && <p className="text-sm text-ink-3 mt-3 italic">{a.feedback}</p>}
+                    {q.explanation && <p className="text-xs text-ink-3 mt-3">{q.explanation}</p>}
+                    <p className="text-[10px] uppercase tracking-widest text-ink-4 mt-4">
                       {a?.marks_awarded ?? 0} / {q.marks} pts
                     </p>
                   </div>

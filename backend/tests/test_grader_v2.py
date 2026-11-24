@@ -183,3 +183,32 @@ async def test_grading_study_on_synthetic_mohler(tmp_path, fake_llm):
     metrics = json.loads((folder / "metrics.json").read_text())
     assert metrics["n_scored"] == 6 and metrics["overall"]["n"] == 6
     assert set(metrics["per_item"]) == {"1"} and "qwk" in metrics["overall"]
+
+
+async def test_grader_disables_thinking_so_the_json_fits(fake_llm):
+    # With thinking on, the local model spent the token budget reasoning and the JSON was cut off
+    fake_llm.queue(grade_json(3), grade_json(3), grade_json(3))
+    await grade_free_text(_question(), "Merge sort divides the list into halves first.")
+    assert all(c.get("think") is False for c in fake_llm.calls)
+
+
+def test_invented_question_types_map_onto_ones_the_ui_and_grader_handle():
+    from app.services.test_generator import normalize_question_type as norm
+    assert norm("code/practical") == "code" and norm("coding") == "code"
+    assert norm("True/False") == "true_false" and norm("multiple_choice") == "mcq"
+    assert norm("short answer") == "short_answer" and norm("numerical") == "short_answer"
+    assert norm(None, has_options=True) == "mcq" and norm("essay") == "essay"
+
+
+async def test_generator_keeps_only_requested_question_types(fake_llm):
+    from app.services.test_generator import TestGenerator
+    fake_llm.queue(json.dumps({"questions": [
+        {"type": "mcq", "question_text": "Q1?", "options": [{"id": "a", "text": "x", "is_correct": True}]},
+        {"type": "code/practical", "question_text": "Write code"},
+        {"type": "True/False", "question_text": "Q3?", "correct_answer": True},
+    ]}))
+    qs = await TestGenerator().generate_test_questions("Course", ["Topic"], question_count=3,
+                                                       include_types=["mcq", "true_false"])
+    assert [q.type for q in qs] == ["mcq", "true_false"]
+    prompt = fake_llm.calls[0]["messages"][0]["content"]
+    assert "`mcq`" in prompt and "`true_false`" in prompt and "`code`" not in prompt

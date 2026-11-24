@@ -103,14 +103,14 @@ export default function VectorSpace3D({ data }: Props) {
           camera: { eye: { x: 1.6, y: 1.6, z: 1.2 } },
         },
         legend: {
-          font: { color: '#0A0A0A', size: 11, family: 'Outfit, sans-serif' },
-          bgcolor: 'rgba(255,255,255,0.95)',
-          bordercolor: '#0A0A0A',
+          font: { color: '#282828', size: 11, family: 'Outfit, sans-serif' },
+          bgcolor: 'rgba(0,0,0,0.95)',
+          bordercolor: '#282828',
           borderwidth: 2,
           x: 0.01,
           y: 0.99,
         },
-        font: { color: '#0A0A0A', family: 'Outfit, sans-serif' },
+        font: { color: '#282828', family: 'Outfit, sans-serif' },
       }}
       config={{
         displayModeBar: true,

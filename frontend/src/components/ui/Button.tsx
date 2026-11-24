@@ -21,20 +21,20 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
   type = 'button',
   ...props
 }, ref) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-xl transition-all focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-auto select-none';
+  const baseStyles = 'inline-flex items-center justify-center font-display font-medium tracking-[-0.01em] rounded-full cursor-pointer transition-[background-color,border-color,color,transform] duration-200 ease-[var(--ease-out-expo)] active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed disabled:active:scale-100 select-none';
 
   const variantStyles = {
-    primary: 'bg-white text-black hover:bg-neutral-200 active:scale-95 shadow-sm',
-    secondary: 'bg-[#111111] text-white border border-[#1A1A1A] hover:bg-[#1A1A1A] hover:border-[#333333]',
-    outline: 'bg-transparent text-white border border-[#1A1A1A] hover:bg-[#111111] hover:border-[#333333]',
-    danger: 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20',
-    ghost: 'bg-transparent text-[#888888] hover:text-white hover:bg-[#111111]',
+    primary: 'bg-accent text-white hover:bg-accent-strong',
+    secondary: 'bg-ink text-white hover:bg-ink-2',
+    outline: 'bg-surface text-ink border border-line-strong hover:border-ink',
+    danger: 'bg-surface text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300',
+    ghost: 'bg-transparent text-ink-3 hover:text-ink hover:bg-sunken',
   };
 
   const sizeStyles = {
-    sm: 'px-3 py-1.5 text-xs gap-1.5',
-    md: 'px-4 py-2.5 text-sm gap-2',
-    lg: 'px-6 py-3.5 text-base gap-2.5',
+    sm: 'h-8 px-3.5 text-xs gap-1.5',
+    md: 'h-10 px-5 text-sm gap-2',
+    lg: 'h-12 px-7 text-base gap-2.5',
   };
 
   return (
@@ -42,6 +42,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
       ref={ref}
       type={type}
       disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
       {...props}
     >

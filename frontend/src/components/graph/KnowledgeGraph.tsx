@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactFlow, {
   Controls,
   Background,
-  MiniMap,
   MarkerType,
   Handle,
   Position,
@@ -15,12 +14,12 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useGraphStore } from '../../store/graphStore';
 import dagre from 'dagre';
-import { CheckCircle, Circle, Eye, Lock, Maximize2 } from 'lucide-react';
+import { Check, Lock, Maximize2 } from 'lucide-react';
 import type { GraphEdge as CourseEdge } from '../../types/graph';
 import { conceptState, relationText, type ConceptState } from '../../utils/concepts';
 
 const NODE_WIDTH = 230;
-const NODE_HEIGHT = 84;
+const NODE_HEIGHT = 64;
 
 interface ConceptData {
   label: string;
@@ -30,17 +29,12 @@ interface ConceptData {
   dimmed: boolean;
 }
 
-const STATE_STYLE: Record<ConceptState, { card: string; tag: string; label: string; Icon: typeof Circle }> = {
-  mastered: { card: 'bg-emerald-500/10 border-emerald-500/40', tag: 'text-emerald-400', label: 'Mastered', Icon: CheckCircle },
-  visited: { card: 'bg-[#0B1220] border-blue-500/30', tag: 'text-blue-400', label: 'Visited', Icon: Eye },
-  locked: { card: 'bg-[#0A0A0A] border-[#1F1F1F]', tag: 'text-[#777777]', label: 'Study prerequisites first', Icon: Lock },
-  open: { card: 'bg-[#101010] border-[#2A2A2A]', tag: 'text-[#A3A3A3]', label: 'Not started', Icon: Circle },
-};
-
-const DIFFICULTY_TEXT: Record<string, string> = {
-  beginner: 'text-emerald-300',
-  intermediate: 'text-blue-300',
-  advanced: 'text-amber-300',
+// Light, one-accent cards: state shows as a fill step, never a new hue
+const STATE_STYLE: Record<ConceptState, { card: string; text: string; label: string }> = {
+  mastered: { card: 'bg-surface border-ink', text: 'text-ink', label: 'Mastered' },
+  visited: { card: 'bg-accent-wash border-accent-100', text: 'text-ink', label: 'Visited' },
+  locked: { card: 'bg-sunken border-line', text: 'text-ink-4', label: 'Prerequisites first' },
+  open: { card: 'bg-surface border-line-strong', text: 'text-ink', label: 'Not started' },
 };
 
 /** Each concept reads its state from data, so streaming chat tokens never re-render the map. */
@@ -50,27 +44,20 @@ const ConceptNode = ({ data }: NodeProps<ConceptData>) => {
     <div
       role="button"
       tabIndex={0}
-      aria-label={`${data.label} - ${style.label} - ${data.difficulty || 'core'}`}
-      style={{ width: NODE_WIDTH }}
-      className={`relative px-4 py-3 rounded-xl border cursor-pointer transition-all duration-300 hover:border-[#555555]
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${style.card}
-        ${data.current ? '!border-blue-500 ring-2 ring-blue-500/60 shadow-[0_0_28px_rgba(59,130,246,0.35)]' : ''}
-        ${data.dimmed ? 'opacity-30' : ''}`}
+      aria-label={`${data.label} - ${style.label}`}
+      style={{ width: NODE_WIDTH, minHeight: NODE_HEIGHT }}
+      className={`relative px-4 py-3 rounded-xl border flex items-center gap-2 cursor-pointer transition-[opacity,border-color] duration-300 hover:border-ink
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${style.card}
+        ${data.current ? '!border-accent !border-2 !bg-surface' : ''}
+        ${data.dimmed ? 'opacity-35' : ''}`}
     >
-      <Handle type="target" position={Position.Top} className="!w-1.5 !h-1.5 !bg-[#444444] !border-none" />
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider truncate ${style.tag}`}>
-          <style.Icon className="w-3 h-3 shrink-0" />
-          {data.state === 'locked' ? 'Locked' : style.label}
-        </span>
-        <span className={`text-[10px] font-semibold uppercase tracking-wider shrink-0 ${DIFFICULTY_TEXT[data.difficulty || ''] || 'text-[#888888]'}`}>
-          {data.difficulty || 'core'}
-        </span>
-      </div>
-      <div className={`text-[15px] font-medium leading-snug line-clamp-2 ${data.state === 'locked' ? 'text-[#AAAAAA]' : 'text-white'}`}>
+      <Handle type="target" position={Position.Top} className="!w-1 !h-1 !bg-transparent !border-none" />
+      <span className={`flex-1 font-display text-sm font-medium leading-snug tracking-[-0.01em] line-clamp-2 ${style.text}`}>
         {data.label}
-      </div>
-      <Handle type="source" position={Position.Bottom} className="!w-1.5 !h-1.5 !bg-[#444444] !border-none" />
+      </span>
+      {data.state === 'mastered' && <Check className="w-3.5 h-3.5 text-ink shrink-0" aria-hidden />}
+      {data.state === 'locked' && <Lock className="w-3 h-3 text-ink-4 shrink-0" aria-hidden />}
+      <Handle type="source" position={Position.Bottom} className="!w-1 !h-1 !bg-transparent !border-none" />
     </div>
   );
 };
@@ -92,10 +79,6 @@ function layoutPositions(nodeIds: string[], edges: CourseEdge[]) {
   });
   return positions;
 }
-
-const MINIMAP_COLOR: Record<ConceptState, string> = {
-  mastered: '#10B981', visited: '#3B82F6', locked: '#2A2A2A', open: '#555555',
-};
 
 interface KnowledgeGraphProps {
   onNodeClick?: (nodeId: string) => void;
@@ -140,24 +123,24 @@ function GraphCanvas({ onNodeClick }: KnowledgeGraphProps) {
     const flowEdges: Edge[] = graphEdges.map(edge => {
       const unsupported = edge.supported === false;
       const touching = edge.from === currentNodeId || edge.to === currentNodeId;
-      const stroke = unsupported ? '#B45309' : touching ? '#60A5FA' : '#3A3A3A';
+      const stroke = touching ? '#073dea' : unsupported ? '#8e8e93' : '#cdcdd2';
       return {
         id: edge.id,
         source: edge.from,
         target: edge.to,
         label: touching ? relationText(edge.relation) : undefined,
-        labelStyle: { fill: unsupported ? '#F59E0B' : '#CBD5E1', fontSize: 11, fontWeight: 500 },
-        labelBgStyle: { fill: '#050505', fillOpacity: 0.9 },
+        labelStyle: { fill: '#5c5c62', fontSize: 11, fontWeight: 500, fontFamily: 'Space Grotesk, system-ui, sans-serif' },
+        labelBgStyle: { fill: '#f9f9f9', fillOpacity: 1 },
         labelBgPadding: [6, 3] as [number, number],
         labelBgBorderRadius: 4,
         zIndex: touching ? 10 : 0,
         style: {
           stroke,
-          strokeWidth: touching ? 2.25 : 1.25,
+          strokeWidth: touching ? 1.75 : 1,
           strokeDasharray: unsupported ? '6 4' : undefined,
           opacity: focused && !touching ? 0.35 : 1,
         },
-        markerEnd: { type: MarkerType.ArrowClosed, color: stroke, width: 16, height: 16 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: stroke, width: 14, height: 14 },
       };
     });
     return { nodes: flowNodes, edges: flowEdges };
@@ -179,7 +162,7 @@ function GraphCanvas({ onNodeClick }: KnowledgeGraphProps) {
   }, [onNodeClick]);
 
   return (
-    <div className="w-full h-full bg-[#050505] relative">
+    <div className="w-full h-full bg-surface relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -192,40 +175,26 @@ function GraphCanvas({ onNodeClick }: KnowledgeGraphProps) {
         nodesConnectable={false}
         elementsSelectable
       >
-        <Background color="#2A2A2A" gap={28} size={1} />
+        <Background color="#e4e4e7" gap={28} size={1} />
         <Controls
           position="bottom-left"
-          className="!bg-[#0A0A0A] !border !border-[#1A1A1A] !rounded-xl !shadow-2xl !overflow-hidden [&>button]:!bg-[#0A0A0A] [&>button]:!border-[#1A1A1A] [&>button]:!fill-[#AAAAAA] [&>button:hover]:!bg-[#1A1A1A]"
+          className="!bg-surface !border !border-line !rounded-xl !shadow-none !overflow-hidden [&>button]:!bg-surface [&>button]:!border-line [&>button]:!fill-[#5c5c62] [&>button:hover]:!bg-sunken"
           showInteractive={false}
-        />
-        <MiniMap
-          position="bottom-right"
-          pannable
-          zoomable
-          className="!bg-[#0A0A0A] !border !border-[#1A1A1A] !rounded-xl overflow-hidden"
-          maskColor="rgba(0,0,0,0.65)"
-          nodeColor={node => (node.data as ConceptData)?.current ? '#60A5FA' : MINIMAP_COLOR[(node.data as ConceptData)?.state || 'open']}
-          nodeBorderRadius={6}
         />
       </ReactFlow>
 
-      {/* Legend and "show everything" */}
-      <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2 pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-3 px-3 py-2 bg-[#0A0A0A]/90 backdrop-blur border border-[#1A1A1A] rounded-xl text-[11px] text-[#AAAAAA]">
-          <span className="flex items-center gap-1.5"><CheckCircle className="w-3 h-3 text-emerald-400" /> Mastered</span>
-          <span className="flex items-center gap-1.5"><Eye className="w-3 h-3 text-blue-400" /> Visited</span>
-          <span className="flex items-center gap-1.5"><Lock className="w-3 h-3 text-[#777777]" /> Prerequisites first</span>
-          <span className="flex items-center gap-1.5" title="No single passage in your materials discusses both concepts, so the AI inferred this link">
-            <svg width="18" height="6" aria-hidden><line x1="0" y1="3" x2="18" y2="3" stroke="#B45309" strokeWidth="2" strokeDasharray="4 3" /></svg>
-            AI-inferred link
-          </span>
-        </div>
+      {/* One line of key, and "show everything" */}
+      <div className="absolute top-3 left-3 z-20 flex items-center gap-3">
         <button
           onClick={() => flow.fitView({ padding: 0.15, duration: 400 })}
-          className="pointer-events-auto flex items-center gap-1.5 px-3 py-2 bg-[#0A0A0A]/90 backdrop-blur border border-[#1A1A1A] hover:border-[#333333] rounded-xl text-[11px] text-[#CCCCCC] hover:text-white"
+          className="flex items-center gap-1.5 h-8 px-3 rounded-full bg-surface border border-line-strong hover:border-ink text-xs font-display text-ink-2"
         >
-          <Maximize2 className="w-3 h-3" /> Show whole map
+          <Maximize2 className="w-3 h-3" /> Whole map
         </button>
+        <p className="text-xs text-ink-3 bg-canvas/90 px-1.5 py-0.5 rounded"
+          title="A dashed link was inferred by the AI; no single passage in your materials supports it.">
+          Blue: opened · Black outline: mastered · Dashed: inferred link
+        </p>
       </div>
     </div>
   );

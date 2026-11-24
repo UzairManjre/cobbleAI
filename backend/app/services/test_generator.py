@@ -6,6 +6,14 @@ import json
 import time
 import uuid
 
+TYPE_GUIDANCE = {
+    "mcq": "**`mcq`** (multiple choice): 4 options, 1 correct. Test factual knowledge and understanding with plausible distractors",
+    "true_false": "**`true_false`**: a binary choice testing a specific fact or misconception; set correct_answer to true or false",
+    "short_answer": "**`short_answer`**: a 2-3 sentence response testing comprehension and explanation",
+    "code": "**`code`** (technical courses only): a practical coding task; put a full-marks solution in explanation",
+    "essay": "**`essay`**: a longer argued response",
+}
+
 TEST_GENERATION_PROMPT = """You are an expert exam question generator for educational assessments. Generate high-quality test questions based on course materials.
 
 ## INPUT DATA
@@ -20,21 +28,9 @@ TEST_GENERATION_PROMPT = """You are an expert exam question generator for educat
 
 ## QUESTION TYPES TO GENERATE
 
-Generate a balanced mix of these question types:
+Generate a balanced mix of ONLY these question types. Set each question's "type" to the exact value in backticks; do not use any other type:
 
-1. **MCQ (Multiple Choice)** - 4 options, 1 correct
-   - Test factual knowledge and understanding
-   - Include plausible distractors
-
-2. **True/False** - Binary choice
-   - Test specific facts or misconceptions
-
-3. **Short Answer** - 2-3 sentence response
-   - Test comprehension and explanation
-
-4. **Code/Practical** (if technical course)
-   - Provide starter code and expected output
-
+{question_types_section}
 ## OUTPUT FORMAT (JSON ONLY)
 
 Return ONLY valid JSON with this structure:
@@ -72,7 +68,7 @@ Return ONLY valid JSON with this structure:
       "cognitive_level": "understand",
       "marks": 5,
       "topic": "Topic Name",
-      "explanation": "Expected answer should mention...",
+      "explanation": "A full-marks model answer, written as a strong student would write it",
       "rubric": ["Key point 1 a full-marks answer makes", "Key point 2"],
       "hints": []
     }},
@@ -149,6 +145,25 @@ Return ONLY JSON.
 """
 
 COGNITIVE_LEVELS = ("remember", "understand", "apply", "analyze", "evaluate", "create")
+QUESTION_TYPES = ("mcq", "true_false", "short_answer", "code", "essay")
+
+
+def normalize_question_type(raw, has_options: bool = False) -> str:
+    """Map whatever type label the model wrote onto one the test-taking UI and grader handle.
+    The model invents labels such as "code/practical"; stored as-is, the student sees no answer box
+    and the answer is never graded."""
+    t = str(raw or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if t in QUESTION_TYPES:
+        return t
+    if "true" in t or "false" in t or t in ("tf", "boolean"):
+        return "true_false"
+    if "code" in t or "coding" in t or "program" in t:
+        return "code"
+    if "mcq" in t or "multiple" in t or "choice" in t or (not t and has_options):
+        return "mcq"
+    if "essay" in t or "long" in t:
+        return "essay"
+    return "short_answer"
 
 
 class TestGenerator:
@@ -172,12 +187,15 @@ class TestGenerator:
 
         # Build prompt
         topics_text = "\n".join([f"- {t}" for t in topics])
+        allowed = [t for t in dict.fromkeys(normalize_question_type(t) for t in (include_types or []))] \
+            or ["mcq", "true_false", "short_answer"]
 
         prompt = TEST_GENERATION_PROMPT.format(
             course_title=course_title,
             topics_list=topics_text,
             document_context=document_context or "No specific documents provided.",
-            question_count=question_count
+            question_count=question_count,
+            question_types_section="\n".join(f"{i}. {TYPE_GUIDANCE[t]}" for i, t in enumerate(allowed, 1)),
         )
         
         print(f"  Generating {question_count} test questions for {course_title}...")
@@ -196,10 +214,15 @@ class TestGenerator:
 
             # Convert to Question objects
             questions = []
-            for q_data in questions_data.get("questions", [])[:question_count]:
+            for q_data in questions_data.get("questions", []):
                 question = self._create_question(q_data)
                 if question:
                     questions.append(question)
+            # The small local model ignores the type list now and then; drop what the professor didn't ask for
+            wanted = [q for q in questions if q.type in allowed]
+            if len(wanted) < len(questions):
+                print(f"   Dropped {len(questions) - len(wanted)} question(s) of types not requested ({allowed})")
+            questions = wanted
 
             # Validate question count
             if len(questions) < question_count:
@@ -298,8 +321,8 @@ class TestGenerator:
     def _create_question(self, q_data: Dict) -> Question:
         """Convert dict to Question model."""
         try:
-            q_type = q_data.get("type", "mcq")
-            
+            q_type = normalize_question_type(q_data.get("type"), bool(q_data.get("options")))
+
             # Build MCQ options if present
             options = []
             if q_type == "mcq" and "options" in q_data:

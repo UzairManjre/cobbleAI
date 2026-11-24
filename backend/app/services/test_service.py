@@ -69,7 +69,8 @@ class TestService:
             course_title=test.title,
             topics=req.topics_filter if req.topics_filter else topics,
             document_context=req.document_context,
-            question_count=req.question_count
+            question_count=req.question_count,
+            include_types=req.question_types,
         )
         from app.services.learner.tagging import tag_questions
         tag_questions(questions, graph)

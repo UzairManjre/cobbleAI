@@ -15,7 +15,7 @@ interface Props {
 export default function ConfidenceCheckIn({ value, onChange, disabled }: Props) {
   return (
     <div className="mt-6 flex flex-wrap items-center gap-2" role="radiogroup" aria-label="How sure are you?">
-      <span className="text-[11px] font-semibold uppercase tracking-widest text-[#888888] mr-2">How sure are you?</span>
+      <span className="text-[11px] font-semibold uppercase tracking-widest text-ink-3 mr-2">How sure are you?</span>
       {LEVELS.map(level => (
         <button
           key={level.value}
@@ -26,7 +26,7 @@ export default function ConfidenceCheckIn({ value, onChange, disabled }: Props) 
           onClick={() => onChange(level.value)}
           title={disabled ? 'Answer the question first' : undefined}
           className={`px-3 py-1.5 rounded-lg text-xs border transition-colors disabled:opacity-40 ${
-            value === level.value ? 'bg-white text-black border-white' : 'bg-[#0A0A0A] text-[#AAAAAA] border-[#1A1A1A] hover:border-[#333333]'
+            value === level.value ? 'bg-accent text-white border-accent' : 'bg-surface text-ink-3 border-line hover:border-line-strong'
           }`}
         >
           {level.label}

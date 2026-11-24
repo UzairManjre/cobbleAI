@@ -15,14 +15,14 @@ interface ChoiceProps {
 export function ConsentChoice({ text, value, onChange, disabled }: ChoiceProps) {
   return (
     <fieldset className="space-y-3" disabled={disabled}>
-      <legend className="text-xs font-medium text-white/60 tracking-wide flex items-center gap-2 mb-2">
+      <legend className="annot text-accent flex items-center gap-2 mb-2">
         <FlaskConical className="w-3.5 h-3.5" /> Research study (optional)
       </legend>
-      <p className="text-xs text-white/50 leading-relaxed">{text}</p>
+      <p className="text-sm text-ink-2 leading-relaxed max-w-4xl">{text}</p>
       <div className="flex flex-wrap gap-2">
         {[{ v: true, label: 'Yes, include my data' }, { v: false, label: 'No thanks' }].map(o => (
           <button key={String(o.v)} type="button" onClick={() => onChange(o.v)} aria-pressed={value === o.v}
-            className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${value === o.v ? 'bg-white text-black border-white' : 'border-white/15 text-white/70 hover:border-white/40'}`}>
+            className={`h-9 px-4 rounded-full font-display text-sm border transition-colors cursor-pointer ${value === o.v ? 'bg-accent text-white border-accent' : 'bg-surface border-line-strong text-ink hover:border-ink'}`}>
             {o.label}
           </button>
         ))}
@@ -58,8 +58,8 @@ export default function ResearchConsentBanner() {
   };
 
   return (
-    <div className="px-4 pt-4">
-      <div className="max-w-6xl mx-auto bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-5">
+    <div className="w-full px-5 md:px-8 lg:px-12 pt-6">
+      <div className="max-w-6xl mx-auto bg-accent-wash border border-accent-100 rounded-2xl px-5 py-4">
         <ConsentChoice text={status.text} value={null} onChange={decide} disabled={saving} />
       </div>
     </div>

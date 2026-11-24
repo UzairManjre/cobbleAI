@@ -52,26 +52,12 @@ api.interceptors.response.use(
       const isInitCheck = requestUrl.includes('/users/me');
 
       if (!isInitCheck) {
-        const stateRole = useAuthStore.getState().role;
-        const currentRole = stateRole || localStorage.getItem('last_active_role');
-        
-        let redirectRoute = '/role-select';
-        if (currentRole === 'student') {
-          redirectRoute = '/login/student';
-        } else if (currentRole === 'professor') {
-          redirectRoute = '/login/professor';
-        }
-        
         useAuthStore.getState().logout();
 
         // Only redirect if we're not already on a public page
         const currentPath = window.location.pathname;
-        const isPublicPage =
-          currentPath === '/' ||
-          currentPath.startsWith('/login/') ||
-          currentPath.startsWith('/signup/');
-        if (!isPublicPage) {
-          window.location.href = redirectRoute;
+        if (currentPath !== '/' && currentPath !== '/signin') {
+          window.location.href = '/signin';
         }
       }
     }

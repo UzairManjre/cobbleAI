@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-23T00:00:00Z",
+  "title": "Design System: Cobble AI",
+  "extensions": {
+    "colorMeta": {
+      "sol-blue": { "role": "primary", "displayName": "Sol Blue", "canonical": "#073dea", "tonalRamp": ["#0532c4", "#073dea", "#4f75f7", "#6a8ff0", "#8fadeb", "#b0c8ee", "#d4e1f4", "#eef3fd"] },
+      "sol-blue-pressed": { "role": "primary", "displayName": "Sol Blue Pressed", "canonical": "#0532c4", "tonalRamp": ["#0532c4", "#073dea", "#4f75f7", "#6a8ff0", "#8fadeb", "#b0c8ee", "#d4e1f4", "#eef3fd"] },
+      "sol-blue-wash": { "role": "primary", "displayName": "Sol Blue Wash", "canonical": "#eef3fd", "tonalRamp": ["#0532c4", "#073dea", "#4f75f7", "#6a8ff0", "#8fadeb", "#b0c8ee", "#d4e1f4", "#eef3fd"] },
+      "white-smoke": { "role": "neutral", "displayName": "White Smoke", "canonical": "#f9f9f9", "tonalRamp": ["#000000", "#282828", "#5c5c62", "#8e8e93", "#cdcdd2", "#e4e4e7", "#f2f2f3", "#f9f9f9"] },
+      "surface": { "role": "neutral", "displayName": "Surface White", "canonical": "#ffffff", "tonalRamp": ["#000000", "#282828", "#5c5c62", "#8e8e93", "#cdcdd2", "#e4e4e7", "#f2f2f3", "#ffffff"] },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#e4e4e7", "tonalRamp": ["#000000", "#282828", "#5c5c62", "#8e8e93", "#cdcdd2", "#e4e4e7", "#f2f2f3", "#f9f9f9"] },
+      "charcoal-ink": { "role": "neutral", "displayName": "Charcoal Ink", "canonical": "#000000", "tonalRamp": ["#000000", "#282828", "#5c5c62", "#8e8e93", "#cdcdd2", "#e4e4e7", "#f2f2f3", "#f9f9f9"] },
+      "ink-3": { "role": "neutral", "displayName": "Secondary Ink", "canonical": "#5c5c62", "tonalRamp": ["#000000", "#282828", "#5c5c62", "#8e8e93", "#cdcdd2", "#e4e4e7", "#f2f2f3", "#f9f9f9"] },
+      "status-ready": { "role": "status", "displayName": "Ready Green", "canonical": "oklch(69.6% 0.17 162.48)", "tonalRamp": ["#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#6ee7b7", "#d1fae5", "#ecfdf5"] },
+      "status-attention": { "role": "status", "displayName": "Attention Amber", "canonical": "oklch(76.9% 0.188 70.08)", "tonalRamp": ["#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fcd34d", "#fef3c7", "#fffbeb"] },
+      "danger": { "role": "status", "displayName": "Danger Red", "canonical": "oklch(57.7% 0.245 27.325)", "tonalRamp": ["#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#fca5a5", "#fee2e2", "#fef2f2"] }
+    },
+    "typographyMeta": {
+      "display-close": { "displayName": "Display Close", "purpose": "The closing line on the landing." },
+      "display": { "displayName": "Display", "purpose": "Top-level app page titles via PageHeader, lowercase." },
+      "headline": { "displayName": "Headline", "purpose": "The statement on blue brand panels (sign-in, onboarding, landing sections)." },
+      "headline-course": { "displayName": "Course Headline", "purpose": "Course title in the course shell." },
+      "title": { "displayName": "Title", "purpose": "Course names in ruled rows and in-page section headings." },
+      "title-sm": { "displayName": "Title Small", "purpose": "Analytics panel headings and card titles." },
+      "nav": { "displayName": "Nav", "purpose": "Top bar sections, course tabs, button labels." },
+      "body": { "displayName": "Body", "purpose": "All reading text, system SF stack." },
+      "body-lead": { "displayName": "Body Lead", "purpose": "Offer paragraph on blue fields." },
+      "label": { "displayName": "Annotation", "purpose": "Figure captions, course codes, data labels, corner footnotes. Never an eyebrow above a heading." }
+    },
+    "shadows": [
+      { "name": "float", "value": "0 12px 40px -12px rgba(0,0,0,0.25)", "purpose": "Dropdown menus (account menu)." },
+      { "name": "modal", "value": "0 24px 60px -20px rgba(0,0,0,0.35)", "purpose": "Modal dialogs, over a 40% ink scrim with 2px backdrop blur." },
+      { "name": "thumb", "value": "0 1px 3px rgba(0,0,0,0.12)", "purpose": "Selected segment of a pill segmented control." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Default easing for state transitions and entrances." },
+      { "name": "state", "value": "200ms ease-out-expo", "purpose": "Button colour and border changes; press scales to 0.98." },
+      { "name": "rise", "value": "900ms ease-out-expo, translateY(16px) + blur(6px) to rest", "purpose": "Staggered entrances on the landing figure and copy." },
+      { "name": "draw", "value": "1100ms ease-out-expo, stroke-dashoffset to 0", "purpose": "Leader-line callouts drawing themselves." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Sol Blue pill for the one main action on a screen.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">New course</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 20px; font-family: 'Space Grotesk', -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; border: 0; border-radius: 9999px; cursor: pointer; transition: background-color 200ms cubic-bezier(0.16,1,0.3,1), border-color 200ms cubic-bezier(0.16,1,0.3,1), color 200ms, transform 200ms; } .ds-btn:active { transform: scale(0.98); } .ds-btn:focus-visible { outline: 2px solid #073dea; outline-offset: 2px; } .ds-btn-primary { background: #073dea; color: #fff; } .ds-btn-primary:hover { background: #0532c4; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Black ink pill for a strong non-primary action.",
+      "html": "<button class=\"ds-btn-secondary\">Export CSV</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; background: #000; color: #fff; font-family: 'Space Grotesk', -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; border: 0; border-radius: 9999px; cursor: pointer; transition: background-color 200ms cubic-bezier(0.16,1,0.3,1), transform 200ms; } .ds-btn-secondary:hover { background: #282828; } .ds-btn-secondary:active { transform: scale(0.98); } .ds-btn-secondary:focus-visible { outline: 2px solid #073dea; outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "White pill with a strong hairline; border turns ink on hover.",
+      "html": "<button class=\"ds-btn-outline\">Join a class</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; background: #fff; color: #000; border: 1px solid #cdcdd2; font-family: 'Space Grotesk', -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; border-radius: 9999px; cursor: pointer; transition: border-color 200ms cubic-bezier(0.16,1,0.3,1), transform 200ms; } .ds-btn-outline:hover { border-color: #000; } .ds-btn-outline:active { transform: scale(0.98); } .ds-btn-outline:focus-visible { outline: 2px solid #073dea; outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Quiet text pill for cancel and tertiary actions.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; background: transparent; color: #5c5c62; border: 0; font-family: 'Space Grotesk', -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; border-radius: 9999px; cursor: pointer; transition: background-color 200ms, color 200ms; } .ds-btn-ghost:hover { background: #f2f2f3; color: #000; } .ds-btn-ghost:focus-visible { outline: 2px solid #073dea; outline-offset: 2px; }"
+    },
+    {
+      "name": "Buttons on Blue",
+      "kind": "button",
+      "refersTo": "button-on-blue",
+      "description": "The action pair on a drenched Sol Blue field: white pill plus white-outline pill.",
+      "html": "<div class=\"ds-blue-field\"><a class=\"ds-btn-white\" href=\"#\">Join a class</a><a class=\"ds-btn-white-outline\" href=\"#\">Create a class</a></div>",
+      "css": ".ds-blue-field { display: flex; gap: 12px; padding: 32px; background: #073dea; } .ds-btn-white, .ds-btn-white-outline { display: inline-flex; align-items: center; height: 48px; padding: 0 24px; border-radius: 9999px; font-family: 'Space Grotesk', -apple-system, system-ui, sans-serif; font-weight: 500; text-decoration: none; transition: background-color 200ms; } .ds-btn-white { background: #fff; color: #073dea; } .ds-btn-white:hover { background: #d4e1f4; } .ds-btn-white-outline { color: #fff; border: 1px solid rgba(255,255,255,0.6); } .ds-btn-white-outline:hover { background: rgba(255,255,255,0.1); } .ds-btn-white:focus-visible, .ds-btn-white-outline:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "48px field, 12px corners, Sol Blue focus border with a pale ring.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Email</span><input class=\"ds-input\" type=\"email\" placeholder=\"name@university.edu\"></label>",
+      "css": ".ds-field { display: block; } .ds-field-label { display: block; margin-bottom: 6px; font-size: 14px; color: #282828; font-family: -apple-system, 'SF Pro Display', system-ui, sans-serif; } .ds-input { width: 100%; height: 48px; padding: 0 16px; background: #fff; color: #000; border: 1px solid #cdcdd2; border-radius: 12px; font-size: 15px; font-family: -apple-system, 'SF Pro Display', system-ui, sans-serif; caret-color: #073dea; outline: none; transition: border-color 150ms, box-shadow 150ms; } .ds-input::placeholder { color: #8e8e93; } .ds-input:focus { border-color: #073dea; box-shadow: 0 0 0 2px #d4e1f4; }"
+    },
+    {
+      "name": "Top Bar Navigation",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Three-zone running head; active section marked by a 2px Sol Blue bar on the bottom rule.",
+      "html": "<header class=\"ds-topbar\"><span class=\"ds-wordmark\">cobble</span><nav class=\"ds-nav\"><a class=\"ds-nav-item is-active\" href=\"#\">Courses</a><a class=\"ds-nav-item\" href=\"#\">Assignments</a><a class=\"ds-nav-item\" href=\"#\">Tutor</a></nav><span class=\"ds-avatar\">AB</span></header>",
+      "css": ".ds-topbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 64px; padding: 0 32px; background: rgba(249,249,249,0.95); border-bottom: 1px solid #e4e4e7; } .ds-wordmark { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 600; font-size: 19px; letter-spacing: -0.04em; color: #000; } .ds-nav { display: flex; gap: 4px; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 15px; letter-spacing: -0.015em; } .ds-nav-item { position: relative; padding: 8px 14px; border-radius: 9999px; color: #5c5c62; text-decoration: none; transition: color 150ms; } .ds-nav-item:hover { color: #000; } .ds-nav-item:focus-visible { outline: 2px solid #073dea; outline-offset: 2px; } .ds-nav-item.is-active { color: #000; } .ds-nav-item.is-active::after { content: ''; position: absolute; left: 50%; bottom: -13px; transform: translateX(-50%); width: 20px; height: 2px; background: #073dea; } .ds-avatar { justify-self: end; width: 32px; height: 32px; border-radius: 9999px; background: #000; color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 11px; font-weight: 600; }"
+    },
+    {
+      "name": "Citation Chip",
+      "kind": "chip",
+      "refersTo": "citation-chip",
+      "description": "Signature proof element: a blue-wash pill naming the exact page, slide or lecture moment.",
+      "html": "<span class=\"ds-cite\"><span class=\"ds-cite-dot\"></span>regularisation.pdf · p. 14</span>",
+      "css": ".ds-cite { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; border: 1px solid #b0c8ee; background: #eef3fd; color: #073dea; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 12px; cursor: pointer; transition: border-color 150ms; } .ds-cite:hover { border-color: #073dea; } .ds-cite:focus-visible { outline: 2px solid #073dea; outline-offset: 2px; } .ds-cite-dot { width: 6px; height: 6px; border-radius: 9999px; background: #073dea; }"
+    },
+    {
+      "name": "Annotated Figure",
+      "kind": "custom",
+      "refersTo": "label",
+      "description": "Signature frame: crosshair corners, a FIG caption and a leader-line callout in tracked uppercase.",
+      "html": "<figure class=\"ds-fig\"><span class=\"ds-cross\" style=\"left:0;top:16px\"></span><span class=\"ds-cross\" style=\"right:0;top:16px\"></span><span class=\"ds-cross\" style=\"left:0;bottom:0\"></span><span class=\"ds-cross\" style=\"right:0;bottom:0\"></span><figcaption class=\"ds-annot ds-fig-cap\">&#9632; FIG. 01 &middot; COBBLE</figcaption><svg viewBox=\"0 0 23.5 25.5\" width=\"110\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"4.75\" cy=\"3.85\" r=\"3.85\"/><rect x=\"0.5\" y=\"8.1\" width=\"5.2\" height=\"13.9\" rx=\"0.6\"/><rect x=\"0.5\" y=\"8.1\" width=\"11\" height=\"5.5\" rx=\"0.6\"/><circle cx=\"18.6\" cy=\"9.75\" r=\"3.85\"/><rect x=\"12.1\" y=\"14.1\" width=\"10.9\" height=\"5.5\" rx=\"0.6\"/><rect x=\"17.8\" y=\"14.1\" width=\"5.2\" height=\"11.2\" rx=\"0.6\"/></svg><span class=\"ds-annot ds-callout\"><span class=\"ds-leader\"></span>( YOU )</span></figure>",
+      "css": ".ds-fig { position: relative; width: fit-content; margin: 0; padding: 40px 36px 32px; background: #073dea; color: #fff; } .ds-annot { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.2; } .ds-fig-cap { position: absolute; left: 36px; top: 0; } .ds-cross { position: absolute; width: 13px; height: 13px; } .ds-cross::before, .ds-cross::after { content: ''; position: absolute; background: currentColor; } .ds-cross::before { left: 6px; top: 0; width: 1px; height: 13px; } .ds-cross::after { top: 6px; left: 0; width: 13px; height: 1px; } .ds-callout { position: absolute; left: 100%; top: 38%; margin-left: -24px; display: flex; align-items: center; gap: 8px; white-space: nowrap; } .ds-leader { width: 48px; height: 1px; background: currentColor; }"
+    },
+    {
+      "name": "Ruled Row List",
+      "kind": "custom",
+      "refersTo": "title",
+      "description": "The house list: black top rule, hairline rows, code label, title that turns blue on hover.",
+      "html": "<ul class=\"ds-rows\"><li><button class=\"ds-row\"><span class=\"ds-annot ds-row-code\">CS-101</span><span class=\"ds-row-title\">intro to machine learning</span><span class=\"ds-row-meta\"><span class=\"ds-dot\"></span>Ready</span><span class=\"ds-row-arrow\">&rarr;</span></button></li></ul>",
+      "css": ".ds-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid #000; } .ds-row { width: 100%; display: grid; grid-template-columns: 7rem 1fr auto auto; align-items: center; gap: 24px; padding: 24px 4px; background: transparent; border: 0; border-bottom: 1px solid #e4e4e7; text-align: left; cursor: pointer; transition: background-color 150ms; } .ds-row:hover { background: #fff; } .ds-row:focus-visible { outline: 2px solid #073dea; outline-offset: 2px; } .ds-annot { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; } .ds-row-code { color: #5c5c62; font-variant-numeric: tabular-nums; } .ds-row-title { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 28px; letter-spacing: -0.03em; line-height: 1.15; color: #000; transition: color 150ms; } .ds-row:hover .ds-row-title { color: #073dea; } .ds-row-meta { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #5c5c62; } .ds-dot { width: 8px; height: 8px; border-radius: 9999px; background: #10b981; } .ds-row-arrow { color: #8e8e93; font-size: 20px; transition: color 150ms, transform 150ms; } .ds-row:hover .ds-row-arrow { color: #073dea; transform: translateX(4px); }"
+    },
+    {
+      "name": "Card (shipped panel)",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The shared Card as built: one hairline, 16px corners, no shadow. Recorded as current state; new surfaces prefer ruled sections.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Tutor policy</h3><p class=\"ds-card-desc\">How much help the tutor gives.</p></div>",
+      "css": ".ds-card { background: #fff; border: 1px solid #e4e4e7; border-radius: 16px; padding: 24px; transition: border-color 200ms; } .ds-card:hover { border-color: #000; } .ds-card-title { margin: 0; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 18px; font-weight: 500; letter-spacing: -0.025em; color: #000; } .ds-card-desc { margin: 4px 0 0; font-size: 14px; line-height: 1.625; color: #5c5c62; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Cited Figure",
+    "overview": "Cobble is drawn like an annotated plate in a textbook. Every important thing is a figure: it gets a caption (`■ FIG. 01 · COBBLE`), crosshair registration marks at its corners, and leader lines that run out to small tracked labels in parentheses (`( TUTOR )`, `( YOU )`). The thesis, a course tutor proven by its citation, is literal on the landing: the two-figure mark is crossed by a giant \"p. 14\", the page an answer came from. Proof is the decoration.\n\nTwo worlds share one grammar. Brand moments (landing, sign-in, onboarding) are drenched fields of Sol Blue with white type and no other colour. The app is White Smoke with black ink, where Sol Blue is the only accent and appears as active-tab underlines, primary buttons, focus rings, links and citation chips. Display type is Space Grotesk set lowercase, medium weight and tight (-0.04em); body is the system SF stack. Structure comes from hairline rules, not boxes: lists are ruled rows under a black top rule, panels are sections under a 1px ink line.\n\nThe world is calm for long study sessions. Expression lives in type scale and composition: huge lowercase headlines, small type pinned to corners, a three-zone running head. It refuses the AI-SaaS hero: no gradients, no product mockups, no feature-card grids.",
+    "keyCharacteristics": [
+      "Sol Blue drenched fields with white type for brand surfaces; White Smoke app with black ink and one blue accent.",
+      "Space Grotesk display, lowercase, weight 500, tracking -0.035em to -0.04em, line-height under 1.",
+      "System SF body at 15px, 1.5 line-height.",
+      "Tracked uppercase annotations (11px, 0.08em) for captions, corner meta and data labels.",
+      "Crosshair registration marks and self-drawing leader-line callouts around figures.",
+      "Hairline rules over cards: ruled rows and ink-topped sections.",
+      "Pills for actions, 12px corners for fields, 16px for the few panels that remain."
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "In the app, Sol Blue is the only hue that carries meaning or emphasis. Status colours appear only as small dots or error alerts with a text label beside them.", "section": "colors" },
+      { "name": "The Drenched Field Rule", "body": "A brand surface is all Sol Blue with white type. Nothing else sits on it except white at reduced opacity (85% secondary text, 75% or 70% annotations, 60% outline-button border, 25% rules). Selection inverts to white on blue.", "section": "colors" },
+      { "name": "The Lowercase Voice Rule", "body": "Display and headline statements are written lowercase with a closing full stop (\"answers from your course. nothing else.\"). UI labels, buttons and nav stay sentence case.", "section": "typography" },
+      { "name": "The Annotation Is Not An Eyebrow Rule", "body": "The 11px tracked label captions figures, pins meta to corners and labels data. It never sits above a heading as a kicker.", "section": "typography" },
+      { "name": "The Tabular Rule", "body": "Course codes, counts and every table cell use tabular figures.", "section": "typography" },
+      { "name": "The Rule-Not-Box Rule", "body": "Group content with a hairline or an ink top rule before reaching for a bordered panel. Analytics panels, course lists, recent files and the landing spec lists all follow it.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do drench brand surfaces fully in Sol Blue (#073dea) with white type and white-at-opacity for everything secondary.",
+      "Do keep Sol Blue as the single accent in the app: primary action, active indicator, focus, links, citations.",
+      "Do set statements in lowercase Space Grotesk 500 with -0.04em tracking and line-height under 1.",
+      "Do structure lists and sections with a 1px ink top rule and hairlines between rows.",
+      "Do caption figures with tracked 11px uppercase annotations, crosshairs and leader-line callouts.",
+      "Do show where an answer came from with a citation chip naming the page, slide or timestamp.",
+      "Do use the shared page frame (20/32/48px gutters, 72rem max) so left edges align with the top bar.",
+      "Do honour reduced motion; entrances use `rise` (900ms ease-out-expo) and are disabled by the global reduced-motion rule."
+    ],
+    "donts": [
+      "Don't add gradients, product mockups or feature-card grids to brand surfaces.",
+      "Don't introduce a second accent hue in the app; status colours are dots and alerts with labels, nothing more.",
+      "Don't put shadows on resting surfaces; shadows belong to menus, dialogs and the segmented thumb only.",
+      "Don't wrap grouped content in a bordered card when a rule will do.",
+      "Don't use the annotation style as an eyebrow above headings.",
+      "Don't redraw or recolour the two-figure mark beyond currentColor."
+    ]
+  }
+}

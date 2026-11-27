@@ -15,15 +15,13 @@ export function ToastProvider() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className={`flex items-start gap-3 px-4 py-3.5 rounded-xl border shadow-xl max-w-sm w-[350px] backdrop-blur-md ${
-              toast.type === 'error' ? 'bg-[#1A0A0A]/90 border-[#331111] text-red-200' :
-              toast.type === 'success' ? 'bg-[#0A1A10]/90 border-[#11331A] text-green-200' :
-              'bg-surface/90 border-line text-ink'
+            className={`flex items-start gap-3 px-4 py-3.5 rounded-2xl max-w-sm w-[350px] shadow-[0_20px_50px_-20px_rgba(14,52,69,0.45)] ${
+              toast.type === 'error' ? 'bg-clay-wash text-clay' : 'bg-white text-accent-strong'
             }`}
           >
             <div className="mt-0.5 flex-shrink-0">
-              {toast.type === 'error' && <AlertCircle size={18} className="text-red-600" />}
-              {toast.type === 'success' && <CheckCircle size={18} className="text-emerald-700" />}
+              {toast.type === 'error' && <AlertCircle size={18} className="text-clay" />}
+              {toast.type === 'success' && <CheckCircle size={18} className="text-[#1b566b]" />}
               {toast.type === 'info' && <Info size={18} className="text-accent" />}
             </div>
             

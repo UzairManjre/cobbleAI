@@ -37,8 +37,8 @@ export default function IntentRadar({ data }: Props) {
         <Radar
           name="Query Intent"
           dataKey="count"
-          stroke="#073dea"
-          fill="#073dea"
+          stroke="#1b566b"
+          fill="#1b566b"
           fillOpacity={0.2}
           strokeWidth={2}
           isAnimationActive={false}

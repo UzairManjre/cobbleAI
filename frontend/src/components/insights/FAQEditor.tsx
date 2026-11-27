@@ -1,31 +1,32 @@
 import { apiErrorDetail } from '../../utils/apiError';
 import { useCallback, useEffect, useState } from 'react';
-import { Eye, EyeOff, HelpCircle, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { ChevronDown, Loader2, Plus } from 'lucide-react';
 import { faqApi } from '../../api/insights';
 import type { FAQEntry } from '../../api/insights';
 import { useToastStore } from '../../store/toastStore';
 import CitationList from '../tutor/CitationList';
+import { CLAY, panel, pillDark, pillLine } from '../ui/glass';
 
-function errorDetail(err: unknown, fallback: string) {
-  return apiErrorDetail(err, fallback);
-}
+const smallBtn = 'h-7 px-3 rounded-full text-xs transition-colors cursor-pointer disabled:opacity-40';
 
-function EntryCard({ entry, courseId, onChange }: { entry: FAQEntry; courseId: string; onChange: () => void }) {
+function Entry({ entry, courseId, onChange, startOpen }: { entry: FAQEntry; courseId: string; onChange: () => void; startOpen: boolean }) {
+  const [editing, setEditing] = useState(startOpen);
   const [question, setQuestion] = useState(entry.question);
   const [answer, setAnswer] = useState(entry.answer);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const addToast = useToastStore(s => s.addToast);
-  const dirty = question !== entry.question || answer !== entry.answer;
+  const live = entry.status === 'published';
+  const weak = entry.support_level && entry.support_level !== 'strong';
 
   const save = async (status?: FAQEntry['status']) => {
     setBusy(true);
     try {
       await faqApi.update(entry.id, { question, answer, ...(status ? { status } : {}) });
-      addToast(status === 'published' ? 'Published to students' : status === 'draft' ? 'Moved back to drafts' : 'Saved', 'success');
+      addToast(status === 'published' ? 'Published to students' : status === 'draft' ? 'Hidden from students' : 'Saved', 'success');
       onChange();
     } catch (err) {
-      addToast(errorDetail(err, 'Could not save'), 'error');
+      addToast(apiErrorDetail(err, 'Could not save'), 'error');
     } finally {
       setBusy(false);
     }
@@ -46,50 +47,70 @@ function EntryCard({ entry, courseId, onChange }: { entry: FAQEntry; courseId: s
   };
 
   return (
-    <li className="border border-line rounded-xl p-4 space-y-3">
-      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-widest">
-        <span className={entry.status === 'published' ? 'text-emerald-700' : 'text-amber-700'}>{entry.status}</span>
-        {entry.cluster_topic && <span className="text-ink-4">from “{entry.cluster_topic}” ({entry.cluster_size} questions)</span>}
-        {entry.support_level && entry.support_level !== 'strong' && <span className="text-amber-700">{entry.support_level} support: check it</span>}
+    <li className="rounded-2xl bg-[#f1f5f7] p-4">
+      <div className="flex items-start gap-3">
+        <span className={`mt-[7px] h-2 w-2 rounded-full shrink-0 ${live ? 'bg-accent' : 'bg-[#c3d8e0]'}`} title={live ? 'Published' : 'Draft'} />
+        <button type="button" onClick={() => setEditing(e => !e)} className="min-w-0 flex-1 text-left cursor-pointer" aria-expanded={editing}>
+          <span className="block text-sm text-accent-strong">{entry.question}</span>
+          {!editing && <span className="mt-1 block text-xs text-ink-3 line-clamp-2">{entry.answer || 'No answer yet'}</span>}
+        </button>
+        <span className={`shrink-0 h-6 px-2.5 inline-flex items-center rounded-full text-[11px] ${live ? 'bg-accent-wash text-accent' : 'bg-white text-ink-3'}`}>
+          {live ? 'Published' : 'Draft'}
+        </span>
+        <ChevronDown size={16} className={`mt-0.5 shrink-0 text-ink-4 transition-transform ${editing ? 'rotate-180' : ''}`} />
       </div>
-      <input value={question} onChange={e => setQuestion(e.target.value)} aria-label="FAQ question"
-        className="w-full bg-sunken border border-line rounded-lg px-3 py-2 text-sm text-ink" />
-      <textarea value={answer} onChange={e => setAnswer(e.target.value)} rows={4} aria-label="FAQ answer" placeholder="Answer"
-        className="w-full bg-sunken border border-line rounded-lg px-3 py-2 text-xs text-ink-2" />
-      {entry.citations.length > 0 && <CitationList courseId={courseId} citations={entry.citations} />}
-      <div className="flex flex-wrap gap-2">
-        {entry.status === 'draft' ? (
-          <button onClick={() => save('published')} disabled={busy || !answer.trim()}
-            className="px-3 py-1.5 rounded-lg text-xs bg-accent text-white font-medium flex items-center gap-1.5 disabled:opacity-40">
-            <Eye className="w-3.5 h-3.5" /> {dirty ? 'Save and publish' : 'Publish'}
-          </button>
+
+      {(entry.cluster_topic || weak) && !editing && (
+        <p className="mt-2 ml-5 text-[11px] text-ink-4">
+          {entry.cluster_topic && <>From {entry.cluster_size} questions on {entry.cluster_topic}</>}
+          {weak && <span style={{ color: CLAY.ink }}>{entry.cluster_topic ? ' · ' : ''}Thin support in notes</span>}
+        </p>
+      )}
+
+      {editing && (
+        <div className="mt-3 ml-5 space-y-2.5">
+          <input value={question} onChange={e => setQuestion(e.target.value)} aria-label="Question"
+            className="w-full bg-white border border-[#dbe7ec] rounded-xl px-3 py-2 text-sm text-accent-strong focus:outline-none focus:border-accent-200" />
+          <textarea value={answer} onChange={e => setAnswer(e.target.value)} rows={4} aria-label="Answer" placeholder="Answer"
+            className="w-full bg-white border border-[#dbe7ec] rounded-xl px-3 py-2 text-sm text-ink-2 leading-relaxed focus:outline-none focus:border-accent-200" />
+          {entry.citations.length > 0 && <CitationList courseId={courseId} citations={entry.citations} />}
+        </div>
+      )}
+
+      <div className="mt-3 ml-5 flex flex-wrap items-center gap-1.5">
+        {live ? (
+          <button type="button" onClick={() => save('draft')} disabled={busy} className={`${smallBtn} bg-white text-ink-2 hover:text-accent-strong`}>Unpublish</button>
         ) : (
-          <button onClick={() => save('draft')} disabled={busy}
-            className="px-3 py-1.5 rounded-lg text-xs border border-line-strong text-ink flex items-center gap-1.5">
-            <EyeOff className="w-3.5 h-3.5" /> Unpublish
-          </button>
+          <button type="button" onClick={() => save('published')} disabled={busy || !answer.trim()} className={`${smallBtn} bg-accent-strong text-white hover:bg-accent-400`}>Publish</button>
         )}
-        {dirty && (
-          <button onClick={() => save()} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs border border-line-strong text-ink">Save</button>
+        {editing && (
+          <button type="button" onClick={() => save()} disabled={busy || (question === entry.question && answer === entry.answer)}
+            className={`${smallBtn} bg-white text-ink-2 hover:text-accent-strong`}>Save</button>
         )}
-        <button onClick={remove} className="ml-auto px-3 py-1.5 rounded-lg text-xs text-ink-3 hover:text-red-600 flex items-center gap-1.5">
-          <Trash2 className="w-3.5 h-3.5" /> {confirmDelete ? 'Click again to delete' : 'Delete'}
+        {!editing && <button type="button" onClick={() => setEditing(true)} className={`${smallBtn} text-ink-3 hover:text-accent-strong`}>Edit</button>}
+        <button type="button" onClick={remove} className={`${smallBtn} ml-auto`} style={{ color: confirmDelete ? CLAY.ink : '#8a989c' }}>
+          {confirmDelete ? 'Click again to delete' : 'Delete'}
         </button>
       </div>
     </li>
   );
 }
 
-/** Weekly FAQ: draft answers from the top question clusters, edit them, publish to students. */
+/** Course FAQ: draft answers from the most-asked questions, edit, publish to students. */
 export default function FAQEditor({ courseId }: { courseId: string }) {
   const [entries, setEntries] = useState<FAQEntry[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [drafting, setDrafting] = useState(false);
+  const [newId, setNewId] = useState<string | null>(null);
   const addToast = useToastStore(s => s.addToast);
 
   useEffect(() => {
     let cancelled = false;
-    faqApi.list(courseId).then(res => { if (!cancelled) setEntries(res.data.entries); }).catch(() => undefined);
+    faqApi.list(courseId)
+      .then(res => { if (!cancelled) setEntries(res.data.entries); })
+      .catch(() => undefined)
+      .finally(() => { if (!cancelled) setLoaded(true); });
     return () => { cancelled = true; };
   }, [courseId, reloadKey]);
 
@@ -98,13 +119,12 @@ export default function FAQEditor({ courseId }: { courseId: string }) {
   const draft = async () => {
     setDrafting(true);
     try {
-      const res = await faqApi.draft(courseId);
-      const { created, skipped } = res.data;
-      const note = skipped.length ? ` ${skipped.length} topic${skipped.length === 1 ? ' was' : 's were'} skipped (not covered by the materials).` : '';
-      addToast(created.length ? `Drafted ${created.length} entr${created.length === 1 ? 'y' : 'ies'}.${note}` : `Nothing new to draft.${note}`, created.length ? 'success' : 'info');
+      const { created, skipped } = (await faqApi.draft(courseId)).data;
+      const note = skipped.length ? ` ${skipped.length} skipped (not in the notes).` : '';
+      addToast(created.length ? `Drafted ${created.length}.${note}` : `Nothing new to draft.${note}`, created.length ? 'success' : 'info');
       reload();
     } catch (err) {
-      addToast(errorDetail(err, 'Could not draft the FAQ'), 'error');
+      addToast(apiErrorDetail(err, 'Could not draft the FAQ'), 'error');
     } finally {
       setDrafting(false);
     }
@@ -112,41 +132,62 @@ export default function FAQEditor({ courseId }: { courseId: string }) {
 
   const add = async () => {
     try {
-      await faqApi.create(courseId, 'New question');
+      const res = await faqApi.create(courseId, 'New question');
+      setNewId(res.data?.id ?? null);
       reload();
     } catch {
       addToast('Could not add an entry', 'error');
     }
   };
 
-  const published = entries.filter(e => e.status === 'published').length;
+  const live = entries.filter(e => e.status === 'published');
+  const drafts = entries.filter(e => e.status !== 'published');
+  const ordered = [...drafts, ...live];
 
   return (
-    <section className="bg-surface border border-line rounded-2xl p-5 space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-medium text-ink flex items-center gap-2"><HelpCircle className="w-4 h-4 text-sky-400" /> Course FAQ</h2>
-          <p className="text-[11px] text-ink-3 mt-1">
-            Answers are drafted with citations from the course materials. Students only see entries you publish ({published} published).
-          </p>
+    <div className="grid gap-4 xl:grid-cols-3 items-start [&>*]:min-w-0">
+      <section className={`${panel} p-5 xl:col-span-2`}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-baseline gap-3">
+            <h2 className="text-[15px] text-accent-strong">Course FAQ</h2>
+            {entries.length > 0 && <span className="text-xs text-ink-3">{live.length} of {entries.length} published</span>}
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={draft} disabled={drafting} className={pillDark}>
+              {drafting && <Loader2 size={14} className="animate-spin" />} Draft from questions
+            </button>
+            <button type="button" onClick={add} className={pillLine}><Plus size={14} /> Add</button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={draft} disabled={drafting}
-            className="px-3 py-1.5 rounded-lg text-xs bg-accent text-white font-medium flex items-center gap-1.5 disabled:opacity-40">
-            {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Draft from this week's questions
-          </button>
-          <button onClick={add} className="px-3 py-1.5 rounded-lg text-xs border border-line-strong text-ink flex items-center gap-1.5">
-            <Plus className="w-3.5 h-3.5" /> Add
-          </button>
-        </div>
-      </div>
-      {entries.length === 0 ? (
-        <p className="text-xs text-ink-4">No FAQ entries yet. Build the question digest first, then draft from it.</p>
-      ) : (
-        <ul className="space-y-3">
-          {entries.map(e => <EntryCard key={`${e.id}-${reloadKey}`} entry={e} courseId={courseId} onChange={reload} />)}
-        </ul>
-      )}
-    </section>
+
+        {!loaded ? null : entries.length === 0 ? (
+          <p className="mt-4 p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">No entries yet. Draft them from what students asked this week.</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {ordered.map(e => <Entry key={`${e.id}-${reloadKey}`} entry={e} courseId={courseId} onChange={reload} startOpen={e.id === newId} />)}
+          </ul>
+        )}
+      </section>
+
+      {/* What students see */}
+      <section className={`${panel} p-5 xl:sticky xl:top-4`}>
+        <h2 className="text-[15px] text-accent-strong">What students see</h2>
+        {live.length === 0 ? (
+          <p className="mt-3 p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">Nothing published yet.</p>
+        ) : (
+          <ol className="mt-3 divide-y divide-[#e2eaeb]">
+            {live.map((e, i) => (
+              <li key={e.id} className="py-3 flex gap-3">
+                <span className="text-[11px] text-ink-4 tabular pt-0.5">{String(i + 1).padStart(2, '0')}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm text-accent-strong">{e.question}</span>
+                  <span className="mt-1 block text-xs text-ink-3 line-clamp-3">{e.answer}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </div>
   );
 }

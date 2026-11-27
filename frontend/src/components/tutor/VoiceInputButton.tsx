@@ -96,8 +96,8 @@ export default function VoiceInputButton({ courseId, disabled, onTranscript }: P
   if (state === 'recording') {
     return (
       <button type="button" onClick={stop} aria-label="Stop recording"
-        className="h-9 px-3 rounded-full bg-red-50 text-red-700 hover:bg-red-100 flex items-center gap-2 text-xs tabular-nums shrink-0">
-        <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" aria-hidden />
+        className="h-9 px-3 rounded-full bg-clay-wash text-clay hover:bg-[#efe2dc] flex items-center gap-2 text-xs tabular-nums shrink-0">
+        <span className="w-2 h-2 rounded-full bg-[#c9957f] animate-pulse" aria-hidden />
         {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
         <Square className="w-3.5 h-3.5" />
       </button>

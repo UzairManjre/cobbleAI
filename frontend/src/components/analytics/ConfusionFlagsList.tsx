@@ -25,7 +25,7 @@ export default function ConfusionFlagsList({ flags }: { flags?: ConfusionFlag[] 
     <ul className="divide-y divide-line">
       {flags.map(f => (
         <li key={`${f.course_id}-${f.node_id}`} className="py-3 px-4 flex items-start gap-3">
-          <AlertTriangle className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
+          <AlertTriangle className="w-4 h-4 text-clay mt-0.5 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-sm text-ink">
               {f.label} <span className="text-[11px] text-ink-3">· {f.course}</span>

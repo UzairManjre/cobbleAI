@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Check, Download, Pencil, Quote } from 'lucide-react';
+import { Check, ClipboardCheck, Download, Pencil, Quote } from 'lucide-react';
 import { reviewQueueApi } from '../../api/reviewQueue';
 import type { AgreementReport, AgreementStats, ReviewItem } from '../../api/reviewQueue';
 import CitationList from '../../components/tutor/CitationList';
 import { useToastStore } from '../../store/toastStore';
 import { saveBlob } from '../../utils/download';
+import { panel, pillDark, pillLine, rise } from '../../components/ui/glass';
 
 type Filter = 'needs_review' | 'reviewed' | 'all';
 
@@ -13,43 +14,93 @@ function fmt(v: number | null | undefined, digits = 2) {
   return v === null || v === undefined ? '—' : v.toFixed(digits);
 }
 
+const field = 'w-full rounded-xl bg-white border border-[#dbe7ec] px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent-300';
+
+/** How closely the AI grader matches the professor, overall and per cognitive level. */
 function AgreementCard({ report }: { report: AgreementReport | null }) {
-  const row = (label: string, s: AgreementStats) => (
-    <tr key={label} className="border-t border-line">
-      <td className="py-1.5 pr-3 text-ink-2 capitalize">{label}</td>
-      <td className="py-1.5 pr-3 font-mono">{s.n}</td>
-      <td className="py-1.5 pr-3 font-mono">{fmt(s.qwk)}{s.qwk_ci ? <span className="text-ink-4"> [{fmt(s.qwk_ci.ci_low)}, {fmt(s.qwk_ci.ci_high)}]</span> : null}</td>
-      <td className="py-1.5 pr-3 font-mono">{fmt(s.mae_marks)}</td>
-      <td className="py-1.5 font-mono">{s.exact_agreement === undefined ? '—' : `${Math.round(s.exact_agreement * 100)}%`}</td>
-    </tr>
-  );
-  if (!report) return null;
+  if (!report) return <section className={`${panel} p-5 min-h-[200px]`} aria-busy="true" />;
+  const o = report.overall;
+  const rows: [string, AgreementStats][] = [['Overall', o], ...Object.entries(report.by_cognitive_level)];
   return (
-    <div className="bg-surface border border-line rounded-2xl p-5">
-      <h3 className="text-sm font-medium text-ink">Grader agreement with you</h3>
-      <p className="text-[11px] text-ink-3 mt-1 mb-3">
-        On answers you reviewed. Quadratic weighted kappa (95% CI), mean absolute error in marks, exact agreement in half-marks.
-        Kappa shows — until both you and the AI have given different scores (it is undefined when every score is the same).
-        {` ${report.auto_accepted} answers were auto-accepted and are not counted.`}
+    <section className={`${panel} p-5`}>
+      <h2 className="text-[15px] text-accent-strong">Grader agreement with you</h2>
+      <p className="text-[11px] text-ink-3 mt-1 leading-snug">
+        On answers you reviewed. {report.auto_accepted} auto-accepted answers are not counted.
       </p>
-      {report.overall.n === 0 ? (
-        <p className="text-xs text-ink-4">Review some answers to see agreement.</p>
+      {o.n === 0 ? (
+        <p className="mt-4 p-4 rounded-2xl bg-[#f1f5f7] text-xs text-ink-3">Review a few answers to see how often you and the AI agree.</p>
       ) : (
-        <table className="w-full text-xs text-ink">
-          <thead>
-            <tr className="text-[10px] uppercase tracking-widest text-ink-3 text-left">
-              <th className="pb-1.5">Level</th><th className="pb-1.5">n</th><th className="pb-1.5">QWK</th><th className="pb-1.5">MAE</th><th className="pb-1.5">Exact</th>
-            </tr>
-          </thead>
-          <tbody>
-            {row('overall', report.overall)}
-            {Object.entries(report.by_cognitive_level).map(([level, s]) => row(level, s))}
-          </tbody>
-        </table>
+        <>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <Tile label="Exact" value={o.exact_agreement === undefined ? '—' : `${Math.round(o.exact_agreement * 100)}%`} />
+            <Tile label="Kappa" value={fmt(o.qwk)} />
+            <Tile label="Avg. gap (marks)" value={o.mae_marks === null || o.mae_marks === undefined ? '—' : `${fmt(o.mae_marks, 1)}m`} />
+          </div>
+          <table className="mt-4 w-full text-xs">
+            <thead>
+              <tr className="text-[11px] text-ink-3 text-left">
+                <th className="pb-1.5 font-normal">Level</th><th className="pb-1.5 font-normal">n</th><th className="pb-1.5 font-normal cursor-help" title="Quadratic weighted kappa. Blank until scores vary.">Kappa</th><th className="pb-1.5 font-normal text-right">Exact</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(([label, s]) => (
+                <tr key={label} className="border-t border-[#e2eaeb]">
+                  <td className="py-2 pr-2 text-accent-strong capitalize">{label}</td>
+                  <td className="py-2 pr-2 tabular text-ink-3">{s.n}</td>
+                  <td className="py-2 pr-2 tabular text-ink-2" title={s.qwk_ci ? `95% CI ${fmt(s.qwk_ci.ci_low)} to ${fmt(s.qwk_ci.ci_high)}` : undefined}>{fmt(s.qwk)}</td>
+                  <td className="py-2 tabular text-right text-ink-2">{s.exact_agreement === undefined ? '—' : `${Math.round(s.exact_agreement * 100)}%`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
-    </div>
+    </section>
   );
 }
+
+/** Where every AI grade ended up: auto-accepted, checked by you, or still waiting. */
+function WorkloadCard({ report, pending }: { report: AgreementReport | null; pending: number }) {
+  const auto = report?.auto_accepted ?? 0;
+  const reviewed = report?.overall.n ?? 0;
+  const total = auto + reviewed + pending;
+  const parts = [
+    { label: 'Auto-accepted', n: auto, cls: 'bg-accent-200' },
+    { label: 'You reviewed', n: reviewed, cls: 'bg-accent-strong' },
+    { label: 'Waiting', n: pending, cls: 'bg-clay-bar' },
+  ];
+  return (
+    <section className={`${panel} p-5 flex-1 flex flex-col`}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-[15px] text-accent-strong">Grading so far</h2>
+        <span className="text-xs text-ink-3 tabular">{total} answers</span>
+      </div>
+      <div className="mt-4 h-2.5 rounded-full bg-[#dbe7ec] overflow-hidden flex gap-[2px]" aria-hidden>
+        {total > 0 && parts.map(p => p.n > 0 && <span key={p.label} className={`h-full ${p.cls}`} style={{ width: `${(p.n / total) * 100}%` }} />)}
+      </div>
+      <ul className="mt-3 grid grid-cols-3 gap-2">
+        {parts.map(p => (
+          <li key={p.label} className="min-w-0">
+            <span className="block font-display text-lg leading-none tabular text-accent-strong">{p.n}</span>
+            <span className="mt-1 flex items-center gap-1.5 text-[11px] text-ink-3"><span className={`h-1.5 w-1.5 rounded-full shrink-0 ${p.cls}`} /><span className="truncate">{p.label}</span></span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-auto pt-4">
+        <p className="rounded-2xl bg-[#f1f5f7] px-3.5 py-3 text-xs text-ink-3 leading-relaxed">
+          Grades under <span className="text-accent-strong">70% sure</span> wait for you. The rest are accepted automatically.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+const Tile = ({ label, value }: { label: string; value: string }) => (
+  <div className="rounded-2xl bg-[#f1f5f7] px-3 py-2.5 min-w-0">
+    <span className="block font-display text-lg tracking-[-0.02em] text-accent-strong tabular truncate">{value}</span>
+    <span className="text-[11px] text-ink-3">{label}</span>
+  </div>
+);
 
 function ReviewCard({ item, courseId, onDone }: { item: ReviewItem; courseId: string; onDone: () => void }) {
   const [editing, setEditing] = useState(false);
@@ -79,82 +130,79 @@ function ReviewCard({ item, courseId, onDone }: { item: ReviewItem; courseId: st
     location: e.location, snippet: e.snippet, t_start: e.t_start, page_start: e.page_start, slide_start: e.slide_start,
   }));
   const confidencePct = item.confidence === null ? null : Math.round(item.confidence * 100);
+  const unsure = confidencePct !== null && confidencePct < 70;
 
   return (
-    <li className="bg-surface border border-line rounded-2xl p-5 space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-widest text-ink-3">
-            {item.test_title} · {item.student.name}{item.cognitive_level ? ` · ${item.cognitive_level}` : ''}
-          </p>
-          <p className="text-sm text-ink mt-1">{item.question}</p>
+    <li className={`${panel} p-5 space-y-4`}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+            <span className="h-6 px-2.5 inline-flex items-center rounded-full bg-accent-wash text-accent">{item.student.name}</span>
+            <span className="h-6 px-2.5 inline-flex items-center rounded-full bg-[#f1f5f7] text-ink-3">{item.test_title}</span>
+            {item.cognitive_level && <span className="h-6 px-2.5 inline-flex items-center rounded-full bg-[#f1f5f7] text-ink-3 capitalize">{item.cognitive_level}</span>}
+          </div>
+          <p className="mt-2.5 text-[15px] text-accent-strong leading-snug">{item.question}</p>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-lg text-ink font-light">{fmt(item.ai_score, 1)} <span className="text-xs text-ink-3">/ {item.max_marks}</span></p>
+        <div className="shrink-0 rounded-2xl bg-[#f1f5f7] px-4 py-3 text-right min-w-[8.5rem]">
+          <p className="font-display text-2xl tracking-[-0.03em] text-accent-strong tabular leading-none">
+            {fmt(item.ai_score, 1)}<span className="text-sm text-ink-3"> / {item.max_marks}</span>
+          </p>
           {confidencePct !== null && (
-            <div className="mt-1 w-28 ml-auto">
-              <div className="h-1 bg-sunken-2 rounded-full overflow-hidden" aria-label={`Grader confidence ${confidencePct}%`}>
-                <div className={`h-full ${confidencePct < 70 ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${confidencePct}%` }} />
+            <>
+              <div className="mt-2 h-1.5 bg-[#dbe7ec] rounded-full overflow-hidden" aria-label={`Grader confidence ${confidencePct}%`}>
+                <div className={`h-full rounded-full ${unsure ? 'bg-clay-bar' : 'bg-accent'}`} style={{ width: `${confidencePct}%` }} />
               </div>
-              <p className="text-[10px] text-ink-3 mt-0.5">confidence {confidencePct}%</p>
-            </div>
+              <p className={`text-[11px] mt-1 ${unsure ? 'text-clay' : 'text-ink-3'}`}>{confidencePct}% sure</p>
+            </>
           )}
         </div>
       </div>
 
-      <div className="bg-sunken border border-line rounded-xl p-4">
-        <p className="text-[10px] uppercase tracking-widest text-ink-3 mb-1">Student answer</p>
-        <p className="text-sm text-ink-2 whitespace-pre-wrap">{item.answer || '—'}</p>
+      <div className="rounded-2xl bg-[#f1f5f7] p-4">
+        <p className="text-[11px] text-ink-3 mb-1">Student answer</p>
+        <p className="text-sm text-ink-2 whitespace-pre-wrap leading-relaxed">{item.answer || '—'}</p>
       </div>
 
       {spans.length > 0 && (
         <ul className="space-y-1.5">
           {spans.map((s, i) => (
             <li key={i} className="text-xs flex gap-2">
-              <Quote className={`w-3.5 h-3.5 shrink-0 ${s.met ? 'text-emerald-700' : 'text-ink-4'}`} />
-              <span className="text-ink-3"><span className="text-ink">{s.point}</span> — “{s.quote}”</span>
+              <Quote className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${s.met ? 'text-accent' : 'text-ink-4'}`} />
+              <span className="text-ink-3"><span className="text-accent-strong">{s.point}</span> · “{s.quote}”</span>
             </li>
           ))}
         </ul>
       )}
-      {item.ai_rationale && <p className="text-xs text-ink-3"><span className="text-ink-3">Grader's reasoning:</span> {item.ai_rationale}</p>}
+      {item.ai_rationale && <p className="text-xs text-ink-3 leading-relaxed"><span className="text-accent-strong">Grader's reasoning:</span> {item.ai_rationale}</p>}
       {sources.length > 0 && <CitationList courseId={courseId} sources={sources} title="Course material used" />}
 
       {item.review_status === 'needs_review' || editing ? (
-        <div className="space-y-3">
+        <div className="pt-4 border-t border-[#e2eaeb] space-y-3">
           {editing && (
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="text-xs text-ink-3">Score
-                <input type="number" min={0} max={item.max_marks} step={0.5} value={score} onChange={e => setScore(e.target.value)}
-                  className="ml-2 w-20 bg-sunken border border-line rounded-lg px-2 py-1 text-sm text-ink" />
-              </label>
-              <span className="text-xs text-ink-4">of {item.max_marks}</span>
-            </div>
+            <label className="flex items-center gap-2 text-xs text-ink-3">Score
+              <input type="number" min={0} max={item.max_marks} step={0.5} value={score} onChange={e => setScore(e.target.value)}
+                className={`${field} !w-24`} />
+              <span className="text-ink-4">of {item.max_marks}</span>
+            </label>
           )}
-          <textarea value={feedback} onChange={e => setFeedback(e.target.value)} rows={2} placeholder="Feedback for the student"
-            className="w-full bg-sunken border border-line rounded-lg px-3 py-2 text-xs text-ink" />
-          <div className="flex gap-2">
-            <button onClick={() => submit('approve')} disabled={busy || item.ai_score === null}
-              className="px-3 py-1.5 rounded-lg text-xs bg-accent text-white font-medium flex items-center gap-1.5 disabled:opacity-40">
-              <Check className="w-3.5 h-3.5" /> Approve AI grade
+          <textarea value={feedback} onChange={e => setFeedback(e.target.value)} rows={2} placeholder="Feedback for the student (optional)" className={`${field} text-xs`} />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => submit('approve')} disabled={busy || item.ai_score === null} className={pillDark}>
+              <Check size={14} /> Approve AI grade
             </button>
             {editing ? (
-              <button onClick={() => submit('override')} disabled={busy || score === ''}
-                className="px-3 py-1.5 rounded-lg text-xs border border-line-strong text-ink disabled:opacity-40">Save override</button>
+              <button type="button" onClick={() => submit('override')} disabled={busy || score === ''} className={pillLine}>Save new score</button>
             ) : (
-              <button onClick={() => setEditing(true)} disabled={busy}
-                className="px-3 py-1.5 rounded-lg text-xs border border-line-strong text-ink flex items-center gap-1.5">
-                <Pencil className="w-3.5 h-3.5" /> Change score
-              </button>
+              <button type="button" onClick={() => setEditing(true)} disabled={busy} className={pillLine}><Pencil size={14} /> Change score</button>
             )}
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between text-xs">
+        <div className="pt-3 border-t border-[#e2eaeb] flex items-center justify-between text-xs">
           <span className="text-ink-3">
             {item.review_status === 'auto' ? 'Auto-accepted' : item.review_status === 'approved' ? 'You approved' : 'You changed it'} · final {fmt(item.final_score, 1)}
           </span>
-          <button onClick={() => setEditing(true)} className="text-ink-3 hover:text-ink flex items-center gap-1"><Pencil className="w-3 h-3" /> Change</button>
+          <button type="button" onClick={() => setEditing(true)} className="text-accent hover:underline flex items-center gap-1 cursor-pointer"><Pencil className="w-3 h-3" /> Change</button>
         </div>
       )}
     </li>
@@ -196,46 +244,59 @@ export default function ReviewQueue() {
     }
   };
 
-  const filters: { id: Filter; label: string }[] = [
-    { id: 'needs_review', label: `Needs review (${pending})` },
+  const filters: { id: Filter; label: string; count?: number }[] = [
+    { id: 'needs_review', label: 'Needs review', count: pending },
     { id: 'reviewed', label: 'Reviewed' },
     { id: 'all', label: 'All AI-graded' },
   ];
 
   return (
-    <div className="w-full px-5 md:px-8 lg:px-12 py-8"><div className="max-w-6xl mx-auto space-y-6 text-ink">
-      <div className="flex flex-wrap items-center gap-4">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-ink-3">Grading</p>
-          <h2 className="text-xl font-light">AI grades to review</h2>
+    <div className="mt-8 sm:mt-10 space-y-4 text-ink">
+      <section style={rise(1)} className={`${panel} p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4`}>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="grid place-items-center h-10 w-10 shrink-0 rounded-xl bg-accent-wash text-accent"><ClipboardCheck size={18} /></span>
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.35rem] tracking-[-0.02em] text-accent-strong">AI grades to review</h2>
+            <p className="text-xs text-ink-3 mt-0.5">
+              {pending ? `${pending} ${pending === 1 ? 'answer the grader was unsure about' : 'answers the grader was unsure about'}, least confident first.` : 'The grader is confident about everything so far.'}
+            </p>
+          </div>
         </div>
-        <button onClick={exportCsv} className="ml-auto px-3 py-1.5 rounded-lg text-xs border border-line-strong flex items-center gap-1.5 hover:border-ink-4">
-          <Download className="w-3.5 h-3.5" /> Export CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex p-1 rounded-full bg-[#f1f5f7]" role="tablist">
+            {filters.map(f => (
+              <button key={f.id} role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)}
+                className={`h-8 px-4 rounded-full text-xs transition-colors cursor-pointer ${filter === f.id ? 'bg-accent-strong text-white' : 'text-ink-3 hover:text-accent-strong'}`}>
+                {f.label}{f.count !== undefined && <span className={filter === f.id ? 'text-white/60' : 'text-ink-4'}> {f.count}</span>}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={exportCsv} className={pillLine}><Download size={14} /> Export CSV</button>
+        </div>
+      </section>
+
+      <div className="grid gap-4 xl:grid-cols-3 items-stretch [&>*]:min-w-0">
+        <div className="xl:col-span-2" style={rise(2)}>
+          {items.length === 0 ? (
+            <div className={`${panel} p-10 text-center`}>
+              <span className="grid place-items-center h-12 w-12 rounded-full bg-accent-wash text-accent mx-auto"><Check size={20} /></span>
+              <p className="mt-3 text-sm text-accent-strong">{filter === 'needs_review' ? 'Nothing to review' : 'No AI-graded answers yet'}</p>
+              <p className="text-xs text-ink-3 mt-1">{filter === 'needs_review' ? 'Answers the grader is unsure about will appear here.' : 'They appear once students submit tests.'}</p>
+            </div>
+          ) : (
+            <ul className="space-y-4">
+              {items.map(item => (
+                <ReviewCard key={`${item.attempt_id}-${item.question_id}-${reloadKey}`} item={item} courseId={courseId || ''} onDone={reload} />
+              ))}
+            </ul>
+          )}
+        </div>
+        {/* Stretches to the queue's height so the column ends where the queue does; sticky once the queue is long */}
+        <div className="flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start xl:min-h-full" style={rise(3)}>
+          <AgreementCard report={report} />
+          <WorkloadCard report={report} pending={pending} />
+        </div>
       </div>
-
-      <AgreementCard report={report} />
-
-      <div className="flex gap-2" role="tablist">
-        {filters.map(f => (
-          <button key={f.id} role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs border ${filter === f.id ? 'bg-accent text-white border-accent' : 'border-line text-ink-3 hover:border-line-strong'}`}>
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {items.length === 0 ? (
-        <p className="text-sm text-ink-3 py-12 text-center">
-          {filter === 'needs_review' ? 'Nothing to review. Answers the grader is unsure about will appear here.' : 'No AI-graded answers yet.'}
-        </p>
-      ) : (
-        <ul className="space-y-4">
-          {items.map(item => (
-            <ReviewCard key={`${item.attempt_id}-${item.question_id}-${reloadKey}`} item={item} courseId={courseId || ''} onDone={reload} />
-          ))}
-        </ul>
-      )}
-    </div></div>
+    </div>
   );
 }

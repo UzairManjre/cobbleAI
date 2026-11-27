@@ -22,7 +22,7 @@ export default function MessageContent({ content, thinking }: { content: string;
   return (
     <div className="space-y-3">
       {reasoning && (
-        <div className="bg-accent/10 border border-accent/20 rounded-xl overflow-hidden">
+        <div className="bg-[#eef4f6] rounded-xl overflow-hidden">
           <button
             type="button"
             aria-expanded={showReasoning}
@@ -31,15 +31,15 @@ export default function MessageContent({ content, thinking }: { content: string;
               setShowReasoning(!showReasoning);
               if (!showReasoning) analytics.track('thinking_expanded', {});
             }}
-            className="w-full px-3.5 py-2 flex items-center justify-between hover:bg-accent/20 transition-colors focus:outline-none"
+            className="w-full px-3.5 py-2 flex items-center justify-between hover:bg-[#e6eef2] transition-colors cursor-pointer"
           >
-            <span className="flex items-center gap-2 text-xs font-medium text-accent">
-              <Brain size={14} /> Thinking Process
+            <span className="flex items-center gap-2 text-xs text-[#1b566b]">
+              <Brain size={14} /> How I worked it out
             </span>
-            {showReasoning ? <ChevronUp size={14} className="text-accent" /> : <ChevronDown size={14} className="text-accent" />}
+            {showReasoning ? <ChevronUp size={14} className="text-[#1b566b]" /> : <ChevronDown size={14} className="text-[#1b566b]" />}
           </button>
           {showReasoning && (
-            <div id={reasoningId} className="px-3.5 pb-3 text-xs text-ink-2 leading-relaxed border-t border-accent/20 pt-2.5 italic whitespace-pre-wrap">
+            <div id={reasoningId} className="px-3.5 pb-3 text-xs text-ink-2 leading-relaxed border-t border-[#dbe7ec] pt-2.5 whitespace-pre-wrap">
               {reasoning}
             </div>
           )}
@@ -52,8 +52,11 @@ export default function MessageContent({ content, thinking }: { content: string;
             remarkPlugins={[remarkGfm]}
             components={{
               p: (props) => <p className="my-0 font-normal" {...withoutNode(props)} />,
-              pre: (props) => <pre className="bg-surface border border-line p-3.5 rounded-xl overflow-x-auto my-2 text-xs" {...withoutNode(props)} />,
-              code: (props) => <code className="text-violet-700 bg-purple-500/10 font-mono text-xs px-1.5 py-0.5 rounded border border-purple-500/20" {...withoutNode(props)} />,
+              pre: (props) => <pre className="bg-[#f1f5f7] p-3.5 rounded-xl overflow-x-auto my-2 text-xs" {...withoutNode(props)} />,
+              code: (props) => <code className="text-[#1b566b] bg-[#e6eef2] font-mono text-xs px-1.5 py-0.5 rounded" {...withoutNode(props)} />,
+              ul: (props) => <ul className="list-disc pl-5 space-y-1" {...withoutNode(props)} />,
+              ol: (props) => <ol className="list-decimal pl-5 space-y-1" {...withoutNode(props)} />,
+              a: (props) => <a className="text-[#1b566b] underline underline-offset-2" target="_blank" rel="noreferrer" {...withoutNode(props)} />,
             }}
           >
             {text}

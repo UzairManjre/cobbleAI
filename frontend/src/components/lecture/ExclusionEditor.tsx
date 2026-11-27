@@ -57,7 +57,7 @@ export default function ExclusionEditor({ lectureId, ranges, getCurrentTime, onS
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-start gap-2">
-        <EyeOff className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+        <EyeOff className="w-4 h-4 text-clay shrink-0 mt-0.5" />
         <p className="text-xs text-ink-3 leading-relaxed">
           Excluded ranges are removed from captions, the transcript and the tutor's search. Use this for parts where students can be heard, such as classroom Q&amp;A.
         </p>
@@ -67,7 +67,7 @@ export default function ExclusionEditor({ lectureId, ranges, getCurrentTime, onS
         {draft.map((r, i) => (
           <li key={`${r.start}-${r.end}`} className="flex items-center justify-between bg-sunken border border-line rounded-lg px-3 py-2 text-xs text-ink">
             <span className="font-mono">{formatTimestamp(r.start)} – {formatTimestamp(r.end)}</span>
-            <button type="button" onClick={() => setDraft(draft.filter((_, j) => j !== i))} className="text-ink-3 hover:text-red-600" title="Remove">
+            <button type="button" onClick={() => setDraft(draft.filter((_, j) => j !== i))} className="text-ink-3 hover:text-clay" title="Remove">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </li>

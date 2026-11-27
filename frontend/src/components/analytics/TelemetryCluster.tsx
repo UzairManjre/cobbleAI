@@ -43,7 +43,7 @@ export default function TelemetryCluster({ llmStreaming, queueDepth, retrievalLa
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', height: '100%', padding: '4px' }}>
       {/* LLM Inference Speed */}
       <div style={chartBlockStyle}>
-        <h3 style={{ margin: '0 0 10px 0', fontSize: '11px', fontWeight: 800, color: '#073dea', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Outfit, sans-serif' }}>
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '11px', fontWeight: 800, color: '#1b566b', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Outfit, sans-serif' }}>
           LLM Inference Speed (t/s)
         </h3>
         <div style={{ height: '120px' }}>
@@ -60,7 +60,7 @@ export default function TelemetryCluster({ llmStreaming, queueDepth, retrievalLa
 
       {/* Redis Task Queue Depth */}
       <div style={chartBlockStyle}>
-        <h3 style={{ margin: '0 0 10px 0', fontSize: '11px', fontWeight: 800, color: '#073dea', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Outfit, sans-serif' }}>
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '11px', fontWeight: 800, color: '#1b566b', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Outfit, sans-serif' }}>
           Redis Task Queue Depth
         </h3>
         <div style={{ height: '120px' }}>
@@ -77,7 +77,7 @@ export default function TelemetryCluster({ llmStreaming, queueDepth, retrievalLa
 
       {/* Qdrant Retrieval Latency vs Confidence */}
       <div style={chartBlockStyle}>
-        <h3 style={{ margin: '0 0 10px 0', fontSize: '11px', fontWeight: 800, color: '#073dea', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Outfit, sans-serif' }}>
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '11px', fontWeight: 800, color: '#1b566b', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Outfit, sans-serif' }}>
           Qdrant Retrieval Latency vs Confidence
         </h3>
         <div style={{ height: '120px' }}>

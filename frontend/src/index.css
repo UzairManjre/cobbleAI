@@ -1,6 +1,6 @@
 /* =============================================================================
    Cobble AI design tokens
-   Brand: Sol Blue #073dea, Charcoal Black #000, White Smoke #f9f9f9
+   Brand: Deep Teal #1b566b / #0e3445, near-black teal ink, faint teal-white canvas
    Type: Space Grotesk (headings), SF Pro Display / system UI (body)
    App surfaces are light; the landing and sign-in pages are drenched in blue.
    ============================================================================= */
@@ -15,27 +15,31 @@
   --font-display: "Space Grotesk", -apple-system, "SF Pro Display", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
 
-  /* Brand */
-  --color-accent: #073dea;          /* Sol Blue */
-  --color-accent-strong: #0532c4;   /* pressed / hover on blue */
-  --color-accent-400: #4f75f7;
-  --color-accent-300: #6a8ff0;
-  --color-accent-200: #8fadeb;
-  --color-accent-100: #b0c8ee;
-  --color-accent-50: #d4e1f4;
-  --color-accent-wash: #eef3fd;     /* tinted fill for selected rows, chips */
+  /* Brand: Deep Teal (was Sol Blue #073dea) */
+  --color-accent: #1b566b;          /* primary buttons, links, focus */
+  --color-accent-strong: #0e3445;   /* pressed / hover; also the header */
+  --color-accent-400: #2a6f87;
+  --color-accent-300: #4b8196;
+  --color-accent-200: #8fbccb;
+  --color-accent-100: #c3d8e0;
+  --color-accent-50: #dbe7ec;
+  --color-accent-wash: #ecf3f6;     /* tinted fill for selected rows, chips */
+  --color-clay: #8f5646;            /* the one warm signal: needs attention (matches CLAY in glass.ts) */
+  --color-clay-bar: #c9957f;
+  --color-clay-wash: #f6eeea;
+  --color-clay-hover: #efe2db;
 
-  /* Neutrals (light app) */
-  --color-canvas: #f9f9f9;          /* White Smoke page */
+  /* Neutrals (light app, faintly teal) */
+  --color-canvas: #eef2f3;          /* page: cool blue-grey white */
   --color-surface: #ffffff;         /* panels */
-  --color-sunken: #f2f2f3;          /* inputs, quiet fills */
-  --color-sunken-2: #e9e9eb;        /* tracks, hover on sunken */
-  --color-line: #e4e4e7;            /* hairlines */
-  --color-line-strong: #cdcdd2;     /* control borders, hover */
-  --color-ink: #000000;             /* Charcoal Black */
-  --color-ink-2: #282828;           /* strong secondary */
-  --color-ink-3: #5c5c62;           /* secondary text (AA on canvas) */
-  --color-ink-4: #8e8e93;           /* faint text, icons, placeholders */
+  --color-sunken: #edf2f3;          /* inputs, quiet fills */
+  --color-sunken-2: #e2eaeb;        /* tracks, hover on sunken */
+  --color-line: #dfe7e8;            /* hairlines */
+  --color-line-strong: #c4d3d6;     /* control borders, hover */
+  --color-ink: #0d2328;             /* near-black teal */
+  --color-ink-2: #1f3439;           /* strong secondary */
+  --color-ink-3: #56676b;           /* secondary text (AA on canvas) */
+  --color-ink-4: #8a979a;           /* faint text, icons, placeholders */
 
   /* Type scale extras */
   --text-2xs: 0.6875rem;

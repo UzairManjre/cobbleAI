@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react';
-import { Check, Flag, RotateCcw } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import { tutorApi } from '../../api/tutor';
 import type { FlaggedAnswer } from '../../api/tutor';
 import { useToastStore } from '../../store/toastStore';
 import CitationList from '../tutor/CitationList';
-import MessageContent from '../tutor/MessageContent';
+import { CLAY, panel } from '../ui/glass';
 
-const RATING_LABEL: Record<string, string> = { wrong: 'Marked wrong', not_in_notes: 'Not in my notes', helpful: 'Helpful' };
+const RATING: Record<string, { label: string; style: CSSProperties }> = {
+  wrong: { label: 'Marked wrong', style: { background: CLAY.wash, color: CLAY.ink } },
+  not_in_notes: { label: 'Not in notes', style: { background: '#ecf3f6', color: '#1b566b' } },
+  helpful: { label: 'Helpful', style: { background: '#ecf3f6', color: '#1b566b' } },
+};
 
-/** Tutor answers students flagged, so the instructor can check and correct them. */
+function ago(iso: string) {
+  const d = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 30 ? `${d}d ago` : new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/** Tutor answers students flagged, so the instructor can check them. No student names. */
 export default function FeedbackReviewList({ courseId }: { courseId: string }) {
   const [status, setStatus] = useState<'open' | 'resolved'>('open');
-  const [items, setItems] = useState<FlaggedAnswer[]>([]);
+  const [items, setItems] = useState<FlaggedAnswer[] | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const addToast = useToastStore(s => s.addToast);
 
@@ -31,51 +40,48 @@ export default function FeedbackReviewList({ courseId }: { courseId: string }) {
   };
 
   return (
-    <section className="bg-surface border border-line rounded-2xl p-5 space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-medium text-ink flex items-center gap-2"><Flag className="w-4 h-4 text-red-600" /> Flagged tutor answers</h2>
-          <p className="text-[11px] text-ink-3 mt-1">Answers students marked wrong or not in their notes. Student names are not shown.</p>
+    <section className={`${panel} p-5`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-[15px] text-accent-strong">Flagged answers</h2>
+          {items && <span className="text-xs text-ink-3">{items.length} {status === 'open' ? 'to check' : 'checked'}</span>}
         </div>
-        <div className="flex gap-1.5" role="tablist">
+        <div className="inline-flex p-0.5 rounded-full bg-[#f1f5f7]" role="tablist">
           {(['open', 'resolved'] as const).map(s => (
-            <button key={s} role="tab" aria-selected={status === s} onClick={() => setStatus(s)}
-              className={`px-3 py-1 rounded-lg text-xs border capitalize ${status === s ? 'bg-accent text-white border-accent' : 'border-line text-ink-3'}`}>
-              {s}
+            <button key={s} type="button" role="tab" aria-selected={status === s} onClick={() => setStatus(s)}
+              className={`h-7 px-3 rounded-full text-xs cursor-pointer ${status === s ? 'bg-accent-strong text-white' : 'text-ink-3 hover:text-accent-strong'}`}>
+              {s === 'open' ? 'To check' : 'Checked'}
             </button>
           ))}
         </div>
       </div>
-      {items.length === 0 ? (
-        <p className="text-xs text-ink-4">{status === 'open' ? 'No flagged answers to check.' : 'Nothing resolved yet.'}</p>
+
+      {!items ? null : items.length === 0 ? (
+        <p className="mt-4 p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">{status === 'open' ? 'Nothing to check.' : 'Nothing checked yet.'}</p>
       ) : (
-        <ul className="space-y-3">
-          {items.map(item => (
-            <li key={item.id} className="border border-line rounded-xl p-4 space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className={`text-[10px] uppercase tracking-widest ${item.rating === 'wrong' ? 'text-red-600' : 'text-amber-700'}`}>
-                  {RATING_LABEL[item.rating] || item.rating}{item.support ? ` · ${item.support} support` : ''}
-                </span>
-                <span className="text-[10px] text-ink-4">{new Date(item.updated_at).toLocaleString()}</span>
-              </div>
-              {item.question && <p className="text-sm text-ink">{item.question}</p>}
-              {item.answer && <div className="text-xs text-ink-2"><MessageContent content={item.answer} /></div>}
-              {item.comment && <p className="text-xs text-ink-3"><span className="text-ink-3">Student comment:</span> {item.comment}</p>}
-              {item.citations && item.citations.length > 0 && <CitationList courseId={courseId} citations={item.citations} />}
-              <div className="flex justify-end">
-                {item.status === 'open' ? (
-                  <button onClick={() => setItemStatus(item.id, 'resolved')}
-                    className="px-3 py-1.5 rounded-lg text-xs border border-line-strong text-ink flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5" /> Mark checked
-                  </button>
-                ) : (
-                  <button onClick={() => setItemStatus(item.id, 'open')} className="text-xs text-ink-3 hover:text-ink flex items-center gap-1">
-                    <RotateCcw className="w-3 h-3" /> Reopen
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
+        <ul className="mt-4 space-y-2">
+          {items.map(item => {
+            const r = RATING[item.rating] ?? { label: item.rating, style: { background: '#ecf3f6', color: '#1b566b' } };
+            return (
+              <li key={item.id} className="rounded-2xl bg-[#f1f5f7] p-4">
+                <div className="flex items-center gap-2">
+                  <span className="h-6 px-2.5 inline-flex items-center rounded-full text-[11px]" style={r.style}>{r.label}</span>
+                  <span className="text-[11px] text-ink-4">{ago(item.updated_at)}</span>
+                  {item.status === 'open' ? (
+                    <button type="button" onClick={() => setItemStatus(item.id, 'resolved')}
+                      className="ml-auto h-7 px-3 rounded-full text-xs bg-white text-accent-strong hover:bg-accent-wash cursor-pointer">Mark checked</button>
+                  ) : (
+                    <button type="button" onClick={() => setItemStatus(item.id, 'open')}
+                      className="ml-auto h-7 px-3 rounded-full text-xs text-ink-3 hover:text-accent-strong cursor-pointer">Reopen</button>
+                  )}
+                </div>
+                {item.question && <p className="mt-2.5 text-sm text-accent-strong">{item.question}</p>}
+                {item.answer && <p className="mt-1 text-xs text-ink-3 leading-relaxed line-clamp-2" title={item.answer}>{item.answer.replace(/[#*_`>]/g, '')}</p>}
+                {item.comment && <p className="mt-2 text-xs text-ink-2 border-l-2 border-accent-100 pl-2.5">“{item.comment}”</p>}
+                {item.citations && item.citations.length > 0 && <div className="mt-2.5"><CitationList courseId={courseId} citations={item.citations} /></div>}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

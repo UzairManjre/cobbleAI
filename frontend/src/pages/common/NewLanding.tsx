@@ -29,7 +29,7 @@ const Leader = ({ d, len, delay, ring }: { d: string; len: number; delay: number
   <g>
     <path d={d} fill="none" stroke="currentColor" strokeWidth="1.2"
       style={{ strokeDasharray: len, ['--len' as string]: len, animation: `draw 1100ms var(--ease-out-expo) ${delay}ms both` }} />
-    <circle cx={ring[0]} cy={ring[1]} r="5" fill="#073dea" stroke="currentColor" strokeWidth="1.2" style={rise(delay)} />
+    <circle cx={ring[0]} cy={ring[1]} r="5" fill="#1b566b" stroke="currentColor" strokeWidth="1.2" style={rise(delay)} />
   </g>
 );
 
@@ -56,7 +56,7 @@ function HeroFigure() {
       {/* Giant citation: white on blue, blue where it crosses the white figure */}
       <g className="font-display" fontSize="165" fontWeight="500" letterSpacing="-5" textAnchor="middle" style={rise(350)}>
         <text x="1020" y="666" fill="currentColor">24 × 7</text>
-        <text x="1020" y="666" fill="#073dea" mask="url(#mark-mask)">24 × 7</text>
+        <text x="1020" y="666" fill="#1b566b" mask="url(#mark-mask)">24 × 7</text>
       </g>
       <text x="1250" y="545" className="font-display" fontSize="56" fontWeight="500" fill="currentColor" style={rise(450)}>¹</text>
 

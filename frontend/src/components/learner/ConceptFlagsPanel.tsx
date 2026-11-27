@@ -1,14 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Check, FlaskConical } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { learnerApi } from '../../api/learner';
 import type { ConceptFlags, PRF } from '../../api/learner';
 import { useToastStore } from '../../store/toastStore';
+import { CLAY, panel, pillDark } from '../ui/glass';
 
-function prf(m?: PRF) {
-  return m ? `P ${m.precision.toFixed(2)} · R ${m.recall.toFixed(2)} · F1 ${m.f1.toFixed(2)}` : '—';
+const NEEDED = 6;
+const f1 = (m?: PRF) => (m ? m.f1.toFixed(2) : '—');
+
+/** Ten dots, filled to the struggle score: the page's dot-matrix motif. */
+function ScoreDots({ score, flagged }: { score: number; flagged: boolean }) {
+  const n = Math.round(Math.max(0, Math.min(1, score)) * 10);
+  return (
+    <span className="grid grid-cols-5 gap-[3px] w-[38px] shrink-0" aria-label={`Struggle score ${score.toFixed(2)}`}>
+      {Array.from({ length: 10 }, (_, i) => (
+        <span key={i} className="h-[5px] w-[5px] rounded-full"
+          style={{ background: i < n ? (flagged ? CLAY.bar : '#2a6f87') : '#dbe7ec' }} />
+      ))}
+    </span>
+  );
 }
 
-/** Concepts students struggle with, the signals behind each flag, and the instructor labels that calibrate the model. */
+/** Concepts students struggle with, and the instructor labels that calibrate the model. */
 export default function ConceptFlagsPanel({ courseId }: { courseId: string }) {
   const [data, setData] = useState<ConceptFlags | null>(null);
   const [fitting, setFitting] = useState(false);
@@ -48,101 +61,99 @@ export default function ConceptFlagsPanel({ courseId }: { courseId: string }) {
 
   const mine = (c: ConceptFlags['concepts'][number]) => (rater === 'primary' ? c.instructor_label : c.second_rater_label ?? null);
 
-  if (!data) return <p className="text-xs text-ink-3">Loading…</p>;
+  if (!data) return <section className={`${panel} p-5 min-h-[240px]`} aria-busy="true" />;
   const metrics = data.model_metrics;
+  const calibrated = data.method === 'calibrated';
+  const concepts = [...data.concepts].sort((a, b) => (b.probability ?? b.heuristic_v1) - (a.probability ?? a.heuristic_v1));
+  const flagged = concepts.filter(c => c.flagged).length;
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-ink">
-            {data.method === 'calibrated' ? 'Calibrated on your labels' : 'Using the v1 heuristic (not yet calibrated)'}
-          </p>
-          <p className="text-[11px] text-ink-3 mt-0.5">
-            Mark whether students struggle with each concept, then calibrate. {data.labelled} labelled so far; at least 6 with both kinds are needed.
-          </p>
+    <div className="grid gap-4 xl:grid-cols-3 items-start [&>*]:min-w-0">
+      {/* Ranked concepts */}
+      <section className={`${panel} p-5 xl:col-span-2`}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-[15px] text-accent-strong">Struggling concepts</h2>
+          <span className="text-xs text-ink-3">{flagged} of {concepts.length} flagged</span>
         </div>
-        <div className="flex items-center gap-1 text-[11px]" role="group" aria-label="Who is labelling">
-          {(['primary', 'secondary'] as const).map(slot => (
-            <button key={slot} onClick={() => setRater(slot)} aria-pressed={rater === slot}
-              className={`px-2 py-1 rounded-lg border ${rater === slot ? 'border-accent text-ink' : 'border-line text-ink-3 hover:text-ink'}`}>
-              {slot === 'primary' ? 'Rater 1' : 'Rater 2'}
-            </button>
-          ))}
+
+        <div className="mt-3 hidden sm:grid grid-cols-[38px_minmax(0,1fr)_4.5rem_4.5rem_8.5rem] gap-4 px-3 text-[11px] text-ink-4">
+          <span>Score</span><span>Concept</span><span className="text-right">Questions</span><span className="text-right">Mastery</span><span className="text-right">Struggling?</span>
         </div>
-        <button onClick={fit} disabled={fitting} className="px-3 py-1.5 rounded-lg text-xs bg-accent text-white font-medium disabled:opacity-50 flex items-center gap-1.5">
-          <FlaskConical className="w-3.5 h-3.5" /> {fitting ? 'Calibrating…' : 'Calibrate on labels'}
+        <ul className="mt-1 space-y-1">
+          {concepts.map(c => {
+            const score = c.probability ?? c.heuristic_v1;
+            // The reason line skips signals the Questions column already shows
+            const why = c.signals.filter(s => s.contribution > 0 && !/question/i.test(s.label))[0]?.label;
+            const v = mine(c);
+            return (
+              <li key={c.node_id} className="grid grid-cols-[38px_minmax(0,1fr)_auto] sm:grid-cols-[38px_minmax(0,1fr)_4.5rem_4.5rem_8.5rem] items-center gap-x-4 gap-y-2 rounded-2xl px-3 py-3 hover:bg-[#f1f5f7] transition-colors">
+                <ScoreDots score={score} flagged={c.flagged} />
+                <span className="min-w-0">
+                  <span className="block text-sm text-accent-strong truncate">{c.label}</span>
+                  {c.flagged && why && <span className="block text-[11px] text-ink-3 truncate" title={c.signals.map(s => s.label).join(' · ')}>{why}</span>}
+                </span>
+                <span className="hidden sm:block text-right text-sm text-ink-2 tabular">{c.counts.questions}</span>
+                <span className="hidden sm:block text-right text-sm text-ink-2 tabular">{c.mean_mastery !== null ? `${Math.round(c.mean_mastery * 100)}%` : '—'}</span>
+                <span className="justify-self-end inline-flex p-0.5 rounded-full bg-[#f1f5f7]" role="group" aria-label={`Do students struggle with ${c.label}?`}>
+                  {([true, false] as const).map(yes => (
+                    <button key={String(yes)} type="button" aria-pressed={v === yes} onClick={() => label(c.node_id, v === yes ? null : yes)}
+                      className="h-7 px-3 rounded-full text-xs transition-colors cursor-pointer"
+                      style={v === yes ? (yes ? { background: CLAY.wash, color: CLAY.ink } : { background: '#0e3445', color: '#fff' }) : { color: '#56676b' }}>
+                      {yes ? 'Yes' : 'No'}
+                    </button>
+                  ))}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {/* Calibration */}
+      <section className={`${panel} p-5 xl:sticky xl:top-4`}>
+        <h2 className="text-[15px] text-accent-strong">Calibration</h2>
+        <p className="mt-1 text-xs text-ink-3">{calibrated ? 'Scores come from a model fitted to your labels.' : 'Scores use a simple rule until you label a few concepts.'}</p>
+
+        <div className="mt-4 rounded-2xl bg-[#f1f5f7] p-3.5">
+          <div className="flex items-baseline justify-between text-sm">
+            <span className="text-accent-strong">Labelled</span>
+            <span className="tabular text-ink-2">{data.labelled} / {NEEDED}</span>
+          </div>
+          <span className="mt-2 flex gap-1" aria-hidden>
+            {Array.from({ length: NEEDED }, (_, i) => <span key={i} className={`h-1.5 flex-1 rounded-full ${i < data.labelled ? 'bg-accent' : 'bg-[#dbe7ec]'}`} />)}
+          </span>
+          <p className="mt-2 text-[11px] text-ink-4">Needs both Yes and No answers.</p>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <span className="text-xs text-ink-3">Labelling as</span>
+          <span className="inline-flex p-0.5 rounded-full bg-[#f1f5f7]">
+            {(['primary', 'secondary'] as const).map(slot => (
+              <button key={slot} type="button" onClick={() => setRater(slot)} aria-pressed={rater === slot}
+                className={`h-7 px-3 rounded-full text-xs cursor-pointer ${rater === slot ? 'bg-accent-strong text-white' : 'text-ink-3 hover:text-accent-strong'}`}>
+                {slot === 'primary' ? 'Rater 1' : 'Rater 2'}
+              </button>
+            ))}
+          </span>
+        </div>
+
+        <button type="button" onClick={fit} disabled={fitting} className={`${pillDark} w-full mt-4`}>
+          {fitting && <Loader2 size={14} className="animate-spin" />} {fitting ? 'Calibrating…' : 'Calibrate'}
         </button>
-      </div>
 
-      {metrics && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="bg-sunken border border-line rounded-xl p-3">
-            <p className="text-[10px] uppercase tracking-widest text-ink-3">Calibrated (cross-validated)</p>
-            <p className="text-ink mt-1">{prf(metrics.calibrated_cv)}</p>
-          </div>
-          <div className="bg-sunken border border-line rounded-xl p-3">
-            <p className="text-[10px] uppercase tracking-widest text-ink-3">v1 heuristic, same labels</p>
-            <p className="text-ink mt-1">{prf(metrics.heuristic_v1)}</p>
-          </div>
-          <div className="bg-sunken border border-line rounded-xl p-3">
-            <p className="text-[10px] uppercase tracking-widest text-ink-3">Without video signals</p>
-            <p className="text-ink mt-1">{prf(metrics.calibrated_cv_without_video)}</p>
-          </div>
-          {metrics.inter_rater && (
-            <div className="bg-sunken border border-line rounded-xl p-3">
-              <p className="text-[10px] uppercase tracking-widest text-ink-3">Rater agreement</p>
-              <p className="text-ink mt-1">
-                {metrics.inter_rater.cohen_kappa === null ? 'κ —' : `κ ${metrics.inter_rater.cohen_kappa.toFixed(2)}`} on {metrics.inter_rater.n} concepts
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      <ul className="space-y-2">
-        {data.concepts.map(c => (
-          <li key={c.node_id} className={`rounded-xl border p-4 ${c.flagged ? 'border-orange-500/30 bg-orange-500/5' : 'border-line bg-surface'}`}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm text-ink flex items-center gap-2">
-                  {c.flagged && <AlertTriangle className="w-3.5 h-3.5 text-orange-700 shrink-0" />}
-                  <span className="truncate">{c.label}</span>
-                  <span className="text-[10px] text-ink-3 font-mono">
-                    {c.probability !== null ? `p=${c.probability.toFixed(2)}` : `CS=${c.heuristic_v1.toFixed(2)}`}
-                  </span>
-                </p>
-                {c.flagged && (
-                  <p className="text-[11px] text-ink-3 mt-1">
-                    Why: {c.signals.filter(s => s.contribution > 0).slice(0, 3).map(s => s.label).join(' · ') || 'combined signals'}
-                  </p>
-                )}
-                <p className="text-[10px] text-ink-4 mt-1">
-                  {c.counts.students} students · {c.counts.questions} questions · {c.counts.video_replays} lecture replays
-                  {c.mean_mastery !== null ? ` · mastery ${Math.round(c.mean_mastery * 100)}%` : ''}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0" role="group" aria-label={`Do students struggle with ${c.label}?`}>
-                <span className="text-[10px] text-ink-3 mr-1">Students struggle?</span>
-                <button
-                  onClick={() => label(c.node_id, mine(c) === true ? null : true)}
-                  aria-pressed={mine(c) === true}
-                  className={`px-2 py-1 rounded-lg text-[11px] border ${mine(c) === true ? 'border-orange-500 text-orange-700 bg-orange-500/10' : 'border-line text-ink-3 hover:text-ink'}`}
-                >
-                  Yes
-                </button>
-                <button
-                  onClick={() => label(c.node_id, mine(c) === false ? null : false)}
-                  aria-pressed={mine(c) === false}
-                  className={`px-2 py-1 rounded-lg text-[11px] border flex items-center gap-1 ${mine(c) === false ? 'border-emerald-500 text-emerald-700 bg-emerald-500/10' : 'border-line text-ink-3 hover:text-ink'}`}
-                >
-                  <Check className="w-3 h-3" /> No
-                </button>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+        {metrics && (
+          <dl className="mt-4 divide-y divide-[#e2eaeb] text-sm">
+            <Row k="Calibrated F1" v={f1(metrics.calibrated_cv)} />
+            <Row k="Simple rule F1" v={f1(metrics.heuristic_v1)} />
+            <Row k="Without video" v={f1(metrics.calibrated_cv_without_video)} />
+            {metrics.inter_rater && <Row k={`Rater agreement (${metrics.inter_rater.n})`} v={metrics.inter_rater.cohen_kappa === null ? '—' : `κ ${metrics.inter_rater.cohen_kappa.toFixed(2)}`} />}
+          </dl>
+        )}
+      </section>
     </div>
   );
 }
+
+const Row = ({ k, v }: { k: string; v: string }) => (
+  <div className="flex items-baseline justify-between py-2"><dt className="text-ink-3 text-xs">{k}</dt><dd className="text-accent-strong tabular">{v}</dd></div>
+);

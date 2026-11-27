@@ -32,7 +32,7 @@ export default function VectorTreemap({ data }: Props) {
         parentLabelTextColor="#282828"
         // High-end neon palette
         colors={(node: any) => {
-          const colors = ['#6366f1', '#059669', '#000000', '#b45309', '#8fadeb', '#4f75f7'];
+          const colors = ['#6366f1', '#059669', '#000000', '#b45309', '#8fbccb', '#2a6f87'];
           const path = node.path || '';
           const courseName = path.split('.')[1] || node.id;
           let hash = 0;

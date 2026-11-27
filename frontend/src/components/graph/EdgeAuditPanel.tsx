@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, ShieldQuestion, X } from 'lucide-react';
+import { Check, Loader2, X } from 'lucide-react';
 import { graphsApi } from '../../api/graphs';
 import { useToastStore } from '../../store/toastStore';
-import type { AuditItem, AuditReport, Proportion } from '../../types/graph';
+import type { AuditItem, AuditReport } from '../../types/graph';
 import { evidenceToSource } from '../../types/graph';
 import CitationList from '../tutor/CitationList';
+import { CLAY, pillDark } from '../ui/glass';
 
-function pct(p?: Proportion) {
-  if (!p || !p.n) return '—';
-  return `${Math.round(p.value * 100)}% (95% CI ${Math.round(p.ci_low * 100)}–${Math.round(p.ci_high * 100)}%, n=${p.n})`;
-}
-
-/** Instructor audit of graph relations: judge a stratified sample, report edge precision. */
+/** Instructor audit of map links: judge a sample, report how many links are right. */
 export default function EdgeAuditPanel({ graphId, courseId }: { graphId: string; courseId: string }) {
   const [items, setItems] = useState<AuditItem[]>([]);
   const [report, setReport] = useState<AuditReport | null>(null);
@@ -27,8 +23,7 @@ export default function EdgeAuditPanel({ graphId, courseId }: { graphId: string;
   const loadSample = async () => {
     setLoading(true);
     try {
-      const res = await graphsApi.auditSample(graphId, 30);
-      setItems(res.data.items);
+      setItems((await graphsApi.auditSample(graphId, 30)).data.items);
       refreshReport();
     } catch {
       addToast('Could not load an audit sample', 'error');
@@ -47,80 +42,68 @@ export default function EdgeAuditPanel({ graphId, courseId }: { graphId: string;
     }
   };
 
-  const remaining = items.filter(i => !i.audit || i.audit.status === 'unreviewed').length;
+  const p = report?.precision_estimate ?? report?.precision;
+  const judged = items.filter(i => i.audit && i.audit.status !== 'unreviewed').length;
 
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-sunken border border-line rounded-xl p-4">
-          <p className="text-[10px] uppercase tracking-widest text-ink-3">Edge precision (whole graph)</p>
-          <p className="text-sm text-ink mt-1">{pct(report?.precision_estimate ?? report?.precision)}</p>
-          {report?.precision_estimate && (
-            <p className="text-[10px] text-ink-4 mt-1">
-              Judged sample: {pct(report.precision)}
-              {report.precision_estimate.coverage !== undefined && report.precision_estimate.coverage < 1
-                ? ` · strata covered: ${Math.round(report.precision_estimate.coverage * 100)}% of edges` : ''}
-            </p>
-          )}
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2">
+        <div className={`rounded-2xl px-3.5 py-3 min-w-0 ${p?.n ? 'bg-accent-strong text-white' : 'bg-[#f1f5f7] text-accent-strong'}`}>
+          <span className="block font-display text-2xl leading-none tabular">{p && p.n ? `${Math.round(p.value * 100)}%` : '—'}</span>
+          <span className={`block mt-1.5 text-[11px] truncate ${p?.n ? 'text-white/70' : 'text-ink-3'}`}>links correct</span>
+          {p && p.n > 0 && <span className="block text-[10px] text-white/50 tabular truncate">±{Math.round(((p.ci_high - p.ci_low) / 2) * 100)} pts</span>}
         </div>
-        <div className="bg-sunken border border-line rounded-xl p-4">
-          <p className="text-[10px] uppercase tracking-widest text-ink-3">Supported edges</p>
-          <p className="text-sm text-ink mt-1">{pct(report?.precision_supported)}</p>
+        <div className="rounded-2xl bg-[#f1f5f7] px-3.5 py-3 min-w-0">
+          <span className="block font-display text-2xl leading-none tabular text-accent-strong">{p?.n ?? 0}</span>
+          <span className="block mt-1.5 text-[11px] text-ink-3 truncate">links checked</span>
         </div>
-        <div className="bg-sunken border border-line rounded-xl p-4">
-          <p className="text-[10px] uppercase tracking-widest text-ink-3">Unsupported (flagged)</p>
-          <p className="text-sm text-ink mt-1">
-            {report ? `${report.edges_unsupported} of ${report.edges_total} edges` : '—'}
-          </p>
+        <div className="rounded-2xl bg-[#f1f5f7] px-3.5 py-3 min-w-0">
+          <span className="block font-display text-2xl leading-none tabular text-accent-strong">{report ? report.edges_unsupported : '—'}</span>
+          <span className="block mt-1.5 text-[11px] text-ink-3 truncate">{report ? `of ${report.edges_total} unsourced` : 'unsourced'}</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-ink-3">
-          {items.length ? `${remaining} of ${items.length} sampled relations left to judge` : 'Judge a random sample of relations to measure how accurate the graph is.'}
-        </p>
-        <button onClick={loadSample} disabled={loading} className="px-3 py-1.5 rounded-lg text-xs bg-accent text-white font-medium disabled:opacity-50">
-          {items.length ? 'Reload sample' : 'Start audit'}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-ink-3">{items.length ? `${judged} of ${items.length} judged` : 'Check 30 random links against their sources.'}</p>
+        <button type="button" onClick={loadSample} disabled={loading} className={pillDark}>
+          {loading && <Loader2 size={14} className="animate-spin" />} {items.length ? 'New sample' : 'Start'}
         </button>
       </div>
 
-      <ul className="space-y-3">
-        {items.map(item => (
-          <li key={item.id} className="bg-surface border border-line rounded-xl p-4 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <p className="text-sm text-ink">
-                <span className="font-medium">{item.from_label}</span>
-                <span className="text-ink-3 mx-2">— {item.relation.replace(/_/g, ' ')} →</span>
-                <span className="font-medium">{item.to_label}</span>
-                {item.supported === false && <span className="ml-2 text-[10px] text-amber-700">no supporting passage</span>}
-              </p>
-              <div className="flex gap-1.5 shrink-0">
-                <button
-                  onClick={() => judge(item, 'correct')}
-                  aria-pressed={item.audit?.status === 'correct'}
-                  className={`p-1.5 rounded-lg border ${item.audit?.status === 'correct' ? 'border-emerald-500 text-emerald-700 bg-emerald-500/10' : 'border-line text-ink-3 hover:text-ink'}`}
-                  title="Correct relation"
-                >
-                  <Check className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => judge(item, 'incorrect')}
-                  aria-pressed={item.audit?.status === 'incorrect'}
-                  className={`p-1.5 rounded-lg border ${item.audit?.status === 'incorrect' ? 'border-red-500 text-red-600 bg-red-500/10' : 'border-line text-ink-3 hover:text-ink'}`}
-                  title="Incorrect relation"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            {item.provenance && item.provenance.length > 0 ? (
-              <CitationList courseId={courseId} sources={item.provenance.map(evidenceToSource)} title="Evidence" />
-            ) : (
-              <p className="text-xs text-ink-4 flex items-center gap-1.5"><ShieldQuestion className="w-3.5 h-3.5" /> The model proposed this relation without a passage.</p>
-            )}
-          </li>
-        ))}
-      </ul>
+      {items.length > 0 && (
+        <ul className="space-y-2">
+          {items.map(item => {
+            const v = item.audit?.status;
+            return (
+              <li key={item.id} className="rounded-2xl bg-[#f1f5f7] p-3.5">
+                <div className="flex items-center gap-3">
+                  <p className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5 text-sm">
+                    <span className="px-2.5 h-7 inline-flex items-center rounded-full bg-white text-accent-strong">{item.from_label}</span>
+                    <span className="text-[11px] text-ink-4">{item.relation.replace(/_/g, ' ')} →</span>
+                    <span className="px-2.5 h-7 inline-flex items-center rounded-full bg-white text-accent-strong">{item.to_label}</span>
+                  </p>
+                  <span className="inline-flex p-0.5 rounded-full bg-white shrink-0">
+                    <button type="button" onClick={() => judge(item, 'correct')} aria-pressed={v === 'correct'} title="Correct"
+                      className={`h-7 w-7 grid place-items-center rounded-full cursor-pointer ${v === 'correct' ? 'bg-accent-strong text-white' : 'text-ink-3 hover:text-accent-strong'}`}>
+                      <Check size={14} />
+                    </button>
+                    <button type="button" onClick={() => judge(item, 'incorrect')} aria-pressed={v === 'incorrect'} title="Wrong"
+                      className="h-7 w-7 grid place-items-center rounded-full cursor-pointer text-ink-3"
+                      style={v === 'incorrect' ? { background: CLAY.wash, color: CLAY.ink } : undefined}>
+                      <X size={14} />
+                    </button>
+                  </span>
+                </div>
+                <div className="mt-2.5">
+                  {item.provenance && item.provenance.length > 0
+                    ? <CitationList courseId={courseId} sources={item.provenance.map(evidenceToSource)} title="Source" />
+                    : <p className="text-[11px]" style={{ color: CLAY.ink }}>No source passage</p>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

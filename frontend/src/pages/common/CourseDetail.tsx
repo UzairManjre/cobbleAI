@@ -1,504 +1,248 @@
-import { useAuthStore } from '../../store/authStore';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
-import { coursesApi, documentsApi, graphsApi } from '../../api';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowRight, Check, FileText, Map as MapIcon, MessageCircle, Play, Sparkles } from 'lucide-react';
+import { coursesApi, documentsApi, lecturesApi, testsApi } from '../../api';
+import { faqApi, type FAQEntry } from '../../api/insights';
+import ScoreRing from '../../components/student/ScoreRing';
+import FaqCard from '../../components/student/FaqCard';
+import { panel, pillDark, pillLine, featureBg, rise } from '../../components/ui/glass';
+import { paletteAt, type ArtPalette } from '../../components/ui/artPalettes';
 import { useGraphStore } from '../../store/graphStore';
 import { useToastStore } from '../../store/toastStore';
-import { ArrowLeft, Upload, FileText, Trash2, Loader2, BookOpen, Users, Zap, PlayCircle } from 'lucide-react';
-import TutorPolicyCard from '../../components/tutor/TutorPolicyCard';
-import CourseFAQ from '../../components/insights/CourseFAQ';
-import CourseSetupPanel from '../../components/course/CourseSetupPanel';
-import { useCourseSetup } from '../../hooks/useCourseSetup';
-import { STAGE_LABELS, isActiveBuild } from '../../utils/buildProgress';
-import { apiErrorDetail } from '../../utils/apiError';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
+import { openInNewTab } from '../../utils/download';
+import { LEVEL_BG, levelOf, loadStudyPath, nextStep, pct, plural, type StudyConcept } from '../../utils/mastery';
 
+interface Doc { id: string; filename: string; media_type: 'document' | 'lecture'; file_type: string; status: string; created_at: string; duration_sec?: number }
+interface Test { id: string; title: string; test_type: string; duration_minutes: number; status: string }
+interface Attempt { id: string; test_id: string; status: string; percentage: number | null }
+
+const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+const stem = (name: string) => name.replace(/\.[a-z0-9]+$/i, '');
+
+/** A student's class page: where they are on the study path, then the lectures, notes and tests. */
 export default function CourseDetail() {
-  const { courseId } = useParams();
-  const { token, role } = useAuthStore();
+  const { courseId = '' } = useParams();
   const navigate = useNavigate();
-  const addToast = useToastStore(state => state.addToast);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const addToast = useToastStore(s => s.addToast);
 
-  const [course, setCourse] = useState<any>(null);
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [students, setStudents] = useState<any[]>([]);
-
-  const {
-    nodes: graphNodes,
-    edges: graphEdges,
-    fetchCourseGraph
-  } = useGraphStore();
-
-  // Course setup: file processing and the concept-map build, which runs in the background
-  const isProfessor = role === 'professor';
-  const setupRef = useRef<HTMLDivElement>(null);
-  const [startingBuild, setStartingBuild] = useState(false);
-  const [cancellingBuild, setCancellingBuild] = useState(false);
-  const { setup, refresh: refreshSetup } = useCourseSetup(courseId, isProfessor, build => {
-    if (build.status === 'complete' && courseId) {
-      fetchCourseGraph(courseId);
-      addToast(`Concept map ready: ${build.nodes_count} concepts, ${build.edges_count} connections`, 'success');
-    } else if (build.status === 'failed') {
-      addToast('The concept map build failed. See Course setup for details.', 'error');
-    }
-  });
-  const building = isActiveBuild(setup?.build);
+  const [path, setPath] = useState<StudyConcept[] | null>(null);
+  const [docs, setDocs] = useState<Doc[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
+  const [faq, setFaq] = useState<FAQEntry[]>([]);
+  const [palette, setPalette] = useState<ArtPalette>(paletteAt(0));
 
   useEffect(() => {
-    if (courseId) {
-      fetchCourseDetails();
-      fetchDocuments();
-      fetchCourseGraph(courseId);
-      if (role === 'professor') {
-        fetchStudents();
-      }
-    }
-  }, [courseId, token]);
+    let cancelled = false;
+    Promise.allSettled([
+      loadStudyPath(courseId),
+      documentsApi.list(courseId),
+      testsApi.getByCourse(courseId),
+      testsApi.getMyAttempts(),
+      faqApi.list(courseId),
+      coursesApi.list(),
+    ]).then(([p, d, t, a, f, c]) => {
+      if (cancelled) return;
+      setPath(p.status === 'fulfilled' ? p.value : []);
+      setDocs(d.status === 'fulfilled' ? (d.value.data || []).filter((x: Doc) => x.status === 'ready') : []);
+      setTests(t.status === 'fulfilled' ? (t.value.data || []).filter((x: Test) => x.status === 'published') : []);
+      setAttempts(a.status === 'fulfilled' ? a.value.data?.attempts || [] : []);
+      setFaq(f.status === 'fulfilled' ? f.value.data.entries.filter(e => e.status === 'published') : []);
+      if (c.status === 'fulfilled') setPalette(paletteAt(Math.max(0, (c.value.data || []).findIndex((x: { id: string }) => x.id === courseId))));
+    });
+    return () => { cancelled = true; };
+  }, [courseId]);
 
-  useEffect(() => {
-    const hasPendingDocs = documents.some(doc => doc.status === 'pending' || doc.status === 'processing');
-    if (!hasPendingDocs || !courseId || !token) return;
-
-    const interval = setInterval(() => {
-      fetchDocuments();
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [documents, courseId, token]);
-
-  const fetchCourseDetails = async () => {
-    try {
-      const res = await coursesApi.list();
-      const current = res.data.find((c: any) => c.id === courseId);
-      setCourse(current);
-      setIsLoading(false);
-    } catch (err) {
-      console.error(err);
-      setIsLoading(false);
-    }
+  const study = (nodeId?: string) => {
+    if (nodeId) useGraphStore.setState({ currentNodeId: nodeId });
+    navigate(`/courses/${courseId}/learn`);
   };
 
-  const fetchStudents = async () => {
-    try {
-      const res = await coursesApi.getProfessorStudents();
-      const courseStudents = (res.data || []).filter((s: any) => s.course_id === courseId);
-      setStudents(courseStudents);
-    } catch (err) {
-      console.error('Failed to fetch students:', err);
-    }
+  const step = useMemo(() => nextStep(path || []), [path]);
+  const loading = path === null;
+  const ready = !!path?.length;
+  const lectures = docs.filter(d => d.media_type === 'lecture');
+  const notes = docs.filter(d => d.media_type !== 'lecture');
+  const attemptOf = new Map(attempts.map(a => [a.test_id, a]));
+
+  const openFile = async (doc: Doc) => {
+    const ok = await openInNewTab(async () => (await lecturesApi.fileUrl(doc.id)).data.url);
+    if (!ok) addToast('Could not open the file', 'error');
   };
-
-  const fetchDocuments = async () => {
-    if (!token) return;
-
-    try {
-      const res = await documentsApi.list(courseId || '');
-      setDocuments(res.data);
-    } catch (err) {
-      console.error('Failed to fetch documents:', err);
-    }
-  };
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || !token) return;
-
-    setIsUploading(true);
-    setUploadProgress(0);
-    try {
-      await documentsApi.upload(courseId || '', files, setUploadProgress);
-      fetchDocuments();
-      refreshSetup();
-    } catch (err: any) {
-      console.error('Upload error:', err);
-      // documentsApi.upload throws Error(detail) from the server response
-      addToast(apiErrorDetail(err, err.message || 'Upload failed'), 'error');
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const handleDeleteDocument = async (docId: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
-    try {
-      await documentsApi.delete(docId);
-      fetchDocuments();
-      refreshSetup();
-    } catch (err) {
-      console.error('Failed to delete document', err);
-      addToast('Failed to delete document', 'error');
-    }
-  };
-
-  const generateInvite = async () => {
-    try {
-      const res = await coursesApi.createInvite(courseId || '');
-      setInviteCode(res.data.code);
-    } catch (err) {
-      addToast('Failed to generate invite', 'error');
-    }
-  };
-
-  const startBuild = async () => {
-    if (!courseId) return;
-    setStartingBuild(true);
-    try {
-      const res = await graphsApi.startBuild(courseId);
-      addToast(res.data.created ? 'Map build started. Its progress is shown under Course setup.' : 'A map build is already running.', 'success');
-      refreshSetup();
-      setupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } catch (err) {
-      addToast(apiErrorDetail(err, 'Could not start the map build'), 'error');
-    } finally {
-      setStartingBuild(false);
-    }
-  };
-
-  const cancelBuild = async (buildId: string) => {
-    setCancellingBuild(true);
-    try {
-      await graphsApi.cancelBuild(buildId);
-      refreshSetup();
-    } catch (err) {
-      addToast(apiErrorDetail(err, 'Could not cancel the build'), 'error');
-    } finally {
-      setCancellingBuild(false);
-    }
-  };
-
-  const cleanupDuplicates = async () => {
-    if (!token) return;
-    if (!confirm('This will remove duplicate documents. Continue?')) return;
-
-    try {
-      const res = await documentsApi.cleanupDuplicates(courseId!);
-      addToast(res.data.message, 'success');
-      fetchDocuments();
-    } catch (err: any) {
-      console.error('Cleanup error:', err);
-      addToast('Cleanup failed', 'error');
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh] bg-canvas">
-        <Loader2 className="w-8 h-8 animate-spin text-ink-3" />
-      </div>
-    );
-  }
-
-  if (!course) {
-    return (
-      <div className="min-h-screen bg-canvas text-ink p-8 flex flex-col items-center justify-center space-y-6">
-        <h2 className="text-3xl font-outfit font-light tracking-tight text-ink">Course not found</h2>
-        <Button
-          onClick={() => navigate('/courses')}
-          variant="outline"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Dashboard</span>
-        </Button>
-      </div>
-    );
-  }
-
-  const mapStatus = (() => {
-    if (setup?.build && building) {
-      return { label: setup.build.status === 'queued' ? 'Map build queued' : `Building map · ${setup.build.percent}%`, tone: 'text-violet-700' };
-    }
-    if (setup?.phase === 'processing') return { label: 'Processing files', tone: 'text-violet-700' };
-    if (graphNodes.length > 0) {
-      return setup?.materials_changed.length
-        ? { label: 'Map out of date', tone: 'text-orange-700' }
-        : { label: 'Map ready', tone: 'text-accent' };
-    }
-    return { label: 'Map required', tone: 'text-orange-700' };
-  })();
 
   return (
-    <div className="bg-canvas text-ink px-8 lg:px-12 py-8 relative overflow-hidden">
-
-      <div className="max-w-6xl mx-auto space-y-10 relative z-10">
-
-        {/* Course title, breadcrumb and tabs come from CourseLayout. Here: the one next step. */}
-        {role === 'student' && (
-          <section className="border-y border-ink py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="font-display text-2xl tracking-[-0.03em]">
-                {graphNodes.length > 0 ? 'Pick up where you left off' : 'Your professor is still preparing this course'}
-              </h2>
-              <p className="text-sm text-ink-3 mt-1">
-                {graphNodes.length > 0
-                  ? `${graphNodes.length} concepts to learn, with a tutor that cites your course notes.`
-                  : 'You can read the materials below. Learning tools open once the concept map is built.'}
-              </p>
+    <>
+      {/* Row 1: next step, study path */}
+      <div className="mt-8 grid gap-4 xl:grid-cols-3">
+        <section style={{ ...rise(1), background: featureBg }} className="relative overflow-hidden rounded-[22px] p-6 text-white flex flex-col min-h-[240px]">
+          <p className="text-xs text-white/70">{step ? `Next up · step ${step.next.step} of ${path?.length}` : 'Next up'}</p>
+          <h2 className="mt-2 font-display font-medium text-[1.9rem] leading-[1.05] tracking-[-0.03em]">
+            {loading ? 'Finding your next step…' : !ready ? 'Not ready to study yet' : step ? step.next.label : 'You know every concept.'}
+          </h2>
+          <p className="mt-2 text-sm text-white/75 line-clamp-2">
+            {!ready ? 'Your professor is still building the concept map. The lectures and notes below are open already.'
+              : step ? (step.before ? `Builds on ${step.before.label}, which you know.` : step.next.description)
+                : 'Keep them fresh with a test, or ask the tutor anything.'}
+          </p>
+          {step && (
+            <div className="mt-4 flex items-center gap-3 text-xs text-white/80">
+              <span className="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden"><span className="block h-full rounded-full bg-white" style={{ width: pct(step.next.mastery) }} /></span>
+              <span className="tabular">{pct(step.next.mastery)} known</span>
             </div>
-            {graphNodes.length > 0 && (
-              <Button variant="primary" onClick={() => navigate(`/courses/${courseId}/learn`)}>
-                <BookOpen size={16} /> Start learning
-              </Button>
+          )}
+          <div className="mt-auto pt-5 flex flex-wrap gap-2">
+            {ready && (
+              <button type="button" onClick={() => study(step?.next.id)} className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-white text-[#0e3445] text-sm font-medium hover:bg-[#ecf3f6] transition-colors cursor-pointer">
+                <Sparkles size={14} /> {step ? 'Study it' : 'Review'}
+              </button>
+            )}
+            <Link to={`/courses/${courseId}/ask`} className="inline-flex items-center gap-2 h-10 px-4 rounded-full border border-white/40 text-sm hover:bg-white/10 transition-colors">
+              <MessageCircle size={14} /> Ask the tutor
+            </Link>
+          </div>
+        </section>
+
+        <section aria-labelledby="path-heading" style={rise(2)} className={`${panel} p-5 xl:col-span-2 flex flex-col`}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="path-heading" className="text-[15px] text-[#0e3445]">Study path</h2>
+              <p className="text-xs text-ink-3 mt-0.5">{ready ? 'In the order to learn them · click a step to study it' : 'Appears once the concept map is built'}</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <ul className="hidden lg:flex items-center gap-3 text-[11px] text-ink-3">
+                {([['Known', LEVEL_BG.known], ['Learning', LEVEL_BG.learning], ['Not yet', LEVEL_BG.new]] as const).map(([l, c]) => (
+                  <li key={l} className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${c}`} />{l}</li>
+                ))}
+              </ul>
+              {ready && <Link to={`/courses/${courseId}/map`} className={pillLine}><MapIcon size={14} /> Map</Link>}
+            </div>
+          </div>
+          {ready && <ProgressBar path={path!} />}
+          <div className="mt-auto pt-6">
+            {loading ? <div className="h-24 rounded-2xl bg-[#ecf3f6] animate-pulse" />
+              : ready ? <PathStrip path={path!} current={step?.next.id} onPick={study} />
+                : <div className="h-24 rounded-2xl border border-dashed border-[#b9cdd5]" />}
+          </div>
+        </section>
+      </div>
+
+      {/* Row 2: lectures and notes, tests and FAQ */}
+      {/* Panels stretch to the row's height so the two columns always end level */}
+      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+        <section aria-labelledby="materials-heading" style={rise(3)} className={`${panel} p-5 xl:col-span-2`}>
+          <div className="flex items-center justify-between">
+            <h2 id="materials-heading" className="text-[15px] text-[#0e3445]">Lectures and notes</h2>
+            <span className="text-xs text-ink-3">{plural(lectures.length, 'lecture')} · {plural(notes.length, 'file')}</span>
+          </div>
+          {docs.length === 0 ? (
+            <p className="mt-4 p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">{loading ? 'Loading…' : 'Nothing shared yet.'}</p>
+          ) : (
+            <ul className="mt-4 space-y-2">
+              {lectures.map(d => (
+                <li key={d.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 p-3 rounded-2xl bg-[#f1f5f7]">
+                  <span className="grid place-items-center h-10 w-10 rounded-full text-white" style={{ background: `linear-gradient(135deg, ${palette.deep}, ${palette.mid})` }}><Play size={15} className="ml-0.5" /></span>
+                  <span className="min-w-0">
+                    <span className="block text-[15px] text-[#0e3445] truncate">{stem(d.filename)}</span>
+                    <span className="block text-xs text-ink-3">Recording{d.duration_sec ? ` · ${Math.round(d.duration_sec / 60)} min` : ''} · transcript and chapters</span>
+                  </span>
+                  <Link to={`/courses/${courseId}/lectures/${d.id}`} className={pillDark}>Watch</Link>
+                </li>
+              ))}
+              {notes.map(d => (
+                <li key={d.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 p-3 rounded-2xl bg-[#f1f5f7]">
+                  <span className="grid place-items-center h-10 w-10 rounded-full bg-white text-[#1b566b]"><FileText size={16} /></span>
+                  <span className="min-w-0">
+                    <span className="block text-[15px] text-[#0e3445] truncate">{stem(d.filename)}</span>
+                    <span className="block text-xs text-ink-3">{d.file_type.toUpperCase()} · added {day(d.created_at)}</span>
+                  </span>
+                  <button type="button" onClick={() => openFile(d)} className={pillLine}>Open</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <div className="flex flex-col gap-4">
+          <section aria-labelledby="tests-heading" style={rise(4)} className={`${panel} p-5 ${faq.length > 0 ? '' : 'flex-1'}`}>
+            <div className="flex items-center justify-between">
+              <h2 id="tests-heading" className="text-[15px] text-[#0e3445]">Tests</h2>
+              <Link to={`/courses/${courseId}/tests`} className="text-xs text-ink-3 hover:text-[#0e3445]">All</Link>
+            </div>
+            {tests.length === 0 ? (
+              <p className="mt-4 p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">{loading ? 'Loading…' : 'No tests yet.'}</p>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {tests.map(t => {
+                  const a = attemptOf.get(t.id);
+                  const done = a && a.status !== 'in_progress';
+                  return (
+                    <li key={t.id} className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#f1f5f7]">
+                      <ScoreRing value={done && a?.percentage != null ? a.percentage / 100 : null} color={palette.mid} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm text-[#0e3445] truncate">{t.title}</span>
+                        <span className="block text-xs text-ink-3">{t.test_type === 'assignment' ? 'Assignment' : 'Quiz'} · {t.duration_minutes} min</span>
+                      </span>
+                      {done
+                        ? a?.status === 'graded'
+                          ? <Link to={`/tests/${t.id}/result/${a.id}`} className={`${pillLine} h-8 px-3`}>Result</Link>
+                          : <span className="text-xs text-ink-4 px-2">Submitted</span>
+                        : <Link to={`/tests/${t.id}`} className={`${pillDark} h-8 px-3`}>{a ? 'Continue' : 'Start'} <ArrowRight size={12} /></Link>}
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </section>
-        )}
 
-        {role === 'professor' && (
-          <header className="flex flex-wrap items-center md:justify-end gap-3">
-                {graphNodes.length > 0 && (
-                  <Button
-                    onClick={() => navigate(`/courses/${courseId}/learn`)}
-                    variant="ghost"
-                    title="Open the study view students use, with the tutor"
-                  >
-                    <BookOpen size={14} /> Preview as student
-                  </Button>
-                )}
-                <Button
-                  onClick={cleanupDuplicates}
-                  variant="ghost"
-                  title="Remove files that were uploaded more than once"
-                >
-                  Remove duplicate files
-                </Button>
-                <Button
-                  onClick={startBuild}
-                  disabled={building || startingBuild || !setup?.documents.ready}
-                  variant="primary"
-                  title={setup && !setup.documents.ready ? 'Upload files and wait for them to be processed first' : undefined}
-                >
-                  {building ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                  {building
-                    ? (setup?.build?.status === 'queued' ? 'Map build queued' : `Building map · ${setup?.build?.percent ?? 0}%`)
-                    : graphNodes.length > 0 ? 'Rebuild Map' : 'Build Map'}
-                </Button>
-          </header>
-        )}
-
-        {isProfessor && setup && (
-          <div ref={setupRef} className="scroll-mt-8">
-            <CourseSetupPanel
-              setup={setup}
-              starting={startingBuild}
-              cancelling={cancellingBuild}
-              onBuild={startBuild}
-              onCancel={cancelBuild}
-              onViewMap={() => navigate(`/courses/${courseId}/map`)}
-              onUpload={() => fileInputRef.current?.click()}
-            />
-          </div>
-        )}
-
-        {/* Main Split Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* Left Column: Learning Materials */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="p-6">
-              <div className="flex items-center justify-between pb-6 mb-6 border-b border-line">
-                <h3 className="text-lg font-outfit font-medium text-ink">Learning Materials</h3>
-
-                {role === 'professor' && (
-                  <>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleUpload}
-                      className="hidden"
-                      accept=".pdf,.docx,.pptx,.mp4,.webm,.mov,.mp3,.m4a,.wav"
-                      multiple
-                    />
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                      variant="outline"
-                    >
-                      {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload size={14} />}
-                      <span>{isUploading ? `Uploading${uploadProgress !== null ? ` ${Math.round(uploadProgress * 100)}%` : '...'}` : 'Upload Files'}</span>
-                    </Button>
-                  </>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                {documents.map((doc) => (
-                  <div key={doc.id || doc._id} className="flex items-center justify-between p-4 rounded-xl hover:bg-sunken transition-colors border border-transparent hover:border-line group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-sunken border border-line-strong rounded-lg flex items-center justify-center text-[10px] font-bold text-ink-3">
-                        {doc.filename.split('.').pop()?.toUpperCase() || 'DOC'}
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-ink truncate max-w-[200px] md:max-w-md">{doc.filename}</h4>
-                        <p className="text-[10px] text-ink-3 mt-1">
-                          {doc.media_type === 'lecture' ? 'Lecture recording · ' : ''}Added {new Date(doc.created_at).toLocaleDateString()}
-                          {doc.status === 'processing' && doc.stage && (
-                            <span className="ml-2 text-violet-700">{STAGE_LABELS[doc.stage] || doc.stage}{doc.progress ? ` ${Math.round(doc.progress * 100)}%` : ''}</span>
-                          )}
-                          {doc.status === 'pending' && <span className="ml-2 text-orange-700">Waiting in queue</span>}
-                          {doc.status === 'failed' && doc.error_message && (
-                            <span className="block mt-1 text-red-600 line-clamp-2">{doc.error_message}</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {doc.media_type === 'lecture' && (doc.status === 'ready' || role === 'professor') && (
-                        <button
-                          onClick={() => navigate(`/courses/${courseId}/lectures/${doc.id || doc._id}`)}
-                          className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest rounded-full border border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10"
-                          title="Open the lecture: video, transcript, chapters and lecture chat"
-                        >
-                          <PlayCircle size={12} /> Open
-                        </button>
-                      )}
-                      <span title={doc.status === 'failed' ? doc.error_message || undefined : undefined} className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-full border ${doc.status === 'ready'
-                          ? 'text-accent border-accent/30'
-                          : doc.status === 'processing'
-                            ? 'text-purple-500 border-purple-500/30 animate-pulse'
-                            : doc.status === 'failed'
-                              ? 'text-red-600 border-red-500/30'
-                              : 'text-orange-700 border-orange-500/30'
-                        }`}>
-                        {doc.status}
-                      </span>
-                      {role === 'professor' && (
-                        <button
-                          onClick={() => handleDeleteDocument(doc.id || doc._id)}
-                          className="p-1.5 text-ink-3 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                          title="Delete document"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {documents.length === 0 && (
-                  <div className="py-12 flex flex-col items-center justify-center text-ink-3">
-                    <FileText size={32} className="mb-3 opacity-50" />
-                    <p className="text-sm font-medium text-ink mb-1">No materials added</p>
-                    {role === 'professor' && (
-                      <span className="text-xs">Upload slides, notes or lecture recordings to build the AI map.</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          {/* Right Column: Intelligence & Student Access */}
-          <div className="space-y-6">
-
-            {/* Course Intelligence */}
-            <Card className="p-6">
-              <h3 className="text-lg font-outfit font-medium text-ink mb-6">Concept map</h3>
-
-              <div className="space-y-4 text-sm">
-                <div className="flex justify-between items-center py-2 border-b border-line">
-                  <span className="text-ink-3">Total Concepts</span>
-                  <span className="font-medium text-ink">{graphNodes.length || '--'}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-line">
-                  <span className="text-ink-3">Connections</span>
-                  <span className="font-medium text-ink">{graphEdges.length || '--'}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-line">
-                  <span className="text-ink-3">Documents</span>
-                  <span className="font-medium text-ink">{documents.length}</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-ink-3">Status</span>
-                  <span className={`text-xs font-medium ${mapStatus.tone}`}>
-                    {mapStatus.label}
-                  </span>
-                </div>
-              </div>
-            </Card>
-
-            {role === 'professor' && courseId && <TutorPolicyCard courseId={courseId} />}
-            {role === 'student' && courseId && <CourseFAQ courseId={courseId} />}
-
-            {/* Student Access Card */}
-            {role === 'professor' && (
-              <Card className="p-6">
-                <h3 className="text-lg font-outfit font-medium text-ink mb-4">Student Access</h3>
-
-                <p className="text-xs text-ink-3 mb-6">
-                  Provide this code to your students to grant them full access to this course's AI materials.
-                </p>
-
-                {inviteCode ? (
-                  <div className="p-4 bg-sunken border border-line-strong text-ink font-medium text-xl text-center rounded-lg tracking-widest">
-                    {inviteCode}
-                  </div>
-                ) : (
-                  <Button
-                    onClick={generateInvite}
-                    variant="primary"
-                    className="w-full"
-                  >
-                    Generate Invite Code
-                  </Button>
-                )}
-              </Card>
-            )}
-
-            {/* Enrolled Students Card */}
-            {role === 'professor' && (
-              <Card className="p-6">
-                <h3 className="text-lg font-outfit font-medium text-ink mb-6">Enrolled Students</h3>
-                <div className="space-y-4">
-                  {students.length === 0 ? (
-                    <div className="py-6 flex flex-col items-center justify-center text-ink-3 text-center">
-                      <Users size={24} className="mb-2 opacity-50" />
-                      <p className="text-sm font-medium text-ink mb-1">No students yet</p>
-                      <span className="text-xs">Share the invite code above.</span>
-                    </div>
-                  ) : (
-                    students.map((student) => (
-                      <div key={student.id} className="flex items-center justify-between p-3 rounded-lg bg-sunken border border-line">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-sunken-2 border border-line-strong flex items-center justify-center text-ink-3 text-xs font-medium shrink-0">
-                            {(student.name || student.email || "?").charAt(0).toUpperCase()}
-                          </div>
-                          <div className="overflow-hidden">
-                            <span className="block font-medium text-sm text-ink truncate">{student.name || student.email || "Unknown Student"}</span>
-                            <span className="block text-[10px] text-ink-3">
-                              Enrolled: {student.enrolled_at ? new Date(student.enrolled_at).toLocaleString(undefined, {
-                                month: 'short', day: 'numeric', year: 'numeric',
-                                hour: 'numeric', minute: '2-digit', hour12: true
-                              }) : 'N/A'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className={`block text-[11px] font-medium px-2 py-0.5 rounded-full inline-block mb-1 ${student.flagIcon ? 'bg-red-500/10 text-red-600 border border-red-500/20' : 'bg-sunken-2 text-ink-3 border border-line-strong'}`}>
-                            {student.status}
-                          </span>
-                          <span className="block text-[10px] text-ink-3 font-medium">
-                            {student.progress}% Completed
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </Card>
-            )}
-          </div>
+          {faq.length > 0 && <FaqCard style={rise(5)} className="flex-1" courseId={courseId} entries={faq} />}
         </div>
       </div>
+    </>
+  );
+}
+
+/** Known / learning / to go across the whole class, as one segmented bar. */
+function ProgressBar({ path }: { path: StudyConcept[] }) {
+  const count = (l: string) => path.filter(k => levelOf(k.mastery) === l).length;
+  const parts = [['known', count('known'), 'known'], ['learning', count('learning'), 'learning'], ['new', count('new'), 'to go']] as const;
+  return (
+    <div className="mt-5">
+      <div className="flex h-2.5 gap-[3px]" aria-hidden>
+        {parts.map(([l, n]) => n > 0 && <span key={l} className={`rounded-full ${LEVEL_BG[l]}`} style={{ flex: n }} />)}
+      </div>
+      <p className="mt-2 flex gap-4 text-xs text-ink-3 tabular">
+        {parts.map(([l, n, word]) => <span key={l}><span className="text-[#0e3445]">{n}</span> {word}</span>)}
+      </p>
     </div>
+  );
+}
+
+/** The study order as a row of numbered beads on one line, shaded by how well each is known. */
+function PathStrip({ path, current, onPick }: { path: StudyConcept[]; current?: string; onPick: (id: string) => void }) {
+  const cols = Math.min(path.length, 12);
+  return (
+    <ol className="grid gap-y-5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      {path.map((k, i) => {
+        const level = levelOf(k.mastery);
+        const isCurrent = k.id === current;
+        return (
+          <li key={k.id} className="relative">
+            {/* The line to the previous step, in the same row */}
+            {i % cols !== 0 && <span aria-hidden className={`absolute top-[22px] right-1/2 w-full h-0.5 ${level === 'new' ? 'bg-[#dbe7ec]' : 'bg-[#8fbccb]'}`} />}
+            <button type="button" onClick={() => onPick(k.id)} title={`${k.label} · ${pct(k.mastery)} known`}
+              className="group relative z-10 w-full flex flex-col items-center gap-2.5 cursor-pointer">
+              {/* White backing so the connecting line never shows through a light bead */}
+              <span className={`rounded-full bg-white p-[3px] transition-transform group-hover:scale-110 ${isCurrent ? 'ring-4 ring-[#2a6f87]/20' : ''}`}>
+                <span className={`grid place-items-center h-10 w-10 rounded-full text-sm font-medium tabular ${LEVEL_BG[level]} ${level === 'known' ? 'text-white' : 'text-[#0e3445]'}`}>
+                  {level === 'known' ? <Check size={16} /> : k.step}
+                </span>
+              </span>
+              <span className={`px-1 text-center text-xs leading-tight line-clamp-2 h-[2.5em] ${isCurrent ? 'text-[#0e3445] font-medium' : 'text-ink-3 group-hover:text-[#0e3445]'}`}>{k.label}</span>
+              <span className="text-[11px] tabular text-ink-4">{pct(k.mastery)}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

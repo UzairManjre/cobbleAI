@@ -1,74 +1,46 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowUp, BookOpen, GraduationCap, Lightbulb, ListChecks, RotateCcw } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { coursesApi } from '../../api';
-import { Send, GraduationCap, PenTool, LayoutDashboard, Brain, ChevronDown, ChevronUp } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { coursesApi, API_URL } from '../../api';
 import { analytics } from '../../utils/analytics';
-import { API_URL } from '../../api';
-import { Button } from '../../components/ui/Button';
-import KnowledgeGraph from '../../components/graph/KnowledgeGraph';
-import CourseTutorChat from '../../components/tutor/CourseTutorChat';
-import { useGraphStore } from '../../store/graphStore';
+import GradientPage from '../../components/layout/GradientPage';
+import VoiceInputButton from '../../components/tutor/VoiceInputButton';
+import MessageContent from '../../components/tutor/MessageContent';
+import { panel, rise } from '../../components/ui/glass';
+import { paletteAt } from '../../components/ui/artPalettes';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
+interface Message { role: 'user' | 'assistant'; content: string }
+interface Course { id: string; title: string; code: string }
+type Mode = 'teach' | 'test' | 'review';
 
-const MsgContent = ({ content }: { content: string }) => {
-  const [showReasoning, setShowReasoning] = useState(false);
+const MODES: { key: Mode; label: string; hint: string; icon: typeof Lightbulb }[] = [
+  { key: 'teach', label: 'Explain', hint: 'Explains the idea step by step', icon: Lightbulb },
+  { key: 'test', label: 'Quiz me', hint: 'Asks you questions and checks your answers', icon: ListChecks },
+  { key: 'review', label: 'Recap', hint: 'Short summary of what matters', icon: RotateCcw },
+];
 
-  if (!content) return <span className="opacity-50 font-medium text-xs tracking-wider uppercase">Initializing...</span>;
+const STARTERS = [
+  'Explain gradient descent like I am new to it',
+  'Quiz me on probability basics',
+  'What is the difference between a list and an array?',
+  'Help me plan a week of revision',
+];
 
-  const thoughtMatch = typeof content === 'string' ? content.match(/<thought>([\s\S]*?)<\/thought>/g) : null;
-  const reasoning = thoughtMatch ? thoughtMatch.map(m => m.replace(/<\/?thought>/g, '')).join('\n') : '';
-  const cleanContent = typeof content === 'string' ? content.replace(/<thought>[\s\S]*?<\/thought>/g, '').trim() : '';
-
-  if (!cleanContent && !reasoning) return <span className="opacity-50 font-medium text-xs tracking-wider uppercase">...</span>;
-
+function AssistantMessage({ content }: { content: string }) {
   return (
-    <div className="space-y-4">
-      {reasoning && (
-        <div className="bg-accent/10 border border-accent/20 rounded-xl overflow-hidden transition-all duration-300">
-          <button
-            type="button"
-            onClick={() => setShowReasoning(!showReasoning)}
-            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-accent/20 transition-colors focus:outline-none"
-          >
-            <div className="flex items-center gap-2 text-xs font-semibold text-accent uppercase tracking-wider">
-              <Brain size={14} className="text-accent" />
-              Thinking Process
-            </div>
-            {showReasoning ? <ChevronUp size={14} className="text-accent" /> : <ChevronDown size={14} className="text-accent" />}
-          </button>
-
-          {showReasoning && (
-            <div className="px-4 pb-4 text-xs text-ink-2 leading-relaxed border-t border-accent/20 pt-3 italic whitespace-pre-wrap">
-              {reasoning}
-            </div>
-          )}
-        </div>
-      )}
-
-      {cleanContent && (
-        <div className="prose prose-invert max-w-none text-sm leading-relaxed text-ink">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              p: ({node, ...props}) => <p className="my-0 font-normal" {...props} />,
-              pre: ({node, ...props}) => <pre className="bg-surface border border-line p-4 rounded-xl overflow-x-auto my-3 text-xs" {...props} />,
-              code: ({node, ...props}) => <code className="text-violet-700 bg-purple-500/10 font-mono text-xs px-1.5 py-0.5 rounded border border-purple-500/20" {...props} />
-            }}
-          >
-            {cleanContent}
-          </ReactMarkdown>
-        </div>
-      )}
+    <div className="flex items-start gap-3">
+      <span className="grid place-items-center h-9 w-9 shrink-0 rounded-full bg-[#0e3445] text-white"><GraduationCap size={16} /></span>
+      <div className="min-w-0 max-w-[85%] rounded-[18px] rounded-tl-md bg-white px-4 py-3 shadow-[0_8px_24px_-18px_rgba(14,52,69,0.45)]">
+        {content ? <MessageContent content={content} /> : (
+          <span className="inline-flex gap-1 py-1.5" aria-label="Thinking">
+            {[0, 150, 300].map(d => <span key={d} className="h-1.5 w-1.5 rounded-full bg-[#8fbccb] animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
+          </span>
+        )}
+      </div>
     </div>
   );
-};
+}
 
 const SESSION_STORAGE_KEY = 'chat_session_id';
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -78,331 +50,225 @@ function getOrCreateSessionId(): string {
     const raw = localStorage.getItem(SESSION_STORAGE_KEY);
     if (raw) {
       const { id, expiresAt } = JSON.parse(raw);
-      if (Date.now() < expiresAt) {
-        return id;
-      }
+      if (Date.now() < expiresAt) return id;
     }
   } catch {
     // ignore parse errors
   }
-
   const newId = crypto.randomUUID();
-  const expiresAt = Date.now() + SESSION_TTL_MS;
-  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ id: newId, expiresAt }));
+  try { localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ id: newId, expiresAt: Date.now() + SESSION_TTL_MS })); } catch { /* storage blocked */ }
   return newId;
 }
 
+/** The general tutor: any subject, not tied to a class. Class-grounded answers live in each class's Ask tab. */
 export default function Chat() {
   const [searchParams] = useSearchParams();
-  // Inside a course (its Ask tab) the tutor answers from that course's materials; on /tutor it is a general chat
-  const { courseId: routeCourseId } = useParams();
-  const courseId = routeCourseId ?? null;
-  const navigate = useNavigate();
-  const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
-  useEffect(() => {
-    if (!courseId) coursesApi.list().then(res => setCourses(res.data || [])).catch(() => setCourses([]));
-  }, [courseId]);
   const initialTopic = searchParams.get('topic');
-
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: initialTopic
-        ? `I see you're interested in **${initialTopic}**. Let's dive deep into it. What specifically would you like to explore?`
-        : 'Hello! I\'m your Cobble AI tutor. What would you like to learn about today?'
-    }
-  ]);
-  const [input, setInput] = useState('');
-  const [mode, setMode] = useState<'teach' | 'test' | 'review'>('teach');
-  const [isTyping, setIsTyping] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
   const { token } = useAuthStore();
-  const { nodes, currentNodeId, fetchCourseGraph, navigateToNode, setCurrentNode } = useGraphStore();
 
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState(initialTopic ? `Help me understand ${initialTopic}` : '');
+  const [mode, setMode] = useState<Mode>('teach');
+  const [isTyping, setIsTyping] = useState(false);
+  const scroller = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef<string>(getOrCreateSessionId());
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    coursesApi.list().then(res => setCourses(res.data || [])).catch(() => setCourses([]));
+  }, []);
+
+  // Keep the newest message in view inside the chat panel
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  useEffect(() => {
-    if (courseId) {
-      fetchCourseGraph(courseId);
-    }
-  }, [courseId, fetchCourseGraph]);
-
-  useEffect(() => {
-    if (nodes.length > 0 && !currentNodeId) {
-      setCurrentNode(nodes[0].id);
-    }
-  }, [nodes, currentNodeId, setCurrentNode]);
-
-  const handleNodeClick = (nodeId: string) => {
-    navigateToNode(nodeId);
-  };
-
-  const handleSend = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isTyping || !token) return;
-
-    const userMessage: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+  const send = useCallback(async (text: string) => {
+    if (!text.trim() || isTyping || !token) return;
+    setMessages(prev => [...prev, { role: 'user', content: text }, { role: 'assistant', content: '' }]);
     setIsTyping(true);
+
+    const replaceLast = (content: string) => setMessages(prev => {
+      const next = [...prev];
+      next[next.length - 1] = { role: 'assistant', content };
+      return next;
+    });
 
     try {
       const startTime = Date.now();
-
       analytics.track('chat_standalone_sent', {
-        messageLength: input.length,
-        wordCount: input.split(' ').length,
+        messageLength: text.length,
+        wordCount: text.split(' ').length,
         mode,
-        hasCourse: !!courseId,
+        hasCourse: false,
         topic: initialTopic || '',
       });
 
       // API_URL is '' in dev (Vite proxy), so build a relative URL rather than new URL()
-      const params = new URLSearchParams({ session_id: sessionIdRef.current, message: input, mode });
-      if (courseId) params.append('course_id', courseId);
-
+      const params = new URLSearchParams({ session_id: sessionIdRef.current, message: text, mode });
       const response = await fetch(`${API_URL}/api/chat/?${params.toString()}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
+      if (!response.ok) throw new Error((await response.text()) || `Server returned ${response.status}`);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `Server returned ${response.status}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      
-      if (contentType && contentType.includes('text/event-stream')) {
+      let reply = '';
+      if (response.headers.get('content-type')?.includes('text/event-stream')) {
         const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('Failed to get stream reader');
-        }
-
+        if (!reader) throw new Error('Failed to get stream reader');
         const decoder = new TextDecoder();
-        let assistantMessage = '';
-        let hasError = false;
-
-        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
           const chunk = decoder.decode(value, { stream: true });
-
           if (chunk.includes('event: error')) {
-            hasError = true;
-            const lines = chunk.split('\n');
-            const errorLine = lines.find(l => l.startsWith('data: '));
-            if (errorLine) {
-              try {
-                const errorData = JSON.parse(errorLine.slice(6));
-                assistantMessage = `⚠️ Error: ${errorData.detail || errorData.message || errorData.error || 'Unknown error'}`;
-              } catch {
-                assistantMessage = `⚠️ Error: ${errorLine.slice(6)}`;
-              }
-            } else {
-              assistantMessage = '⚠️ An error occurred while generating the response.';
+            const line = chunk.split('\n').find(l => l.startsWith('data: '));
+            let detail = 'Something went wrong while answering.';
+            if (line) {
+              try { const d = JSON.parse(line.slice(6)); detail = d.detail || d.message || d.error || detail; } catch { detail = line.slice(6); }
             }
-            break;
+            throw new Error(detail);
           }
-
-          if (!assistantMessage && chunk.startsWith('Error:')) {
-            hasError = true;
-            assistantMessage = `⚠️ ${chunk}`;
-            break;
-          }
-
-          assistantMessage += chunk;
+          if (!reply && chunk.startsWith('Error:')) throw new Error(chunk.slice(6).trim());
           // The backend prefixes the stream with a <sources>[json]</sources> block
-          assistantMessage = assistantMessage.replace(/^<sources>[\s\S]*?<\/sources>/, '');
-
-          setMessages(prev => {
-            const newMessages = [...prev];
-            newMessages[newMessages.length - 1].content = assistantMessage;
-            return newMessages;
-          });
-        }
-
-        if (!hasError) {
-          const latencyMs = Date.now() - startTime;
-          analytics.track('answer_received', {
-            answerLengthChars: assistantMessage.length,
-            responseLatencyMs: latencyMs,
-            isStandaloneChat: true,
-          });
+          reply = (reply + chunk).replace(/^<sources>[\s\S]*?<\/sources>/, '');
+          replaceLast(reply);
         }
       } else {
         const json = await response.json();
-        const reply = json.reply || json.message || '(empty response)';
-        setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
-        
-        const latencyMs = Date.now() - startTime;
-        analytics.track('answer_received', {
-          answerLengthChars: reply.length,
-          responseLatencyMs: latencyMs,
-          isStandaloneChat: true,
-        });
+        reply = json.reply || json.message || '(empty response)';
+        replaceLast(reply);
       }
+      analytics.track('answer_received', { answerLengthChars: reply.length, responseLatencyMs: Date.now() - startTime, isStandaloneChat: true });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `Sorry, I encountered an error: ${errorMessage}. Please try again.`
-      }]);
+      replaceLast(`Sorry, I could not answer that: ${err instanceof Error ? err.message : 'unknown error'}. Try again.`);
     } finally {
       setIsTyping(false);
     }
-  }, [input, isTyping, token, courseId, mode, initialTopic]);
+  }, [isTyping, token, mode, initialTopic]);
 
-  const modes = [
-    { key: 'teach' as const, icon: GraduationCap, label: 'Learn' },
-    { key: 'test' as const, icon: PenTool, label: 'Test' },
-    { key: 'review' as const, icon: LayoutDashboard, label: 'Review' },
-  ];
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const text = input;
+    setInput('');
+    send(text);
+  };
 
-  const chatPanel = (
-    <div className="flex flex-col h-full bg-canvas text-ink">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-surface shrink-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-sunken border border-line rounded-xl flex items-center justify-center text-ink">
-            <Brain className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="font-display text-lg text-ink tracking-[-0.02em]">General tutor</h2>
-            <p className="annot text-ink-3">{mode} mode · not limited to a course</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {modes.map(m => (
-            <Button
-              key={m.key}
-              onClick={() => setMode(m.key)}
-              variant={mode === m.key ? 'primary' : 'outline'}
-              size="sm"
-              leftIcon={<m.icon size={14} />}
-              className={mode !== m.key ? 'text-ink-3 border-line bg-sunken hover:text-ink' : ''}
-            >
-              {m.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto bg-surface">
-        <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
-          {messages.map((m, idx) => (
-            <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`w-full max-w-[85%] ${
-                m.role === 'user'
-                  ? 'bg-accent text-white rounded-2xl rounded-br-none p-4 font-medium text-sm'
-                  : 'bg-surface text-ink rounded-2xl rounded-bl-none p-5 border border-line'
-              }`}>
-                {m.role === 'user' ? (
-                  <p className="text-sm font-medium leading-relaxed">{m.content}</p>
-                ) : (
-                  <MsgContent content={m.content} />
-                )}
-              </div>
-            </div>
-          ))}
-          {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-surface border border-line rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-2 w-fit">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-3 mr-2">Thinking</span>
-                <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:0ms]" />
-                  <span className="w-1.5 h-1.5 bg-ink-4 rounded-full animate-bounce [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 bg-line-strong rounded-full animate-bounce [animation-delay:300ms]" />
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-      </div>
-
-      <div className="border-t border-line p-4 bg-surface z-10">
-        <div className="max-w-3xl mx-auto">
-          <form onSubmit={handleSend} className="relative flex gap-3">
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder="Message Cobble AI..."
-              className="w-full bg-sunken border border-line text-sm text-ink placeholder:text-ink-4 rounded-xl px-4 py-3 focus:outline-none focus:border-line-strong transition-all"
-              disabled={isTyping}
-            />
-            <Button
-              type="submit"
-              disabled={!input.trim() || isTyping}
-              variant="primary"
-              className="px-5 shrink-0"
-            >
-              <Send size={18} />
-            </Button>
-          </form>
-          <p className="text-center text-[10px] text-ink-3 mt-2 font-medium uppercase tracking-wider">Cobble AI generated content using {searchParams.get('model') || 'gemma4:e2b'}. Verify important information.</p>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (!courseId) {
-    return (
-      <div className="w-full h-[calc(100vh-10rem)] bg-canvas text-ink flex flex-col">
-        {courses.length > 0 && (
-          <div className="flex flex-wrap items-center justify-center gap-3 px-6 py-3 border-b border-line text-xs text-ink-3">
-            <span>For answers that cite your course notes, ask inside a course:</span>
-            <select
-              aria-label="Open a course's tutor"
-              defaultValue=""
-              onChange={e => e.target.value && navigate(`/courses/${e.target.value}/ask`)}
-              className="bg-sunken border border-line rounded-lg px-2 py-1 text-ink"
-            >
-              <option value="" disabled>Choose a course</option>
-              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-          </div>
-        )}
-        <div className="flex-1 min-h-0">{chatPanel}</div>
-      </div>
-    );
-  }
+  const modeBtn = (active: boolean) => `inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-xs transition-colors cursor-pointer ${active ? 'bg-[#0e3445] text-white' : 'text-ink-3 hover:text-[#0e3445]'}`;
 
   return (
-    <div className="h-[calc(100vh-19rem)] min-h-[480px] mt-6 bg-canvas text-ink flex overflow-hidden border-t border-line">
-      {/* Graph Panel */}
-      <div className="flex-1 border-r border-line bg-surface">
-        <div className="h-full flex flex-col">
-          <div className="px-6 py-4 border-b border-line bg-surface shrink-0 flex items-center justify-between">
-            <h2 className="font-display text-lg text-ink tracking-[-0.02em]">Concept map</h2>
-            <span className="annot text-ink-3 tabular">{nodes.length} concepts</span>
+    <GradientPage>
+      <header className="mt-6 sm:mt-10 flex items-end justify-between gap-6 text-white" style={rise(0)}>
+        <div>
+          <h1 className="font-display font-medium text-[clamp(2rem,4vw,3rem)] leading-[1.02] tracking-[-0.035em]">Tutor</h1>
+          <p className="mt-3 text-white/75 text-[15px]">Ask about anything. For answers from your notes, ask inside a class.</p>
+        </div>
+        {messages.length > 0 && (
+          <button type="button" onClick={() => setMessages([])} disabled={isTyping}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-full border border-white/35 text-sm text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50">
+            <RotateCcw size={14} /> New chat
+          </button>
+        )}
+      </header>
+
+      {/* Both columns stretch to the taller one */}
+      <div className="mt-8 sm:mt-10 grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
+        <section aria-label="Chat with the tutor" style={rise(1)} className={`${panel} flex flex-col min-h-[max(520px,calc(100vh-20.5rem))] overflow-hidden`}>
+          <div className="relative flex-1 min-h-0">
+            <div ref={scroller} className="absolute inset-0 overflow-y-auto">
+              <div className="max-w-[46rem] mx-auto px-6 py-6 space-y-5">
+                <div className="flex items-start gap-3">
+                  <span className="grid place-items-center h-9 w-9 shrink-0 rounded-full bg-[#0e3445] text-white"><GraduationCap size={16} /></span>
+                  <div className="min-w-0 pt-1">
+                    <p className="text-[15px] text-[#0e3445]">
+                      {initialTopic ? <>Let's dig into <strong>{initialTopic}</strong>. What would you like to know?</> : 'Hi! What do you want to learn today? I can explain, quiz you, or recap a topic.'}
+                    </p>
+                    {messages.length === 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {STARTERS.map(s => (
+                          <button key={s} type="button" onClick={() => send(s)} disabled={isTyping}
+                            className="inline-flex items-center min-h-8 px-3 py-1.5 rounded-full border border-[#c3d8e0] bg-white text-left text-[13px] text-[#0e3445] hover:border-[#2a6f87] transition-colors cursor-pointer disabled:opacity-50">
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {messages.map((m, i) => m.role === 'user' ? (
+                  <div key={i} className="flex justify-end">
+                    <p className="max-w-[80%] rounded-[18px] rounded-br-md bg-[#0e3445] px-4 py-2.5 text-[15px] text-white whitespace-pre-wrap">{m.content}</p>
+                  </div>
+                ) : (
+                  <AssistantMessage key={i} content={m.content} />
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="flex-1">
-            <KnowledgeGraph onNodeClick={handleNodeClick} />
-          </div>
+
+          <form onSubmit={submit} className="shrink-0 px-5 pb-4 pt-2">
+            <div className="max-w-[46rem] mx-auto rounded-[22px] bg-white border border-[#d6e3e8] shadow-[0_12px_32px_-20px_rgba(14,52,69,0.35)] focus-within:border-[#2a6f87] transition-colors">
+              <div className="flex items-center gap-1 pl-5 pr-2 py-2">
+                <input value={input} onChange={e => setInput(e.target.value)} placeholder="Ask anything…" aria-label="Your message"
+                  className="flex-1 min-w-0 h-10 bg-transparent text-[15px] text-[#0e3445] placeholder:text-ink-4 focus:outline-none" />
+                <VoiceInputButton disabled={isTyping} onTranscript={t => setInput(p => (p.trim() ? `${p.trim()} ${t}` : t))} />
+                <button type="submit" disabled={!input.trim() || isTyping} aria-label="Send"
+                  className="grid place-items-center h-10 w-10 shrink-0 rounded-full bg-[#0e3445] text-white hover:bg-[#2a6f87] disabled:bg-[#e6eef2] disabled:text-ink-4 transition-colors cursor-pointer">
+                  <ArrowUp size={16} />
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-t border-[#e6eef2] px-3 py-1.5">
+                <div className="flex items-center gap-1" role="group" aria-label="How the tutor answers">
+                  {MODES.map(m => (
+                    <button key={m.key} type="button" title={m.hint} onClick={() => setMode(m.key)} aria-pressed={mode === m.key} className={modeBtn(mode === m.key)}>
+                      <m.icon size={12} /> {m.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[11px] text-ink-4">Not checked against your notes. Double-check what matters.</span>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        {/* Class-grounded alternatives */}
+        <div className="flex flex-col gap-4">
+          <section aria-labelledby="classes-heading" style={rise(2)} className={`${panel} p-5 flex-1`}>
+            <h2 id="classes-heading" className="text-[15px] text-[#0e3445]">Ask a class instead</h2>
+            <p className="mt-1 text-xs text-ink-3">Answers only from that class's notes and lectures, with sources.</p>
+            {courses.length === 0 ? (
+              <p className="mt-4 p-3 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">Join a class to ask about its notes.</p>
+            ) : (
+              <ul className="mt-4 space-y-1.5">
+                {courses.map((c, i) => {
+                  const p = paletteAt(i);
+                  return (
+                    <li key={c.id}>
+                      <Link to={`/courses/${c.id}/ask`} className="group flex items-center gap-3 p-2 rounded-2xl bg-[#f1f5f7] hover:bg-[#e6eef2] transition-colors">
+                        <span className="grid place-items-center h-9 w-9 shrink-0 rounded-full text-white" style={{ background: `linear-gradient(135deg, ${p.deep}, ${p.mid})` }}><BookOpen size={14} /></span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm text-[#0e3445] truncate">{c.title}</span>
+                          <span className="block text-xs text-ink-3">{c.code}</span>
+                        </span>
+                        <span className="text-xs text-ink-3 group-hover:text-[#0e3445] pr-1">Ask</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <div className="mt-5 pt-4 border-t border-[#e6eef2] space-y-2.5">
+              {MODES.map(m => (
+                <p key={m.key} className="flex items-start gap-2.5 text-xs text-ink-3">
+                  <span className="grid place-items-center h-6 w-6 shrink-0 rounded-full bg-[#e6eef2] text-[#1b566b]"><m.icon size={12} /></span>
+                  <span className="pt-1"><span className="text-[#0e3445]">{m.label}</span> · {m.hint.toLowerCase()}</span>
+                </p>
+              ))}
+            </div>
+          </section>
         </div>
       </div>
-      {/* Chat Panel: course-grounded tutor with citations (cite or decline) */}
-      <div className="w-[500px] flex flex-col border-l border-line bg-surface">
-        <div className="px-6 py-4 border-b border-line bg-surface shrink-0">
-          <h2 className="font-display text-lg text-ink tracking-[-0.02em]">Ask the course</h2>
-          <p className="annot text-ink-3">Answers cite your notes and lectures</p>
-        </div>
-        <div className="flex-1 min-h-0">
-          <CourseTutorChat courseId={courseId} />
-        </div>
-      </div>
-    </div>
+    </GradientPage>
   );
 }

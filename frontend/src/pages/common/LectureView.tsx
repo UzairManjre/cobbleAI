@@ -13,6 +13,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useToastStore } from '../../store/toastStore';
 import { analytics } from '../../utils/analytics';
 import { formatTimestamp } from '../../utils/format';
+import { panel, pillLine, featureBg, rise } from '../../components/ui/glass';
 
 type Tab = 'ask' | 'transcript' | 'chapters' | 'confusion' | 'exclusions';
 
@@ -155,126 +156,126 @@ export default function LectureView() {
 
   if (loadError) {
     return (
-      <div className="w-full max-w-5xl mx-auto py-16 text-center text-ink-3">
-        <p className="text-sm mb-4">{loadError}</p>
-        <button onClick={back} className="text-ink underline text-sm">Back to course</button>
-      </div>
+      <section className={`mt-8 ${panel} p-10 text-center`}>
+        <p className="text-sm text-ink-3">{loadError}</p>
+        <button type="button" onClick={back} className={`mt-4 ${pillLine}`}>Back to the class</button>
+      </section>
     );
   }
   if (!lecture) {
-    return <div className="w-full flex justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-ink-3" /></div>;
+    return (
+      <div className="mt-8 grid gap-4 xl:grid-cols-[minmax(0,1fr)_26rem]">
+        <div className={`${panel} aspect-video animate-pulse`} />
+        <div className={`${panel} animate-pulse`} />
+      </div>
+    );
   }
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'ask', label: 'Ask this lecture' },
+    { id: 'ask', label: 'Ask' },
     { id: 'transcript', label: 'Transcript' },
-    { id: 'chapters', label: 'Chapters & notes' },
+    { id: 'chapters', label: 'Chapters' },
     ...(role === 'professor' ? [{ id: 'confusion' as Tab, label: 'Confusion' }, { id: 'exclusions' as Tab, label: 'Exclusions' }] : []),
   ];
+  const title = lecture.filename.replace(/\.[a-z0-9]+$/i, '');
+  const duration = lecture.duration_sec || 0;
+  // The slide on screen now: the last one shown at or before the playhead
+  const activeFrame = [...lecture.frames].reverse().find(f => f.t <= currentTime + 0.5)?.id;
+  const chapterNow = lecture.chapters.find(c => currentTime >= c.start && currentTime < c.end);
+  const failed = lecture.status === 'failed';
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6 text-ink">
-      <div className="flex items-center gap-4">
-        <button onClick={back} className="p-2 rounded-xl border border-line text-ink-3 hover:text-ink" aria-label="Back to course">
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-widest text-ink-3">Lecture</p>
-          <h1 className="text-xl font-light truncate">{lecture.filename}</h1>
-        </div>
-        {lecture.duration_sec ? <span className="ml-auto text-xs text-ink-3 font-mono">{formatTimestamp(lecture.duration_sec)}</span> : null}
-      </div>
-
-      {lecture.status !== 'ready' && (
-        <div className={`rounded-2xl border p-5 flex items-center gap-3 ${lecture.status === 'failed' ? 'border-red-500/30 bg-red-500/5' : 'border-line bg-surface'}`}>
-          {lecture.status === 'failed' ? <AlertTriangle className="w-5 h-5 text-red-600" /> : <Loader2 className="w-5 h-5 animate-spin text-accent" />}
-          <div className="flex-1">
-            <p className="text-sm">{lecture.status === 'failed' ? 'Processing failed' : STAGE_LABELS[lecture.stage || ''] || 'Waiting to be processed'}</p>
-            {lecture.error_message && <p className="text-xs text-red-600 mt-1">{lecture.error_message}</p>}
-            {lecture.status !== 'failed' && (
-              <div className="h-1 bg-sunken-2 rounded-full mt-2 overflow-hidden">
-                <div className="h-full bg-accent transition-all" style={{ width: `${Math.round((lecture.progress || 0) * 100)}%` }} />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 space-y-4">
-          <div className="relative rounded-2xl overflow-hidden border border-line bg-canvas aspect-video">
-            {mediaUrl ? (
-              <video
-                ref={videoRef}
-                src={mediaUrl}
-                controls
-                preload="metadata"
-                className="w-full h-full"
-                onLoadedMetadata={onLoadedMetadata}
-                onError={onVideoError}
-                onTimeUpdate={e => setCurrentTime(e.currentTarget.currentTime)}
-              >
-                {captionsUrl && <track ref={trackRef} kind="captions" srcLang="en" label="English" src={captionsUrl} default />}
-              </video>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-xs text-ink-4">The recording will play here once it has been processed.</div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-ink-3 font-mono">{formatTimestamp(currentTime)}</span>
-            <button
-              type="button"
-              onClick={toggleCaptions}
-              disabled={!captionsUrl}
-              aria-pressed={captionsOn}
-              className="flex items-center gap-1.5 text-xs text-ink-2 hover:text-ink disabled:opacity-40"
+    <div className="mt-8 grid gap-4 xl:grid-cols-[minmax(0,1fr)_26rem]">
+      {/* Player, what is playing, and the slides */}
+      <section aria-label="Lecture recording" style={rise(1)} className={`${panel} p-3 flex flex-col`}>
+        <div className="relative rounded-[16px] overflow-hidden bg-[#0b2733] aspect-video">
+          {mediaUrl ? (
+            <video
+              ref={videoRef}
+              src={mediaUrl}
+              controls
+              preload="metadata"
+              className="w-full h-full"
+              onLoadedMetadata={onLoadedMetadata}
+              onError={onVideoError}
+              onTimeUpdate={e => setCurrentTime(e.currentTarget.currentTime)}
             >
-              {captionsOn ? <Captions className="w-4 h-4" /> : <CaptionsOff className="w-4 h-4" />}
-              Captions {captionsOn ? 'on' : 'off'}
-            </button>
-          </div>
-
-          {lecture.frames.length > 0 && (
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-ink-3 mb-2">Slides shown</p>
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {lecture.frames.map(frame => (
-                  <button
-                    key={frame.id}
-                    type="button"
-                    onClick={() => seek(frame.t)}
-                    title={frame.caption || frame.ocr_text || `Slide at ${formatTimestamp(frame.t)}`}
-                    className="shrink-0 w-36 rounded-lg overflow-hidden border border-line hover:border-line-strong text-left"
-                  >
-                    <img src={frame.image_url} alt={frame.caption || `Slide at ${formatTimestamp(frame.t)}`} className="w-full aspect-video object-cover" loading="lazy" />
-                    <span className="block px-2 py-1 text-[10px] font-mono text-ink-3">{formatTimestamp(frame.t)}</span>
-                  </button>
-                ))}
+              {captionsUrl && <track ref={trackRef} kind="captions" srcLang="en" label="English" src={captionsUrl} default />}
+            </video>
+          ) : (
+            <div className="w-full h-full grid place-items-center p-8" style={{ background: featureBg }}>
+              <div className="w-full max-w-sm text-white">
+                <p className="flex items-center gap-2 text-sm">
+                  {failed ? <AlertTriangle size={16} /> : <Loader2 size={16} className="animate-spin" />}
+                  {failed ? 'Processing failed' : STAGE_LABELS[lecture.stage || ''] || 'Waiting to be processed'}
+                </p>
+                {lecture.error_message && <p className="mt-1 text-xs text-white/75">{lecture.error_message}</p>}
+                {!failed && (
+                  <span className="mt-3 block h-1.5 rounded-full bg-white/20 overflow-hidden">
+                    <span className="block h-full rounded-full bg-white transition-all" style={{ width: `${Math.round((lecture.progress || 0) * 100)}%` }} />
+                  </span>
+                )}
               </div>
             </div>
           )}
         </div>
 
-        <div className="lg:col-span-2 rounded-2xl border border-line bg-surface flex flex-col h-[70vh] min-h-[480px]">
-          <div className="flex border-b border-line overflow-x-auto" role="tablist">
+        <div className="flex items-center gap-3 px-2 pt-4">
+          <button type="button" onClick={back} aria-label="Back to the class"
+            className="grid place-items-center h-10 w-10 shrink-0 rounded-full bg-[#f1f5f7] text-[#0e3445] hover:bg-[#e6eef2] transition-colors cursor-pointer">
+            <ArrowLeft size={16} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[17px] text-[#0e3445] truncate">{title}</h1>
+            <p className="text-xs text-ink-3 truncate tabular">
+              {chapterNow ? <>Now: <span className="text-[#1b566b]">{chapterNow.title}</span></> : 'Recording'}
+              {' · '}{formatTimestamp(currentTime)}{duration ? ` / ${formatTimestamp(duration)}` : ''}
+            </p>
+          </div>
+          <button type="button" onClick={toggleCaptions} disabled={!captionsUrl} aria-pressed={captionsOn}
+            className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-xs transition-colors cursor-pointer disabled:opacity-40 ${captionsOn ? 'bg-[#0e3445] text-white' : 'bg-[#f1f5f7] text-[#0e3445] hover:bg-[#e6eef2]'}`}>
+            {captionsOn ? <Captions size={14} /> : <CaptionsOff size={14} />} Captions
+          </button>
+        </div>
+
+        {lecture.frames.length > 0 && (
+          <div className="px-2 pt-4 pb-1 mt-auto">
+            <p className="text-xs text-ink-3 mb-2">Slides · click to jump</p>
+            <div className="flex gap-2.5 overflow-x-auto pb-1.5">
+              {lecture.frames.map(frame => {
+                const active = frame.id === activeFrame;
+                return (
+                  <button key={frame.id} type="button" onClick={() => seek(frame.t)}
+                    title={frame.caption || frame.ocr_text || `Slide at ${formatTimestamp(frame.t)}`}
+                    className={`shrink-0 w-40 rounded-2xl p-1.5 text-left transition-colors cursor-pointer ${active ? 'bg-[#0e3445]' : 'bg-[#f1f5f7] hover:bg-[#e6eef2]'}`}>
+                    <img src={frame.image_url} alt={frame.caption || `Slide at ${formatTimestamp(frame.t)}`} className="w-full aspect-video object-cover rounded-xl bg-white" loading="lazy" />
+                    <span className={`block px-1.5 pt-1.5 pb-0.5 text-[11px] tabular ${active ? 'text-white' : 'text-ink-3'}`}>{formatTimestamp(frame.t)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Ask, transcript and chapters, the same height as the player */}
+      <section aria-label="About this lecture" style={rise(2)} className={`${panel} flex flex-col min-h-[520px] overflow-hidden`}>
+        <div className="shrink-0 p-3 pb-0">
+          <div className="flex gap-1 p-1 rounded-full bg-[#f1f5f7] overflow-x-auto" role="tablist">
             {tabs.map(t => (
-              <button
-                key={t.id}
-                role="tab"
-                aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
-                className={`px-4 py-3 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${tab === t.id ? 'border-accent text-ink' : 'border-transparent text-ink-3 hover:text-ink'}`}
-              >
+              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
+                className={`flex-1 h-9 px-3 rounded-full text-sm whitespace-nowrap transition-colors cursor-pointer ${tab === t.id ? 'bg-white text-[#0e3445] shadow-[0_2px_8px_-4px_rgba(14,52,69,0.35)]' : 'text-ink-3 hover:text-[#0e3445]'}`}>
                 {t.label}
               </button>
             ))}
           </div>
-          <div className="flex-1 min-h-0">
+        </div>
+        <div className="relative flex-1 min-h-0">
+          <div className="absolute inset-0 flex flex-col">
             {tab === 'ask' && courseId && lectureId && (
               lecture.status === 'ready'
                 ? <CourseTutorChat courseId={courseId} lectureId={lectureId} getCurrentTime={getCurrentTime} onSeekLecture={onSeekLecture} />
-                : <p className="text-xs text-ink-3 p-4">You can ask about this lecture once it has been processed.</p>
+                : <p className="m-4 p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">You can ask about this lecture once it has been processed.</p>
             )}
             {tab === 'transcript' && (
               <TranscriptPanel segments={lecture.transcript.segments} currentTime={currentTime} onSeek={seek} onDownload={downloadTranscript} />
@@ -300,11 +301,11 @@ export default function LectureView() {
               </div>
             )}
           </div>
-          {lecture.excluded_count > 0 && role === 'student' && (
-            <p className="text-[10px] text-ink-4 px-4 py-2 border-t border-line">Some parts of this recording were excluded by your instructor.</p>
-          )}
         </div>
-      </div>
+        {lecture.excluded_count > 0 && role === 'student' && (
+          <p className="shrink-0 text-[11px] text-ink-4 px-4 py-2 border-t border-[#e6eef2]">Your professor left some parts of this recording out.</p>
+        )}
+      </section>
     </div>
   );
 }

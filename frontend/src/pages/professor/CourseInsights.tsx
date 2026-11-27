@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Download, Loader2 } from 'lucide-react';
+import { panel, pillLine, rise } from '../../components/ui/glass';
 import { graphsApi } from '../../api/graphs';
 import { insightsApi } from '../../api/insights';
 import type { ReportFile } from '../../api/insights';
@@ -24,7 +25,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'concepts', label: 'Struggling concepts' },
   { id: 'lectures', label: 'Lecture confusion' },
   { id: 'faq', label: 'FAQ' },
-  { id: 'quality', label: 'Answer & graph quality' },
+  { id: 'quality', label: 'Quality checks' },
 ];
 
 const REPORTS: { file: ReportFile; label: string }[] = [
@@ -44,6 +45,7 @@ export default function CourseInsights() {
   const [lectures, setLectures] = useState<LectureSummary[]>([]);
   const [lectureId, setLectureId] = useState('');
   const [downloading, setDownloading] = useState<ReportFile | null>(null);
+  const [reportsOpen, setReportsOpen] = useState(false);
   const addToast = useToastStore(s => s.addToast);
 
   useEffect(() => {
@@ -72,78 +74,99 @@ export default function CourseInsights() {
   };
 
   return (
-    <div className="w-full px-5 md:px-8 lg:px-12 py-8"><div className="max-w-6xl mx-auto space-y-6 text-ink">
-      <div className="flex flex-wrap items-center gap-4">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-ink-3">Course</p>
-          <h2 className="text-xl font-light">Insights</h2>
+    <div className="mt-8 sm:mt-10 space-y-4 text-ink">
+      {/* Toolbar: section switcher, period and report downloads */}
+      {/* z-20: the Reports menu opens over the panels below */}
+      <section style={rise(1)} className={`${panel} relative z-20 p-5 space-y-4`}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.35rem] tracking-[-0.02em] text-accent-strong">Insights</h2>
+            <p className="text-xs text-ink-3 mt-0.5">Anonymous totals and paraphrases</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex p-1 rounded-full bg-[#f1f5f7]" role="radiogroup" aria-label="Period">
+              {[7, 30, 120].map(d => (
+                <button key={d} type="button" role="radio" aria-checked={days === d} onClick={() => setDays(d)}
+                  className={`h-8 px-3.5 rounded-full text-xs transition-colors cursor-pointer ${days === d ? 'bg-accent-strong text-white' : 'text-ink-3 hover:text-accent-strong'}`}>
+                  {d} days
+                </button>
+              ))}
+            </div>
+            <div className="relative">
+              <button type="button" onClick={() => setReportsOpen(o => !o)} aria-expanded={reportsOpen} className={pillLine}>
+                {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Reports
+              </button>
+              {reportsOpen && (
+                <div className="absolute right-0 top-full mt-2 z-20 w-44 rounded-2xl bg-white border border-[#dbe7ec] shadow-lg p-1.5">
+                  {REPORTS.map(r => (
+                    <button key={r.file} type="button" disabled={downloading !== null}
+                      onClick={() => { setReportsOpen(false); download(r.file); }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-sm text-accent-strong hover:bg-[#f1f5f7] disabled:opacity-40 cursor-pointer">{r.label}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <label className="text-xs text-ink-3">Period
-            <select value={days} onChange={e => setDays(Number(e.target.value))}
-              className="ml-2 bg-sunken border border-line rounded-lg px-2 py-1 text-xs text-ink">
-              <option value={7}>Last 7 days</option>
-              <option value={30}>Last 30 days</option>
-              <option value={120}>Last 120 days</option>
-            </select>
-          </label>
-          {REPORTS.map(r => (
-            <button key={r.file} onClick={() => download(r.file)} disabled={downloading !== null}
-              className="px-2.5 py-1.5 rounded-lg text-xs border border-line-strong flex items-center gap-1.5 hover:border-ink-4 disabled:opacity-40">
-              {downloading === r.file ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} {r.label}
+        <div className="flex flex-wrap gap-2" role="tablist">
+          {TABS.map(t => (
+            <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
+              className={`h-9 px-4 rounded-full text-sm border transition-colors cursor-pointer ${tab === t.id ? 'bg-accent-strong text-white border-accent-strong' : 'bg-[#f1f5f7] border-transparent text-ink-3 hover:text-accent-strong'}`}>
+              {t.label}
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="flex flex-wrap gap-2" role="tablist">
-        {TABS.map(t => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs border ${tab === t.id ? 'bg-accent text-white border-accent' : 'border-line text-ink-3 hover:border-line-strong'}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <div style={rise(2)}>
+        {tab === 'questions' && (
+          <div className="space-y-4">
+            <div className="grid gap-4 xl:grid-cols-3 [&>*]:min-w-0">
+              <div className="xl:col-span-2"><QuestionClusters courseId={courseId} days={Math.min(days, 30)} /></div>
+              <CoverageGaps courseId={courseId} days={days} />
+            </div>
+            <SourceCounts courseId={courseId} days={days} />
+          </div>
+        )}
 
-      {tab === 'questions' && (
-        <div className="space-y-6">
-          <QuestionClusters courseId={courseId} days={Math.min(days, 30)} />
-          <CoverageGaps courseId={courseId} days={days} />
-          <SourceCounts courseId={courseId} days={days} />
-        </div>
-      )}
+        {tab === 'concepts' && (
+          <ConceptFlagsPanel courseId={courseId} />
+        )}
 
-      {tab === 'concepts' && <ConceptFlagsPanel courseId={courseId} />}
-
-      {tab === 'lectures' && (
-        <section className="bg-surface border border-line rounded-2xl p-5 space-y-4">
-          {lectures.length === 0 ? (
-            <p className="text-xs text-ink-4">No processed lecture recordings in this course yet.</p>
-          ) : (
-            <>
-              <label className="text-xs text-ink-3">Lecture
+        {tab === 'lectures' && (
+          <section className={`${panel} p-5 space-y-4`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-[15px] text-accent-strong">Where lectures lose students</h2>
+              {lectures.length > 1 && (
                 <select value={selectedLecture} onChange={e => setLectureId(e.target.value)}
-                  className="ml-2 bg-sunken border border-line rounded-lg px-2 py-1 text-xs text-ink">
+                  className="h-9 rounded-full bg-[#f1f5f7] px-4 text-sm text-accent-strong border-0 cursor-pointer">
                   {lectures.map(l => <option key={l.id} value={l.id}>{l.filename}</option>)}
                 </select>
-              </label>
+              )}
+            </div>
+            {lectures.length === 0 ? (
+              <p className="p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">No processed lecture recordings in this course yet.</p>
+            ) : (
               <ConfusionTimeline key={selectedLecture} lectureId={selectedLecture}
                 onSeek={t => navigate(`/courses/${courseId}/lectures/${selectedLecture}?t=${Math.floor(t)}`)} />
-            </>
-          )}
-        </section>
-      )}
+            )}
+          </section>
+        )}
 
-      {tab === 'faq' && <FAQEditor courseId={courseId} />}
+        {tab === 'faq' && <FAQEditor courseId={courseId} />}
 
-      {tab === 'quality' && (
-        <div className="space-y-6">
-          <FeedbackReviewList courseId={courseId} />
-          {graphId ? <EdgeAuditPanel graphId={graphId} courseId={courseId} /> : (
-            <p className="text-xs text-ink-4">Generate the course knowledge graph to audit its relationships.</p>
-          )}
-        </div>
-      )}
-    </div></div>
+        {tab === 'quality' && (
+          <div className="grid gap-4 xl:grid-cols-2 items-start [&>*]:min-w-0">
+            <FeedbackReviewList courseId={courseId} />
+            <section className={`${panel} p-5`}>
+              <h2 className="text-[15px] text-accent-strong mb-4">Map accuracy</h2>
+              {graphId ? <EdgeAuditPanel graphId={graphId} courseId={courseId} /> : (
+                <p className="p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">Build the concept map to audit its links.</p>
+              )}
+            </section>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

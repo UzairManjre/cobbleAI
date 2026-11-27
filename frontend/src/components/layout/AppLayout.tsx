@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Topbar from './Topbar';
+import { embedsTopbar } from './gradientPages';
 import ResearchConsentBanner from '../common/ResearchConsent';
 import { useAuthStore } from '../../store/authStore';
 import './AppLayout.css';
@@ -15,9 +16,12 @@ const AppLayout = () => {
     scrollRef.current?.scrollTo(0, 0);
   }, [pathname]);
 
+  // Gradient pages draw the bar inside their own header
+  const embedded = embedsTopbar(role, pathname);
+
   return (
     <div className="app-container">
-      <Topbar />
+      {!embedded && <Topbar />}
       <div className="content-scrollable" ref={scrollRef}>
         {role === 'student' && <ResearchConsentBanner />}
         <Outlet />

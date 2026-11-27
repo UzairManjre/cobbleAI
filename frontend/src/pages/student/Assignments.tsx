@@ -1,421 +1,281 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { 
-  FileText, 
-  Plus, 
-  Calendar, 
-  ChevronRight, 
-  PenTool, 
-  Send,
-  FolderOpen
-} from 'lucide-react';
-import { testsApi, coursesApi } from '../../api';
-import { useAuthStore } from '../../store/authStore';
-import { useToastStore } from '../../store/toastStore';
-import { Button } from '../../components/ui/Button';
-import { Card, CardContent } from '../../components/ui/Card';
-import { PageHeader } from '../../components/ui/PageHeader';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, CalendarClock, Clock, FileText, ListChecks, PenLine } from 'lucide-react';
+import { coursesApi, testsApi } from '../../api';
+import GradientPage from '../../components/layout/GradientPage';
+import ScoreRing from '../../components/student/ScoreRing';
+import { panel, pillDark, pillLine, featureBg, rise, CLAY } from '../../components/ui/glass';
+import { paletteAt } from '../../components/ui/artPalettes';
+import { plural } from '../../utils/mastery';
 
+interface Course { id: string; title: string; code: string }
+interface Test {
+  id: string; title: string; description?: string; test_type: string; status: string;
+  duration_minutes: number; passing_percentage: number; question_count?: number; available_until?: string | null;
+}
+interface Attempt { id: string; test_id: string; status: string; percentage: number | null; submitted_at?: string }
+
+type State = 'todo' | 'in_progress' | 'missed' | 'waiting' | 'passed' | 'below';
+interface Row { t: Test; course: Course; color: string; a?: Attempt; state: State; due: Date | null }
+
+const DAY = 864e5;
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const kind = (t: Test) => (t.test_type === 'assignment' ? 'Assignment' : t.test_type === 'exam' ? 'Exam' : 'Quiz');
+const shortDate = (d: Date) => d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+const daysUntil = (d: Date) => Math.round((startOfDay(d).getTime() - startOfDay(new Date()).getTime()) / DAY);
+const dueText = (d: Date | null) => {
+  if (!d) return 'No due date';
+  const n = daysUntil(d);
+  return n === 0 ? 'Due today' : n === 1 ? 'Due tomorrow' : `Due in ${n} days`;
+};
+const isOpen = (s: State) => s === 'todo' || s === 'in_progress';
+
+/** Every test and assignment across the student's classes, by deadline. */
 export default function Assignments() {
-  const { token, user } = useAuthStore();
-  const navigate = useNavigate();
-  const addToast = useToastStore(state => state.addToast);
-  // Inside a course (its Tests tab) only that course's tests are listed
-  const { courseId: scopedCourseId } = useParams();
-
-  // Data state
-  const [courses, setCourses] = useState<any[]>([]);
-  const [assignments, setAssignments] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Modal State
-  const [showModal, setShowModal] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [courseId, setCourseId] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState(60);
-  const [passingPercentage, setPassingPercentage] = useState(40);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [tests, setTests] = useState<(Test & { course_id: string })[] | null>(null);
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
+  const [filter, setFilter] = useState<string>('all');
+  // Fixed when the page opens, so deadlines don't shift between renders
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
-    loadData();
-  }, [token, scopedCourseId]);
+    let cancelled = false;
+    (async () => {
+      const [c, a] = await Promise.allSettled([coursesApi.list(), testsApi.getMyAttempts()]);
+      const list: Course[] = c.status === 'fulfilled' ? c.value.data || [] : [];
+      const per = await Promise.allSettled(list.map(x => testsApi.getByCourse(x.id)));
+      if (cancelled) return;
+      setCourses(list);
+      setAttempts(a.status === 'fulfilled' ? a.value.data?.attempts || [] : []);
+      setTests(per.flatMap((r, i) => r.status === 'fulfilled'
+        ? (r.value.data || []).filter((t: Test) => t.status === 'published').map((t: Test) => ({ ...t, course_id: list[i].id }))
+        : []));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-  const loadData = async () => {
-    if (!token) return;
-    setIsLoading(true);
-
-    let coursesList: any[] = [];
-    try {
-      const coursesRes = await coursesApi.list();
-      coursesList = (coursesRes.data || []).filter((c: any) => !scopedCourseId || c.id === scopedCourseId);
-      setCourses(coursesList);
-      if (coursesList.length > 0) {
-        setCourseId(coursesList[0].id);
-      }
-    } catch (err) {
-      console.error('Error loading courses:', err);
-    }
-
-    try {
-      let testsRes;
-      if (user?.role === 'professor') {
-        testsRes = await testsApi.listAllProfessorTests();
-        const allTests = testsRes.data?.tests || [];
-        const filteredAssignments = allTests.filter((t: any) => t.test_type === 'assignment');
-        setAssignments(filteredAssignments);
-      } else if (coursesList.length > 0) {
-        // Fetch assignments for ALL enrolled courses for students
-        const allTestsPromises = coursesList.map((c: any) => testsApi.getByCourse(c.id));
-        const results = await Promise.all(allTestsPromises);
-        // Students have no other page listing tests, so show every published test (quiz, exam, assignment)
-        // the student list omits course_id; the per-course counts need it
-        const allTests = results.flatMap((r: any, i: number) =>
-          (r.data || []).map((t: any) => ({ ...t, course_id: t.course_id ?? coursesList[i].id })));
-        setAssignments(allTests);
-      } else {
-        setAssignments([]);
-      }
-    } catch (err) {
-      console.error('Error loading tests:', err);
-      setAssignments([]);
-    }
-
-    setIsLoading(false);
-  };
-
-  const handleCreateAssignment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!courseId) {
-      addToast('Please select a course.', 'error');
-      return;
-    }
-
-    try {
-      await testsApi.create({
-        course_id: courseId,
-        title,
-        description,
-        test_type: 'assignment',
-        duration_minutes: durationMinutes,
-        passing_percentage: passingPercentage,
-        available_until: dueDate ? new Date(dueDate).toISOString() : undefined,
-        available_from: new Date().toISOString()
-      });
-
-      setShowModal(false);
-      setTitle('');
-      setDescription('');
-      setDueDate('');
-      
-      loadData();
-    } catch (err) {
-      console.error('Failed to create assignment:', err);
-      addToast('Failed to create assignment', 'error');
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return 'No due date';
-    const date = new Date(dateStr);
-    const day = date.getDate();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    
-    let suffix = 'th';
-    if (day === 1 || day === 21 || day === 31) suffix = 'st';
-    else if (day === 2 || day === 22) suffix = 'nd';
-    else if (day === 3 || day === 23) suffix = 'rd';
-    
-    return `Due ${day}${suffix} ${month} ${year}`;
-  };
-
-  const getDaysLeft = (dateStr: string) => {
-    if (!dateStr) return '';
-    const diffTime = new Date(dateStr).getTime() - new Date().getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return 'Overdue';
-    if (diffDays === 0) return 'Due today';
-    return `${diffDays} Days Left`;
-  };
-
-  const totalCount = assignments.length;
-  const publishedAssignments = useMemo(() => assignments.filter(a => a.status === 'published'), [assignments]);
-  const draftAssignments = useMemo(() => assignments.filter(a => a.status === 'draft'), [assignments]);
-  
-  const displayAssignments = useMemo(() => {
-    return [...assignments].sort((a, b) => {
-      if (a.status !== b.status) return a.status === 'draft' ? -1 : 1;
-      if (!a.available_until) return 1;
-      if (!b.available_until) return -1;
-      return new Date(a.available_until).getTime() - new Date(b.available_until).getTime();
+  const rows = useMemo<Row[]>(() => {
+    const latest = new Map<string, Attempt>();
+    for (const a of attempts) latest.set(a.test_id, a);
+    return (tests || []).flatMap(t => {
+      const i = courses.findIndex(c => c.id === t.course_id);
+      if (i < 0) return [];
+      const a = latest.get(t.id);
+      const due = t.available_until ? new Date(t.available_until) : null;
+      const state: State = !a ? (due && due.getTime() < now ? 'missed' : 'todo')
+        : a.status === 'in_progress' ? (due && due.getTime() < now ? 'missed' : 'in_progress')
+          : a.status !== 'graded' || a.percentage == null ? 'waiting'
+            : a.percentage >= t.passing_percentage ? 'passed' : 'below';
+      return [{ t, course: courses[i], color: paletteAt(i).mid, a, state, due }];
     });
-  }, [assignments]);
+  }, [tests, attempts, courses, now]);
 
-  const draftCount = draftAssignments.length;
-  const publishedCount = publishedAssignments.length;
+  const shown = filter === 'all' ? rows : rows.filter(r => r.course.id === filter);
+  const byDue = (x: Row, y: Row) => (x.due?.getTime() ?? Infinity) - (y.due?.getTime() ?? Infinity);
+  const todo = shown.filter(r => isOpen(r.state) || r.state === 'missed')
+    .sort((x, y) => Number(x.state === 'missed') - Number(y.state === 'missed') || byDue(x, y));
+  const done = shown.filter(r => !isOpen(r.state) && r.state !== 'missed')
+    .sort((x, y) => (y.a?.submitted_at ?? '').localeCompare(x.a?.submitted_at ?? ''));
+  const next = todo.find(r => isOpen(r.state)) ?? null;
+  const graded = done.filter(r => r.state === 'passed' || r.state === 'below');
+  const avg = graded.length ? Math.round(graded.reduce((n, r) => n + (r.a!.percentage ?? 0), 0) / graded.length) : null;
+  const thisWeek = todo.filter(r => isOpen(r.state) && r.due && daysUntil(r.due) <= 6).length;
+  const loading = tests === null;
 
-  const courseAssignmentCounts = useMemo(() => {
-    return courses.map(c => {
-      const count = assignments.filter(a => a.course_id === c.id).length;
-      return {
-        id: c.id,
-        title: c.title,
-        code: c.code,
-        count
-      };
-    }).filter(c => c.count > 0);
-  }, [courses, assignments]);
+  const filterPill = (active: boolean) => `inline-flex items-center h-9 px-4 rounded-full text-sm transition-colors cursor-pointer ${active ? 'bg-white text-[#0e3445]' : 'border border-white/30 text-white/85 hover:bg-white/10'}`;
 
   return (
-    <div className="w-full px-5 md:px-8 lg:px-12">
-      <div className={`max-w-6xl mx-auto ${scopedCourseId ? 'py-8' : 'pt-10 md:pt-14 pb-24'} space-y-12`}>
-
-        {/* Header (the course page already has one) */}
-        {!scopedCourseId && (
-          <PageHeader
-            title="assignments"
-            lead="Tests and assignments from all your classes, soonest due first."
-            actions={<span className="annot text-ink-3 tabular">{publishedCount} published · {totalCount} total</span>}
-          />
-        )}
-        {/* Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-
-          {/* Main List */}
-          <div className={`${scopedCourseId ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-6`}>
-            <h2 className="font-display text-2xl tracking-[-0.03em] pb-3 border-b border-ink">{scopedCourseId ? 'tests in this course' : 'your tests'}</h2>
-
-            {isLoading ? (
-              <div className="py-20 flex flex-col items-center justify-center text-ink-3">
-                <div className="w-6 h-6 border-2 border-line border-t-accent rounded-full animate-spin mb-4" />
-                <span className="text-sm tracking-wide">Loading assignments...</span>
-              </div>
-            ) : displayAssignments.length === 0 ? (
-              <div className="py-20 flex flex-col items-center justify-center text-ink-4 border border-line rounded-2xl bg-surface">
-                <FolderOpen size={32} className="mb-4" />
-                <p className="text-sm tracking-wide">No tests yet. Your professor has not published any.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {displayAssignments.map((ass) => {
-                  const daysLeft = getDaysLeft(ass.available_until);
-                  const isOverdue = daysLeft === 'Overdue';
-                  const isDraft = ass.status === 'draft';
-
-                  return (
-                    <Card 
-                      key={ass.id} 
-                      variant="hoverable"
-                      className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5"
-                      onClick={() => navigate(user?.role === 'professor' ? `/courses/${ass.course_id}/tests` : `/tests/${ass.id}`)}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl border border-line bg-sunken flex items-center justify-center text-ink-3 shrink-0 group-hover:text-ink transition-colors">
-                          <FileText size={20} />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-3 mb-1">
-                            <h4 className="text-lg font-light text-ink tracking-wide">{ass.title}</h4>
-                            <span className={`px-2 py-0.5 text-[10px] uppercase tracking-widest rounded-md border ${
-                              isDraft ? 'bg-sunken border-line-strong text-ink-3' : 'bg-sunken border-line-strong text-ink'
-                            }`}>
-                              {isDraft ? 'DRAFT' : 'PUBLISHED'}
-                            </span>
-                          </div>
-                          <span className="text-sm text-ink-3 tracking-wide">{ass.course_title}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="text-sm text-ink-3 mb-1">{isDraft ? 'Not Published' : formatDate(ass.available_until)}</div>
-                          {!isDraft && (
-                            <span className={`text-xs ${isOverdue ? 'text-red-600' : 'text-ink'}`}>
-                              {daysLeft}
-                            </span>
-                          )}
-                        </div>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-ink-4 group-hover:text-ink group-hover:bg-sunken-2 transition-all">
-                          <ChevronRight size={18} />
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className={`space-y-8 ${scopedCourseId ? 'hidden' : ''}`}>
-            
-            {/* Create Action */}
-            {user?.role === 'professor' && (
-              <Card>
-                <CardContent>
-                  <div className="flex items-center gap-2 text-ink-3 mb-6">
-                    <PenTool size={16} />
-                    <h4 className="text-sm font-outfit font-medium tracking-widest uppercase text-ink">Create</h4>
-                  </div>
-
-                <button 
-                  onClick={() => setShowModal(true)}
-                  className="w-full flex flex-col items-center justify-center py-10 px-6 border border-dashed border-line-strong rounded-xl hover:border-accent hover:bg-sunken transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-sunken border border-line-strong flex items-center justify-center mb-4 group-hover:border-accent transition-colors">
-                    <Plus size={20} className="text-ink-3 group-hover:text-ink" />
-                  </div>
-                  <span className="text-sm text-ink font-medium tracking-wide">New Assignment</span>
-                </button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* By Course Summary */}
-            <Card>
-              <CardContent>
-                <div className="flex items-center gap-2 text-ink-3 mb-6">
-                  <Send size={16} />
-                  <h4 className="text-sm font-outfit font-medium tracking-widest uppercase text-ink">By Course</h4>
-                </div>
-
-              {isLoading ? (
-                <div className="py-8 text-center text-ink-4 text-sm">Loading list...</div>
-              ) : courseAssignmentCounts.length === 0 ? (
-                <div className="py-8 text-center text-ink-4 text-sm">No courses yet.</div>
-              ) : (
-                <div className="space-y-2">
-                  {courseAssignmentCounts.map((course) => (
-                    <div 
-                      key={course.id} 
-                      className="group flex items-center justify-between p-3 rounded-lg border border-transparent hover:border-line hover:bg-surface transition-all cursor-pointer"
-                      onClick={() => navigate(`/courses/${course.id}/tests`)}
-                    >
-                      <span className="text-sm text-ink tracking-wide truncate">{course.title}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-ink-3">{course.count} total</span>
-                        <ChevronRight size={14} className="text-ink-4 group-hover:text-ink transition-colors" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                )}
-              </CardContent>
-            </Card>
-
-          </div>
+    <GradientPage>
+      <header className="mt-6 sm:mt-10 flex flex-col md:flex-row md:items-end justify-between gap-6 text-white" style={rise(0)}>
+        <div>
+          <h1 className="font-display font-medium text-[clamp(2rem,4vw,3rem)] leading-[1.02] tracking-[-0.035em]">Assignments</h1>
+          <p className="mt-3 text-white/75 text-[15px] tabular" aria-live="polite">
+            {loading ? 'Loading your work…' : `${plural(todo.filter(r => isOpen(r.state)).length, 'thing')} to do · ${thisWeek} due this week · ${plural(graded.length, 'graded result')}`}
+          </p>
         </div>
+        {courses.length > 1 && (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by class">
+            <button type="button" onClick={() => setFilter('all')} className={filterPill(filter === 'all')} aria-pressed={filter === 'all'}>All classes</button>
+            {courses.map((c, i) => (
+              <button key={c.id} type="button" onClick={() => setFilter(c.id)} className={`${filterPill(filter === c.id)} gap-2`} aria-pressed={filter === c.id}>
+                <span className="h-2 w-2 rounded-full" style={{ background: paletteAt(i).light }} />{c.code}
+              </button>
+            ))}
+          </div>
+        )}
+      </header>
+
+      {/* Row 1: the next deadline, and the next two weeks at a glance */}
+      <div className="mt-8 sm:mt-10 grid gap-4 xl:grid-cols-3">
+        <section style={{ ...rise(1), background: featureBg }} className="relative overflow-hidden rounded-[22px] p-6 text-white flex flex-col min-h-[250px]">
+          <p className="text-xs text-white/70">{next ? `Due next · ${next.course.code} · ${kind(next.t)}` : 'Due next'}</p>
+          <h2 className="mt-2 font-display font-medium text-[1.9rem] leading-[1.05] tracking-[-0.03em]">
+            {loading ? 'Loading…' : next ? next.t.title : 'All caught up.'}
+          </h2>
+          <p className="mt-2 text-sm text-white/75 line-clamp-2">{next ? next.t.description : 'New work from your professors shows up here.'}</p>
+          {next && (
+            <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/80 tabular">
+              <span className="inline-flex items-center gap-1.5"><CalendarClock size={12} />{dueText(next.due)}</span>
+              <span className="inline-flex items-center gap-1.5"><Clock size={12} />{next.t.duration_minutes} min</span>
+              {next.t.question_count != null && <span className="inline-flex items-center gap-1.5"><ListChecks size={12} />{plural(next.t.question_count, 'question')}</span>}
+            </p>
+          )}
+          {next && (
+            <div className="mt-auto pt-5">
+              <Link to={`/tests/${next.t.id}`} className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-white text-[#0e3445] text-sm font-medium hover:bg-[#ecf3f6] transition-colors">
+                {next.state === 'in_progress' ? 'Continue' : 'Start'} <ArrowRight size={14} />
+              </Link>
+            </div>
+          )}
+        </section>
+
+        <TwoWeeks style={rise(2)} rows={todo.filter(r => isOpen(r.state))} />
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-ink/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="p-8 max-w-lg w-full shadow-2xl">
-            
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-xl font-outfit font-light text-ink tracking-wide">Create Assignment</h3>
-              <button 
-                onClick={() => setShowModal(false)} 
-                className="text-ink-3 hover:text-ink transition-colors"
-              >
-                &times;
-              </button>
-            </div>
-            
-            <form onSubmit={handleCreateAssignment} className="space-y-5">
-              
-              <div className="space-y-2">
-                <label className="text-xs text-ink-3 uppercase tracking-widest">Select Class</label>
-                <select 
-                  required 
-                  value={courseId}
-                  onChange={(e) => setCourseId(e.target.value)}
-                  className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
-                >
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.title} ({c.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
+      {/* Row 2: what is left, and what is handed in */}
+      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+        <section aria-labelledby="todo-heading" style={rise(3)} className={`${panel} p-5 xl:col-span-2`}>
+          <div className="flex items-center justify-between">
+            <h2 id="todo-heading" className="text-[15px] text-[#0e3445]">To do</h2>
+            <span className="text-xs text-ink-3">Soonest first</span>
+          </div>
+          {loading ? (
+            <div className="mt-4 space-y-2">{[0, 1, 2].map(i => <div key={i} className="h-16 rounded-2xl bg-[#ecf3f6] animate-pulse" />)}</div>
+          ) : todo.length === 0 ? (
+            <p className="mt-4 flex items-center gap-3 p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3"><FileText size={16} /> Nothing to do right now.</p>
+          ) : (
+            <ul className="mt-4 space-y-1.5">
+              {todo.map(r => <TodoRow key={r.t.id} r={r} />)}
+            </ul>
+          )}
+        </section>
 
-              <div className="space-y-2">
-                <label className="text-xs text-ink-3 uppercase tracking-widest">Assignment Title</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="e.g. Quadratic Equations Worksheet"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors"
-                />
-              </div>
+        <section aria-labelledby="done-heading" style={rise(4)} className={`${panel} p-5 flex flex-col`}>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 id="done-heading" className="text-[15px] text-[#0e3445]">Handed in</h2>
+            {avg !== null && <span className="text-xs text-ink-3 tabular">Average <span className="text-[#0e3445]">{avg}%</span></span>}
+          </div>
+          {loading ? (
+            <div className="mt-4 space-y-2">{[0, 1].map(i => <div key={i} className="h-14 rounded-2xl bg-[#ecf3f6] animate-pulse" />)}</div>
+          ) : done.length === 0 ? (
+            <p className="mt-4 p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">Finished work and scores land here.</p>
+          ) : (
+            <ul className="mt-4 space-y-1.5">
+              {done.map(({ t, a, state, course }) => (
+                <li key={t.id} className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#f1f5f7]">
+                  <ScoreRing value={a?.percentage != null && state !== 'waiting' ? a.percentage / 100 : null} color={state === 'below' ? CLAY.bar : '#1b566b'} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-[#0e3445] truncate">{t.title}</span>
+                    <span className="block text-xs truncate" style={{ color: state === 'below' ? CLAY.ink : undefined }}>
+                      <span className={state === 'below' ? '' : 'text-ink-3'}>{course.code} · {state === 'waiting' ? 'waiting for a grade' : state === 'passed' ? 'passed' : 'below the pass mark'}</span>
+                    </span>
+                  </span>
+                  {state !== 'waiting' && a && <Link to={`/tests/${t.id}/result/${a.id}`} className={`${pillLine} h-8 px-3`}>Result</Link>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    </GradientPage>
+  );
+}
 
-              <div className="space-y-2">
-                <label className="text-xs text-ink-3 uppercase tracking-widest">Description</label>
-                <textarea 
-                  required
-                  placeholder="Task details and instructions..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors resize-none"
-                  rows={4}
-                />
-              </div>
+function TodoRow({ r }: { r: Row }) {
+  const { t, course, color, state, due } = r;
+  const missed = state === 'missed';
+  const soon = !missed && due && daysUntil(due) <= 2;
+  return (
+    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-4 px-2.5 py-2 rounded-2xl bg-[#f1f5f7]">
+      <span className="grid place-items-center h-10 w-10 rounded-full text-white" style={{ background: missed ? CLAY.bar : color }}>
+        {t.test_type === 'assignment' ? <PenLine size={15} /> : <ListChecks size={15} />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[15px] text-[#0e3445] truncate">{t.title}</span>
+        <span className="block text-xs text-ink-3 truncate tabular">
+          {course.code} · {kind(t)} · {t.duration_minutes} min · pass at {t.passing_percentage}%{state === 'in_progress' ? ' · started' : ''}
+        </span>
+      </span>
+      <span className="text-right text-xs tabular whitespace-nowrap">
+        <span className="block" style={{ color: missed ? CLAY.ink : soon ? '#0e3445' : undefined }}>
+          {missed ? 'Closed' : dueText(due)}
+        </span>
+        {due && <span className="block text-ink-4">{shortDate(due)}</span>}
+      </span>
+      <span className="w-[6.5rem] flex justify-end">
+        {missed
+          ? <span className="text-xs text-ink-4">Missed</span>
+          : <Link to={`/tests/${t.id}`} className={pillDark}>{state === 'in_progress' ? 'Continue' : 'Start'} <ArrowRight size={13} /></Link>}
+      </span>
+    </li>
+  );
+}
 
-              <div className="space-y-2">
-                <label className="text-xs text-ink-3 uppercase tracking-widest">Due Date</label>
-                <input 
-                  type="datetime-local" 
-                  required
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors"
-                  style={{ colorScheme: 'dark' }}
-                />
-              </div>
+const SPAN = 21;
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs text-ink-3 uppercase tracking-widest">Duration (Min)</label>
-                  <input 
-                    type="number" 
-                    min={5}
-                    max={180}
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(parseInt(e.target.value))}
-                    className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs text-ink-3 uppercase tracking-widest">Passing (%)</label>
-                  <input 
-                    type="number" 
-                    min={0}
-                    max={100}
-                    value={passingPercentage}
-                    onChange={(e) => setPassingPercentage(parseInt(e.target.value))}
-                    className="w-full px-4 py-3 bg-sunken border border-line rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors"
-                  />
-                </div>
-              </div>
+/** A soft vertical fill for a due day: one class fades from its colour, several blend into each other. */
+function dayFill(colors: string[]) {
+  const unique = [...new Set(colors)];
+  if (unique.length === 1) return `linear-gradient(180deg, ${unique[0]} 0%, ${unique[0]}d9 55%, ${unique[0]}80 100%)`;
+  const stops = unique.map((c, i) => `${c} ${Math.round((i / (unique.length - 1)) * 100)}%`).join(', ');
+  return `linear-gradient(180deg, ${stops})`;
+}
 
-              <div className="flex gap-4 pt-4 mt-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary" className="flex-1" disabled={courses.length === 0}>
-                  Create
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
+/** Three weeks from today, with each open item placed on its due day. */
+function TwoWeeks({ rows, style }: { rows: Row[]; style?: CSSProperties }) {
+  const today = startOfDay(new Date());
+  const days = Array.from({ length: SPAN }, (_, i) => new Date(today.getTime() + i * DAY));
+  const inRange = rows.filter(r => r.due && daysUntil(r.due) < SPAN).sort((x, y) => x.due!.getTime() - y.due!.getTime());
+  const later = rows.length - inRange.length;
 
-    </div>
+  return (
+    <section aria-labelledby="weeks-heading" style={style} className={`${panel} p-5 xl:col-span-2 flex flex-col`}>
+      <div className="flex items-center justify-between">
+        <h2 id="weeks-heading" className="text-[15px] text-[#0e3445]">Next three weeks</h2>
+        <span className="text-xs text-ink-3 tabular">{later > 0 ? `${later} later` : ''}</span>
+      </div>
+      {/* One column per day; a due day fills with its class colour (several classes blend top to bottom) */}
+      <ol className="mt-4 flex-1 grid gap-1.5 min-h-[140px]" style={{ gridTemplateColumns: `repeat(${SPAN}, minmax(0, 1fr))` }}>
+        {days.map((d, i) => {
+          const items = inRange.filter(r => Math.max(0, daysUntil(r.due!)) === i);
+          const weekend = d.getDay() === 0 || d.getDay() === 6;
+          const label = items.map(r => `${r.t.title} · ${r.course.code}`).join('\n');
+          const head = (
+            <>
+              <span className={`block text-[11px] ${items.length ? 'text-white/80' : i === 0 ? 'text-[#1b566b]' : 'text-ink-4'}`}>{i === 0 ? 'Today' : d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+              <span className={`mx-auto mt-0.5 grid place-items-center h-7 w-7 rounded-full text-[14px] tabular ${i === 0 && !items.length ? 'bg-[#0e3445] text-white' : items.length ? 'text-white' : 'text-[#0e3445]'}`}>{d.getDate()}</span>
+              {items.length > 1 && <span className="mx-auto mt-auto mb-1 grid place-items-center h-5 min-w-5 px-1 rounded-full bg-white/25 text-[10px] text-white tabular">{items.length}</span>}
+            </>
+          );
+          const cls = 'flex flex-col pt-1.5 text-center rounded-2xl transition';
+          if (!items.length) {
+            return <li key={i} className={`${cls} ${i === 0 ? 'bg-[#dbe7ec]' : weekend ? 'bg-[#f1f5f7]/55' : 'bg-[#f1f5f7]'}`}>{head}</li>;
+          }
+          return (
+            <li key={i} className="flex">
+              <Link to={items.length === 1 ? `/tests/${items[0].t.id}` : '#due-list'} title={label} aria-label={`Due ${shortDate(d)}: ${label}`}
+                className={`${cls} flex-1 hover:brightness-110 shadow-[0_10px_24px_-14px_rgba(14,52,69,0.6)]`} style={{ background: dayFill(items.map(r => r.color)) }}>
+                {head}
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+
+      {/* What the coloured days are */}
+      <ul id="due-list" className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
+        {inRange.length === 0
+          ? <li className="text-ink-3">Nothing due in the next three weeks.</li>
+          : inRange.map(r => (
+            <li key={r.t.id}>
+              <Link to={`/tests/${r.t.id}`} className="inline-flex items-center gap-2 text-[#0e3445] hover:underline underline-offset-2">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color }} />
+                {r.t.title}<span className="text-ink-4 tabular">{r.course.code} · {shortDate(r.due!)}</span>
+              </Link>
+            </li>
+          ))}
+      </ul>
+    </section>
   );
 }

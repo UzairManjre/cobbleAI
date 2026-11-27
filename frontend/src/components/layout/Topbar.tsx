@@ -1,25 +1,32 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, LayoutGrid, Users, BarChart3, ClipboardList, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { authApi } from '../../api';
 import { Logo } from '../ui/Logo';
 
 const NAV = {
   student: [
-    { to: '/courses', label: 'Courses' },
-    { to: '/assignments', label: 'Assignments' },
-    { to: '/tutor', label: 'Tutor' },
+    { to: '/courses', label: 'Courses', icon: LayoutGrid },
+    { to: '/assignments', label: 'Assignments', icon: ClipboardList },
+    { to: '/tutor', label: 'Tutor', icon: MessageCircle },
   ],
   professor: [
-    { to: '/courses', label: 'Courses' },
-    { to: '/students', label: 'Students' },
-    { to: '/analytics', label: 'Analytics' },
+    { to: '/courses', label: 'Courses', icon: LayoutGrid },
+    { to: '/students', label: 'Students', icon: Users },
+    { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   ],
 };
 
-/** Three zones, like a printed running head: mark left, sections centred, account right. */
-const Topbar = () => {
+const pill = (isActive: boolean) =>
+  `inline-flex items-center gap-2 h-10 px-4 rounded-full text-[14px] whitespace-nowrap border transition-colors ${
+    isActive ? 'bg-white/15 border-white/25 text-white' : 'bg-white/[0.06] border-white/10 text-white/75 hover:bg-white/10 hover:text-white'}`;
+
+/**
+ * Dark teal header: mark left, frosted section pills centred, account right.
+ * `embedded` drops the bar's own background so it can sit inside a page's gradient header.
+ */
+const Topbar = ({ embedded = false }: { embedded?: boolean }) => {
   const { role, token, logout } = useAuthStore();
   const [user, setUser] = useState<{ name?: string; email?: string }>({});
   const [menuOpen, setMenuOpen] = useState(false);
@@ -53,26 +60,20 @@ const Topbar = () => {
   const initials = displayName.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-40 bg-canvas/95 backdrop-blur-sm border-b border-line">
-      <div className="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-x-6 px-5 md:px-8 h-16">
-        <Link to="/courses" className="justify-self-start text-ink hover:text-accent transition-colors" aria-label="Cobble home">
-          <Logo markClassName="h-[22px] w-auto text-accent" />
+    <header
+      className={`${embedded ? 'relative' : 'sticky top-0'} z-40 text-white`}
+      // Same tones as the home gradient: near-navy teal on the left, lighter steel teal on the right
+      style={embedded ? undefined : { background: 'linear-gradient(90deg, #0a2230 0%, #17404f 45%, #3c6f82 100%)' }}
+    >
+      <div className={`grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-x-6 h-[72px] ${embedded ? '' : 'px-5 md:px-8'}`}>
+        <Link to="/courses" className="justify-self-start text-white hover:text-accent-200 transition-colors" aria-label="Cobble home">
+          <Logo markClassName="h-[22px] w-auto text-accent-200" />
         </Link>
 
-        <nav aria-label="Main" className="hidden md:flex items-center gap-1 font-display text-[15px] tracking-[-0.015em]">
-          {role && NAV[role].map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `relative px-3.5 py-2 rounded-full transition-colors ${isActive ? 'text-ink' : 'text-ink-3 hover:text-ink'}`}
-            >
-              {({ isActive }) => (
-                <>
-                  {item.label}
-                  {isActive && <span aria-hidden className="absolute left-1/2 -bottom-[13px] -translate-x-1/2 h-[2px] w-5 bg-accent" />}
-                </>
-              )}
+        <nav aria-label="Main" className="hidden md:flex items-center gap-2">
+          {role && NAV[role].map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} className={({ isActive }) => pill(isActive)}>
+              <Icon size={15} aria-hidden /> {label}
             </NavLink>
           ))}
         </nav>
@@ -84,10 +85,10 @@ const Topbar = () => {
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(o => !o)}
-            className="flex items-center gap-3 rounded-full pl-3 pr-1 py-1 hover:bg-sunken transition-colors cursor-pointer"
+            className="flex items-center gap-3 rounded-full pl-3 pr-1 py-1 hover:bg-white/10 transition-colors cursor-pointer"
           >
-            <span className="hidden sm:block text-sm text-ink-3 max-w-[14rem] truncate">{user.name}</span>
-            <span className="h-8 w-8 rounded-full bg-ink text-white font-display text-[11px] font-semibold flex items-center justify-center">{initials}</span>
+            <span className="hidden sm:block text-sm text-white/80 max-w-[14rem] truncate">{user.name}</span>
+            <span className="h-9 w-9 rounded-full bg-white text-accent-strong font-display text-[11px] font-semibold flex items-center justify-center ring-2 ring-white/25">{initials}</span>
           </button>
 
           {menuOpen && (
@@ -111,14 +112,10 @@ const Topbar = () => {
       </div>
 
       {/* Small screens: the sections sit on their own row */}
-      <nav aria-label="Main" className="md:hidden flex gap-1 px-3 pb-2 overflow-x-auto font-display text-sm">
-        {role && NAV[role].map(item => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) => `px-3 py-1.5 rounded-full whitespace-nowrap ${isActive ? 'bg-ink text-white' : 'text-ink-3'}`}
-          >
-            {item.label}
+      <nav aria-label="Main" className={`md:hidden flex gap-2 pb-3 overflow-x-auto ${embedded ? '' : 'px-4'}`}>
+        {role && NAV[role].map(({ to, label, icon: Icon }) => (
+          <NavLink key={to} to={to} className={({ isActive }) => pill(isActive)}>
+            <Icon size={14} aria-hidden /> {label}
           </NavLink>
         ))}
       </nav>

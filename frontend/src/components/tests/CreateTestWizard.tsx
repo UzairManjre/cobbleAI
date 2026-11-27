@@ -25,7 +25,7 @@ const QUESTION_TYPES: { id: QuestionType; label: string }[] = [
   { id: "short_answer", label: "Short answer" },
 ];
 
-const inputClass = "w-full bg-sunken border border-line rounded-xl px-4 py-2.5 text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:border-line-strong";
+const inputClass = "w-full bg-[#f1f5f7] border border-transparent rounded-xl px-4 py-2.5 text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:border-[#2a6f87] focus:bg-white transition-colors";
 const labelClass = "block text-xs font-medium text-ink-3 mb-2";
 
 export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest, onGenerateQuestions, onViewTest }: CreateTestWizardProps) {
@@ -84,12 +84,12 @@ export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest,
   };
 
   return (
-    <div className="fixed inset-0 bg-ink/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Create a test">
-      <div className="bg-surface border border-line rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 bg-[#0e3445]/40 backdrop-blur-[3px] flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Create a test">
+      <div className="bg-white rounded-[24px] max-w-3xl w-full max-h-[90vh] flex flex-col shadow-[0_30px_80px_-30px_rgba(14,52,69,0.55)]">
         {/* Header and steps */}
-        <div className="px-7 py-5 border-b border-line flex items-start justify-between gap-4 shrink-0">
+        <div className="px-7 pt-6 pb-4 flex items-start justify-between gap-4 shrink-0">
           <div>
-            <h2 className="text-xl font-outfit font-medium text-ink">Create a test</h2>
+            <h2 className="font-display text-[1.6rem] tracking-[-0.02em] text-accent-strong">Create a test</h2>
             <ol className="flex items-center gap-2 mt-3">
               {STEPS.map((label, i) => {
                 const n = i + 1;
@@ -97,19 +97,19 @@ export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest,
                 return (
                   <li key={label} className="flex items-center gap-2">
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold border ${
-                      done ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700" : n === step ? "bg-accent text-white border-accent" : "border-line text-ink-4"
+                      done ? "bg-[#dbe7ec] border-transparent text-[#1b566b]" : n === step ? "bg-[#0e3445] text-white border-[#0e3445]" : "border-[#c3d8e0] text-ink-4"
                     }`}>
                       {done ? <Check className="w-3.5 h-3.5" /> : n}
                     </span>
-                    <span className={`text-xs ${n === step ? "text-ink" : "text-ink-4"}`}>{label}</span>
-                    {n < STEPS.length && <span className="w-6 h-px bg-line" />}
+                    <span className={`text-xs ${n === step ? "text-accent-strong" : "text-ink-4"}`}>{label}</span>
+                    {n < STEPS.length && <span className="w-6 h-px bg-[#dbe7ec]" />}
                   </li>
                 );
               })}
             </ol>
           </div>
-          <button onClick={onClose} aria-label="Close" className="p-2 rounded-lg text-ink-3 hover:text-ink hover:bg-sunken">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} aria-label="Close" className="grid place-items-center h-10 w-10 rounded-full bg-[#f1f5f7] text-ink-3 hover:text-accent-strong hover:bg-[#e6eef2] transition-colors cursor-pointer">
+            <X size={17} />
           </button>
         </div>
 
@@ -132,7 +132,7 @@ export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest,
                 <div className="grid grid-cols-3 gap-2">
                   {TEST_TYPES.map(t => (
                     <button key={t.id} type="button" onClick={() => update({ test_type: t.id })}
-                      className={`text-left p-3 rounded-xl border transition-colors ${draft.test_type === t.id ? "border-accent bg-sunken" : "border-line bg-surface hover:border-line-strong"}`}>
+                      className={`text-left p-3 rounded-xl border transition-colors ${draft.test_type === t.id ? "border-[#2a6f87] bg-[#ecf3f6]" : "border-[#dbe7ec] bg-white hover:border-[#8fbccb]"}`}>
                       <span className="block text-sm text-ink">{t.label}</span>
                       <span className="block text-[11px] text-ink-3 mt-0.5">{t.hint}</span>
                     </button>
@@ -153,7 +153,7 @@ export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest,
                 </div>
               </div>
 
-              <label className="flex items-start gap-3 p-4 rounded-xl border border-line bg-surface cursor-pointer">
+              <label className="flex items-start gap-3 p-4 rounded-xl border border-[#dbe7ec] bg-white cursor-pointer">
                 <input type="checkbox" checked={draft.show_results_immediately}
                   onChange={e => update({ show_results_immediately: e.target.checked })} className="mt-0.5 w-4 h-4 accent-white" />
                 <span className="text-sm text-ink">
@@ -180,15 +180,15 @@ export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest,
                   </span>
                 </div>
                 {readyDocs.length === 0 ? (
-                  <p className="text-sm text-ink-3 py-4 text-center border border-dashed border-line rounded-xl">No processed files yet.</p>
+                  <p className="text-sm text-ink-3 py-4 text-center border border-dashed border-[#c3d8e0] rounded-xl">No processed files yet.</p>
                 ) : (
                   <div className="grid sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
                     {readyDocs.map(doc => {
                       const on = draft.selected_documents.includes(doc.id);
                       return (
                         <button key={doc.id} type="button" onClick={() => update({ selected_documents: toggle(draft.selected_documents, doc.id) })}
-                          className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${on ? "border-accent bg-sunken" : "border-line bg-surface hover:border-line-strong"}`}>
-                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${on ? "bg-accent border-accent" : "border-line-strong"}`}>
+                          className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${on ? "border-[#2a6f87] bg-[#ecf3f6]" : "border-[#dbe7ec] bg-white hover:border-[#8fbccb]"}`}>
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${on ? "bg-[#0e3445] border-[#0e3445]" : "border-[#c3d8e0]"}`}>
                             {on && <Check className="w-3 h-3 text-ink" />}
                           </span>
                           <FileText className="w-3.5 h-3.5 text-ink-4 shrink-0" />
@@ -223,7 +223,7 @@ export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest,
                       const on = draft.selected_topics.includes(node.id);
                       return (
                         <button key={node.id} type="button" onClick={() => update({ selected_topics: toggle(draft.selected_topics, node.id) })}
-                          className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${on ? "bg-accent text-white border-accent" : "text-ink-2 border-line bg-surface hover:border-line-strong"}`}>
+                          className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${on ? "bg-[#0e3445] text-white border-[#0e3445]" : "text-ink-2 border-[#dbe7ec] bg-white hover:border-[#8fbccb]"}`}>
                           {node.label}
                         </button>
                       );
@@ -246,7 +246,7 @@ export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest,
                       const on = draft.question_types.includes(t.id);
                       return (
                         <button key={t.id} type="button" onClick={() => update({ question_types: toggle(draft.question_types, t.id) })}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs border transition-colors ${on ? "bg-accent text-white border-accent" : "text-ink-2 border-line bg-surface hover:border-line-strong"}`}>
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs border transition-colors ${on ? "bg-[#0e3445] text-white border-[#0e3445]" : "text-ink-2 border-[#dbe7ec] bg-white hover:border-[#8fbccb]"}`}>
                           {on && <Check className="w-3 h-3" />} {t.label}
                         </button>
                       );
@@ -256,7 +256,7 @@ export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest,
               </section>
 
               {isGenerating && (
-                <p className="flex items-center gap-2 text-xs text-ink-3 p-3 rounded-xl border border-line bg-surface">
+                <p className="flex items-center gap-2 text-xs text-ink-3 p-3 rounded-xl bg-[#f1f5f7]">
                   <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                   Writing {draft.question_count} questions with the local AI model. This can take a few minutes; keep this window open.
                 </p>
@@ -266,10 +266,10 @@ export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest,
 
           {step === 3 && (
             <div className="text-center py-8">
-              <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-5">
-                <CheckCircle2 className="w-7 h-7 text-emerald-700" />
+              <div className="w-14 h-14 rounded-full bg-[#dbe7ec] flex items-center justify-center mx-auto mb-5">
+                <CheckCircle2 className="w-7 h-7 text-[#1b566b]" />
               </div>
-              <h3 className="text-xl font-outfit font-medium text-ink">Questions ready for review</h3>
+              <h3 className="font-display text-xl tracking-[-0.02em] text-accent-strong">Questions ready for review</h3>
               <p className="text-sm text-ink-3 mt-2 max-w-sm mx-auto">
                 The test is saved as a draft. Check the questions, set Bloom levels or rubrics where needed, then publish it from the test list.
               </p>
@@ -278,7 +278,7 @@ export function CreateTestWizard({ documents, graphNodes, onClose, onCreateTest,
         </div>
 
         {/* Actions */}
-        <div className="px-7 py-4 border-t border-line flex items-center justify-between gap-3 shrink-0">
+        <div className="px-7 py-4 bg-[#f6f9fa] rounded-b-[24px] flex items-center justify-between gap-3 shrink-0">
           {step === 1 && (
             <>
               <Button variant="ghost" onClick={onClose}>Cancel</Button>

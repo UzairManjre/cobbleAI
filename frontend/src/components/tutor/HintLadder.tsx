@@ -72,7 +72,7 @@ export default function HintLadder({ value, onChange, policy, disabled, compact 
         );
       })}
       {policy?.assessment_active && (
-        <span className="text-[10px] text-amber-700 ml-1" role="status">Assessment mode</span>
+        <span className="text-[10px] text-clay ml-1" role="status">Assessment mode</span>
       )}
     </div>
   );

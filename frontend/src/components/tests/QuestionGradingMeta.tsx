@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Save } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { testsApi } from "../../api/tests";
 import { useToastStore } from "../../store/toastStore";
+import { pillDark } from "../ui/glass";
 
 const COGNITIVE_LEVELS = ["remember", "understand", "apply", "analyze", "evaluate", "create"];
 const FREE_TEXT = new Set(["short_answer", "essay", "code"]);
@@ -38,28 +39,28 @@ export function QuestionGradingMeta({ testId, question }: Props) {
   };
 
   return (
-    <div className="mt-4 p-3 rounded-lg border border-line bg-surface space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-[11px] text-ink-3 flex items-center gap-2">
-          Bloom level
-          <select value={level} onChange={e => setLevel(e.target.value)}
-            className="text-xs bg-sunken border border-line rounded-lg px-2 py-1 text-ink focus:outline-none focus:border-line-strong">
-            <option value="">Not set</option>
-            {COGNITIVE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
-        </label>
+    <div className="mt-4 rounded-xl bg-white p-3 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] text-ink-3 mr-1">Bloom level</span>
+        <div className="inline-flex flex-wrap p-0.5 rounded-full bg-[#f1f5f7]" role="radiogroup" aria-label="Bloom level">
+          {COGNITIVE_LEVELS.map(l => (
+            <button key={l} type="button" role="radio" aria-checked={level === l} onClick={() => setLevel(level === l ? "" : l)}
+              className={`h-7 px-2.5 rounded-full text-[11px] capitalize transition-colors cursor-pointer ${level === l ? "bg-accent-strong text-white" : "text-ink-3 hover:text-accent-strong"}`}>
+              {l}
+            </button>
+          ))}
+        </div>
         {dirty && (
-          <button onClick={save} disabled={saving}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-strong disabled:opacity-40">
-            <Save className="w-3.5 h-3.5" /> {saving ? "Saving..." : "Save"}
+          <button type="button" onClick={save} disabled={saving} className={`${pillDark} ml-auto !h-8 !px-3.5 !text-xs`}>
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} {saving ? "Saving" : "Save"}
           </button>
         )}
       </div>
       {freeText && (
         <label className="block text-[11px] text-ink-3">
-          Rubric points, one per line <span className="text-ink-4">(leave empty to derive them from the explanation)</span>
+          Rubric points, one per line <span className="text-ink-4">(leave empty to take them from the explanation)</span>
           <textarea value={rubric} onChange={e => setRubric(e.target.value)} rows={3}
-            className="mt-1.5 w-full text-sm bg-sunken border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-line-strong" />
+            className="mt-1.5 w-full rounded-xl bg-[#f1f5f7] border border-transparent px-3 py-2 text-sm text-ink focus:outline-none focus:border-[#2a6f87] transition-colors" />
         </label>
       )}
     </div>

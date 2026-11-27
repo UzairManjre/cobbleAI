@@ -99,12 +99,12 @@ export default function MapNotReady({ courseId, role, onReady, onBack }: Props) 
             {build.eta_s !== null && ` · about ${formatDuration(build.eta_s)} left`}
           </p>
           {isProfessor && build.waiting_for_worker && (
-            <p className="text-sm text-amber-700 mt-2">No worker has started it yet. Check that the media worker is running.</p>
+            <p className="text-sm text-clay mt-2">No worker has started it yet. Check that the media worker is running.</p>
           )}
         </div>
       )}
 
-      {error && <p role="alert" className="text-sm text-red-600 mt-4">{error}</p>}
+      {error && <p role="alert" className="text-sm text-clay mt-4">{error}</p>}
 
       <div className="flex flex-wrap gap-3 mt-8">
         {isProfessor && status && !build && status.status !== 'processing' && hasFiles && (

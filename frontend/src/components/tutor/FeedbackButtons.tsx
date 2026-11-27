@@ -43,7 +43,7 @@ export default function FeedbackButtons({ messageId }: { messageId?: string }) {
           title={label}
           className={`px-2 py-1 rounded-lg text-[10px] flex items-center gap-1 border transition-colors ${
             rating === value
-              ? value === 'helpful' ? 'border-emerald-500/40 text-emerald-700 bg-emerald-500/10' : 'border-amber-500/40 text-amber-700 bg-amber-500/10'
+              ? value === 'helpful' ? 'border-[#8fbccb] text-accent-strong bg-[#e6eef2]' : 'border-[#c9957f]/60 text-clay bg-clay-wash'
               : 'border-transparent text-ink-4 hover:text-ink-2 hover:border-line'
           }`}
         >

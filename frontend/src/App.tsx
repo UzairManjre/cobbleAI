@@ -5,6 +5,8 @@ import NewLanding from './pages/common/NewLanding';
 import SignIn from './pages/auth/SignIn';
 import StudentOnboarding from './pages/student/StudentOnboarding';
 import Dashboard from './pages/student/Dashboard';
+import ClassTests from './pages/student/ClassTests';
+import ClassAsk from './pages/student/ClassAsk';
 import AnalyticsDashboard from './pages/professor/AnalyticsDashboard';
 import Students from './pages/professor/Students';
 import Assignments from './pages/student/Assignments';
@@ -14,12 +16,14 @@ import Chat from './pages/common/Chat';
 import StudyMode from './pages/student/StudyMode';
 import StudyPlan from './pages/student/StudyPlan';
 import ProfessorTests from './pages/professor/ProfessorTests';
+import CourseOverview from './pages/professor/CourseOverview';
 import GradingDashboard from './pages/professor/GradingDashboard';
 import TakeTest from './pages/student/TakeTest';
 import TestResult from './pages/student/TestResult';
 import LectureView from './pages/common/LectureView';
 import ReviewQueue from './pages/professor/ReviewQueue';
 import CourseInsights from './pages/professor/CourseInsights';
+import CoursesHome from './pages/professor/CoursesHome';
 import AppLayout from './components/layout/AppLayout';
 import CourseLayout from './components/layout/CourseLayout';
 import { useAuthStore } from './store/authStore';
@@ -68,21 +72,21 @@ export default function App() {
           <Route path="/tests/:testId/result/:attemptId" element={<ProtectedRoute><Only role="student"><TestResult /></Only></ProtectedRoute>} />
 
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route path="/courses" element={<Dashboard />} />
+            <Route path="/courses" element={<ByRole student={<Dashboard />} professor={<CoursesHome />} />} />
             <Route path="/assignments" element={<Only role="student"><Assignments /></Only>} />
             <Route path="/tutor" element={<Only role="student"><Chat /></Only>} />
             <Route path="/students" element={<Only role="professor"><Students /></Only>} />
             <Route path="/analytics" element={<Only role="professor"><AnalyticsDashboard /></Only>} />
 
             <Route path="/courses/:courseId" element={<CourseLayout />}>
-              <Route index element={<CourseDetail />} />
+              <Route index element={<ByRole student={<CourseDetail />} professor={<CourseOverview />} />} />
               <Route path="learn" element={<StudyMode />} />
               <Route path="map" element={<MindMap />} />
-              <Route path="tests" element={<ByRole student={<Assignments />} professor={<ProfessorTests />} />} />
+              <Route path="tests" element={<ByRole student={<ClassTests />} professor={<ProfessorTests />} />} />
               <Route path="tests/:testId/grading" element={<Only role="professor"><GradingDashboard /></Only>} />
               <Route path="lectures/:lectureId" element={<LectureView />} />
               <Route path="plan" element={<Only role="student"><StudyPlan /></Only>} />
-              <Route path="ask" element={<Only role="student"><Chat /></Only>} />
+              <Route path="ask" element={<Only role="student"><ClassAsk /></Only>} />
               <Route path="review" element={<Only role="professor"><ReviewQueue /></Only>} />
               <Route path="insights" element={<Only role="professor"><CourseInsights /></Only>} />
             </Route>

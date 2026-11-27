@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Circle, FileText, Film, Loader2, Map, RefreshCw, Upload, XCircle } from 'lucide-react';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
+import { panel, pillDark, pillLine, CLAY } from '../ui/glass';
 import MapBuildProgress from './MapBuildProgress';
 import type { CourseSetup, SetupDocument, SetupPhase } from '../../types/graph';
 import { STAGE_LABELS, formatDuration, isActiveBuild, timeAgo } from '../../utils/buildProgress';
@@ -29,21 +28,21 @@ const PHASE_TEXT: Record<SetupPhase, string> = {
 };
 
 function StepIcon({ state }: { state: StepState }) {
-  if (state === 'done') return <CheckCircle2 className="w-5 h-5 text-emerald-700" />;
-  if (state === 'active') return <Loader2 className="w-5 h-5 text-ink animate-spin" />;
-  if (state === 'warn') return <AlertTriangle className="w-5 h-5 text-amber-700" />;
-  if (state === 'error') return <XCircle className="w-5 h-5 text-red-600" />;
-  return <Circle className="w-5 h-5 text-ink-4" />;
+  if (state === 'done') return <CheckCircle2 className="w-5 h-5 text-[#1b566b]" />;
+  if (state === 'active') return <Loader2 className="w-5 h-5 text-[#2a6f87] animate-spin" />;
+  if (state === 'warn') return <AlertTriangle className="w-5 h-5" style={{ color: CLAY.bar }} />;
+  if (state === 'error') return <XCircle className="w-5 h-5" style={{ color: CLAY.ink }} />;
+  return <Circle className="w-5 h-5 text-[#c3d8e0]" />;
 }
 
 function Step({ state, title, summary, last, children }: { state: StepState; title: string; summary: string; last?: boolean; children?: ReactNode }) {
   return (
     <li className="relative flex gap-4">
-      {!last && <span className="absolute left-[9px] top-7 bottom-0 w-px bg-sunken-2" aria-hidden />}
+      {!last && <span className="absolute left-[9px] top-7 bottom-0 w-px bg-[#dbe7ec]" aria-hidden />}
       <div className="shrink-0 pt-0.5"><StepIcon state={state} /></div>
       <div className="flex-1 min-w-0 pb-6">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-          <h4 className={`text-sm font-medium ${state === 'todo' ? 'text-ink-3' : 'text-ink'}`}>{title}</h4>
+          <h4 className={`text-sm ${state === 'todo' ? 'text-ink-3' : 'text-accent-strong'}`}>{title}</h4>
           <span className="text-xs text-ink-3">{summary}</span>
         </div>
         {children && <div className="mt-3">{children}</div>}
@@ -56,21 +55,22 @@ function FileRow({ doc }: { doc: SetupDocument }) {
   const Icon = doc.media_type === 'lecture' ? Film : FileText;
   const stage = doc.stage ? STAGE_LABELS[doc.stage] || doc.stage : 'Starting';
   return (
-    <div className="p-3 rounded-lg bg-surface border border-line">
+    <div className="p-3 rounded-xl bg-[#f1f5f7]">
       <div className="flex items-center gap-3">
         <Icon className="w-4 h-4 text-ink-4 shrink-0" />
-        <span className="text-xs text-ink truncate flex-1">{doc.filename}</span>
-        <span className={`text-[11px] whitespace-nowrap ${doc.status === 'failed' ? 'text-red-600' : doc.status === 'pending' ? 'text-orange-700' : 'text-violet-700'}`}>
+        <span className="text-xs text-accent-strong truncate flex-1">{doc.filename}</span>
+        <span className={`text-[11px] whitespace-nowrap ${doc.status === 'processing' ? 'text-[#1b566b]' : ''}`}
+          style={doc.status === 'failed' ? { color: CLAY.ink } : doc.status === 'pending' ? { color: CLAY.bar } : doc.status === 'processing' ? undefined : { color: '#1b566b' }}>
           {doc.status === 'failed' ? 'Failed' : doc.status === 'pending' ? 'Waiting in queue' : `${stage}${doc.progress ? ` · ${Math.round(doc.progress * 100)}%` : ''}`}
         </span>
       </div>
       {doc.status === 'processing' && (
-        <div className="h-1 bg-sunken-2 rounded-full overflow-hidden mt-2">
-          <div className="h-full bg-purple-400 transition-all duration-500" style={{ width: `${Math.max(Math.round((doc.progress || 0) * 100), 4)}%` }} />
+        <div className="h-1 bg-[#dbe7ec] rounded-full overflow-hidden mt-2">
+          <div className="h-full bg-[#2a6f87] rounded-full transition-all duration-500" style={{ width: `${Math.max(Math.round((doc.progress || 0) * 100), 4)}%` }} />
         </div>
       )}
       {doc.status === 'failed' && doc.error_message && (
-        <p className="text-[11px] text-red-600/80 mt-2 line-clamp-3">{doc.error_message}</p>
+        <p className="text-[11px] mt-2 line-clamp-3" style={{ color: CLAY.ink }}>{doc.error_message}</p>
       )}
     </div>
   );
@@ -86,9 +86,9 @@ export default function CourseSetupPanel({ setup, starting, cancelling, onBuild,
 
   if (settled && !expanded && graph) {
     return (
-      <Card className="px-6 py-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-        <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
-        <p className="text-sm text-ink flex-1 min-w-[200px]">
+      <section className={`${panel} px-5 py-4 flex flex-wrap items-center gap-x-4 gap-y-3`}>
+        <CheckCircle2 className="w-5 h-5 text-[#1b566b] shrink-0" />
+        <p className="text-sm text-accent-strong flex-1 min-w-[200px]">
           Course ready
           <span className="text-ink-3">
             {' '}· {graph.nodes_count} concepts · {graph.edges_count} connections · map built {timeAgo(graph.created_at)}
@@ -96,10 +96,10 @@ export default function CourseSetupPanel({ setup, starting, cancelling, onBuild,
           </span>
         </p>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setExpanded(true)}>Setup details <ChevronDown size={14} /></Button>
-          <Button size="sm" variant="outline" onClick={onBuild} disabled={starting}><RefreshCw size={14} /> Rebuild map</Button>
+          <button type="button" className={pillLine} onClick={() => setExpanded(true)}>Setup details <ChevronDown size={14} /></button>
+          <button type="button" className={pillLine} onClick={onBuild} disabled={starting}><RefreshCw size={14} /> Rebuild map</button>
         </div>
-      </Card>
+      </section>
     );
   }
 
@@ -123,21 +123,21 @@ export default function CourseSetupPanel({ setup, starting, cancelling, onBuild,
   const canBuild = !building && docs.ready > 0;
 
   return (
-    <Card className="p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+    <section className={`${panel} p-5`}>
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
         <div>
-          <h3 className="text-lg font-outfit font-medium text-ink">Course setup</h3>
+          <h3 className="text-[15px] text-accent-strong">Course setup</h3>
           <p className="text-xs text-ink-3 mt-1">{PHASE_TEXT[setup.phase]}</p>
         </div>
         {settled && (
-          <Button size="sm" variant="ghost" onClick={() => setExpanded(false)}>Hide <ChevronUp size={14} /></Button>
+          <button type="button" className="inline-flex items-center gap-1 h-8 px-3 rounded-full text-xs text-ink-3 hover:text-accent-strong hover:bg-[#f1f5f7] transition-colors cursor-pointer" onClick={() => setExpanded(false)}>Hide <ChevronUp size={14} /></button>
         )}
       </div>
 
       <ol>
         <Step state={docs.total ? 'done' : 'active'} title="Upload materials"
           summary={docs.total ? `${docs.total} file${docs.total === 1 ? '' : 's'}` : 'Slides, notes or lecture recordings'}>
-          {!docs.total && <Button size="sm" variant="primary" onClick={onUpload}><Upload size={14} /> Upload files</Button>}
+          {!docs.total && <button type="button" className={pillDark} onClick={onUpload}><Upload size={14} /> Upload files</button>}
         </Step>
 
         <Step state={processState} title="Process files"
@@ -159,23 +159,23 @@ export default function CourseSetupPanel({ setup, starting, cancelling, onBuild,
 
           {!building && build?.status === 'failed' && (
             <div className="space-y-3">
-              <p className="text-xs text-red-600 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              <p className="text-xs rounded-xl p-3" style={{ background: CLAY.wash, color: CLAY.ink }}>
                 {build.error || 'The build stopped with an error.'}
                 {graph && ' The previous map is still available to students.'}
               </p>
-              <Button size="sm" variant="primary" onClick={onBuild} disabled={!canBuild || starting}><RefreshCw size={14} /> Try again</Button>
+              <button type="button" className={pillDark} onClick={onBuild} disabled={!canBuild || starting}><RefreshCw size={14} /> Try again</button>
             </div>
           )}
 
           {!building && build?.status !== 'failed' && graph && changed.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+              <p className="text-xs text-clay bg-clay-wash rounded-lg p-3">
                 {changed.length} file{changed.length === 1 ? ' was' : 's were'} processed after this map was built
                 ({changed.slice(0, 3).join(', ')}{changed.length > 3 ? `, +${changed.length - 3} more` : ''}). Rebuild the map to include {changed.length === 1 ? 'it' : 'them'}.
               </p>
               <div className="flex gap-2">
-                <Button size="sm" variant="primary" onClick={onBuild} disabled={starting}><RefreshCw size={14} /> Rebuild map</Button>
-                <Button size="sm" variant="outline" onClick={onViewMap}><Map size={14} /> View map</Button>
+                <button type="button" className={pillDark} onClick={onBuild} disabled={starting}><RefreshCw size={14} /> Rebuild map</button>
+                <button type="button" className={pillLine} onClick={onViewMap}><Map size={14} /> View map</button>
               </div>
             </div>
           )}
@@ -189,8 +189,8 @@ export default function CourseSetupPanel({ setup, starting, cancelling, onBuild,
                 </p>
               )}
               <div className="flex gap-2">
-                <Button size="sm" variant="primary" onClick={onViewMap}><Map size={14} /> View map</Button>
-                <Button size="sm" variant="outline" onClick={onBuild} disabled={starting}><RefreshCw size={14} /> Rebuild</Button>
+                <button type="button" className={pillDark} onClick={onViewMap}><Map size={14} /> View map</button>
+                <button type="button" className={pillLine} onClick={onBuild} disabled={starting}><RefreshCw size={14} /> Rebuild</button>
               </div>
             </div>
           )}
@@ -198,9 +198,9 @@ export default function CourseSetupPanel({ setup, starting, cancelling, onBuild,
           {!building && !graph && build?.status !== 'failed' && (
             canBuild && !waiting ? (
               <div className="space-y-2">
-                <Button size="sm" variant="primary" onClick={onBuild} disabled={starting}>
+                <button type="button" className={pillDark} onClick={onBuild} disabled={starting}>
                   {starting ? <Loader2 size={14} className="animate-spin" /> : <Map size={14} />} Build concept map
-                </Button>
+                </button>
                 <p className="text-[11px] text-ink-3">
                   The local AI model reads every file, so this takes a few minutes per file. It runs in the background.
                 </p>
@@ -211,7 +211,7 @@ export default function CourseSetupPanel({ setup, starting, cancelling, onBuild,
                   <p className="text-[11px] text-ink-3">The build starts on its own once the files above are processed.</p>
                 )}
                 {canBuild && (
-                  <Button size="sm" variant="outline" onClick={onBuild} disabled={starting}><Map size={14} /> Build now with the ready files</Button>
+                  <button type="button" className={pillLine} onClick={onBuild} disabled={starting}><Map size={14} /> Build now with the ready files</button>
                 )}
               </div>
             ) : null
@@ -219,8 +219,8 @@ export default function CourseSetupPanel({ setup, starting, cancelling, onBuild,
         </Step>
 
         <Step last state={setup.students ? 'done' : 'todo'} title="Invite students"
-          summary={setup.students ? `${setup.students} student${setup.students === 1 ? '' : 's'} joined` : 'Share the invite code from Student Access'} />
+          summary={setup.students ? `${setup.students} student${setup.students === 1 ? '' : 's'} joined` : 'Get an invite code from the Class card'} />
       </ol>
-    </Card>
+    </section>
   );
 }

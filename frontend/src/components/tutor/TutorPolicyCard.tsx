@@ -4,17 +4,44 @@ import { tutorApi } from '../../api/tutor';
 import { useToastStore } from '../../store/toastStore';
 import { HINT_LEVELS } from '../../types/tutor';
 import type { HintLevel, TutorPolicySettings } from '../../types/tutor';
-import { Card } from '../ui/Card';
+import { panel } from '../ui/glass';
 
-function Toggle({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (v: boolean) => void }) {
+const SHORT: Record<HintLevel, string> = { nudge: 'Nudge', guiding_question: 'Question', worked_step: 'Step', full_answer: 'Answer' };
+const order = HINT_LEVELS.map(h => h.value);
+
+function Switch({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex items-start justify-between gap-3 py-2 cursor-pointer">
-      <span>
-        <span className="block text-sm text-ink">{label}</span>
-        <span className="block text-[11px] text-ink-3 mt-0.5">{hint}</span>
+    <label className="flex items-start justify-between gap-3 py-2.5 cursor-pointer">
+      <span className="min-w-0">
+        <span className="block text-sm text-accent-strong">{label}</span>
+        <span className="block text-[11px] text-ink-3 mt-0.5 leading-snug">{hint}</span>
       </span>
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} className="mt-1 accent-white" />
+      <input type="checkbox" role="switch" checked={checked} onChange={e => onChange(e.target.checked)} className="peer sr-only" />
+      <span aria-hidden className={`mt-0.5 relative h-6 w-10 shrink-0 rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-accent-200 ${checked ? 'bg-accent' : 'bg-[#d4e1e7]'}`}>
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all ${checked ? 'left-[18px]' : 'left-0.5'}`} />
+      </span>
     </label>
+  );
+}
+
+/** A row of the four help levels; levels above `limit` are disabled. */
+function Ladder({ label, value, limit, onChange }: { label: string; value: HintLevel; limit?: HintLevel; onChange: (v: HintLevel) => void }) {
+  const max = limit ? order.indexOf(limit) : order.length - 1;
+  const at = order.indexOf(value);
+  return (
+    <div>
+      <p className="text-xs text-ink-3">{label}</p>
+      <div role="radiogroup" aria-label={label} className="mt-1.5 grid grid-cols-4 gap-1 p-1 rounded-full bg-[#f1f5f7]">
+        {HINT_LEVELS.map((h, i) => (
+          <button key={h.value} type="button" role="radio" aria-checked={value === h.value} disabled={i > max} title={h.description}
+            onClick={() => onChange(h.value)}
+            className={`h-8 rounded-full text-xs transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
+              value === h.value ? 'bg-accent-strong text-white' : i < at ? 'text-accent' : 'text-ink-3 hover:text-accent-strong'}`}>
+            {SHORT[h.value]}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -28,7 +55,7 @@ export default function TutorPolicyCard({ courseId }: { courseId: string }) {
     tutorApi.getPolicySettings(courseId).then(res => setSettings(res.data)).catch(() => setSettings(null));
   }, [courseId]);
 
-  if (!settings) return null;
+  if (!settings) return <section className={`${panel} p-5 h-full min-h-[200px]`} aria-busy="true" />;
 
   const update = async (patch: Partial<TutorPolicySettings>) => {
     const previous = settings;
@@ -45,54 +72,32 @@ export default function TutorPolicyCard({ courseId }: { courseId: string }) {
     }
   };
 
-  const select = (field: 'max_hint_level' | 'default_hint_level', value: HintLevel) => {
-    const patch: Partial<TutorPolicySettings> = { [field]: value };
+  const setMax = (value: HintLevel) => {
+    const patch: Partial<TutorPolicySettings> = { max_hint_level: value };
     // Keep the default help level within the maximum
-    const order = HINT_LEVELS.map(h => h.value);
-    if (field === 'max_hint_level' && order.indexOf(settings.default_hint_level) > order.indexOf(value)) {
-      patch.default_hint_level = value;
-    }
+    if (order.indexOf(settings.default_hint_level) > order.indexOf(value)) patch.default_hint_level = value;
     update(patch);
   };
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <ShieldCheck className="w-4 h-4 text-accent" />
-        <h3 className="text-lg font-outfit font-medium text-ink">Tutor Policy</h3>
-        {saving && <span className="ml-auto text-[10px] text-ink-3">Saving…</span>}
+    <section className={`${panel} p-5 h-full flex flex-col`}>
+      <div className="flex items-center gap-2">
+        <span className="grid place-items-center h-8 w-8 rounded-xl bg-accent-wash text-accent"><ShieldCheck size={15} /></span>
+        <h2 className="text-[15px] text-accent-strong">Tutor policy</h2>
+        <span className="ml-auto text-[11px] text-ink-3">{saving ? 'Saving…' : 'Saved'}</span>
       </div>
 
-      <div className="space-y-4">
-        <label className="block">
-          <span className="text-[10px] uppercase tracking-widest text-ink-3">Most help allowed</span>
-          <select
-            value={settings.max_hint_level}
-            onChange={e => select('max_hint_level', e.target.value as HintLevel)}
-            className="mt-1 w-full bg-sunken border border-line rounded-lg px-3 py-2 text-sm text-ink"
-          >
-            {HINT_LEVELS.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-[10px] uppercase tracking-widest text-ink-3">Default help level</span>
-          <select
-            value={settings.default_hint_level}
-            onChange={e => select('default_hint_level', e.target.value as HintLevel)}
-            className="mt-1 w-full bg-sunken border border-line rounded-lg px-3 py-2 text-sm text-ink"
-          >
-            {HINT_LEVELS.filter(h => HINT_LEVELS.findIndex(x => x.value === h.value) <= HINT_LEVELS.findIndex(x => x.value === settings.max_hint_level))
-              .map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
-          </select>
-        </label>
-
-        <div className="divide-y divide-line">
-          <Toggle label="Allow full answers" hint="Off: the tutor stops at worked steps." checked={settings.allow_full_answers} onChange={v => update({ allow_full_answers: v })} />
-          <Toggle label="Assessment mode" hint="Hides answers for everyone (guiding questions only)." checked={settings.assessment_mode} onChange={v => update({ assessment_mode: v })} />
-          <Toggle label="Automatic during tests" hint="Hides answers for a student while they have a test in progress." checked={settings.auto_assessment_mode} onChange={v => update({ auto_assessment_mode: v })} />
-          <Toggle label="Cite or decline" hint="Decline when the materials don't support an answer." checked={settings.cite_or_decline} onChange={v => update({ cite_or_decline: v })} />
-        </div>
+      <div className="mt-4 space-y-3">
+        <Ladder label="Most help allowed" value={settings.max_hint_level} onChange={setMax} />
+        <Ladder label="Starts at" value={settings.default_hint_level} limit={settings.max_hint_level} onChange={v => update({ default_hint_level: v })} />
       </div>
-    </Card>
+
+      <div className="mt-3 flex-1 flex flex-col justify-around divide-y divide-[#e2eaeb]">
+        <Switch label="Allow full answers" hint="Off: the tutor stops at worked steps." checked={settings.allow_full_answers} onChange={v => update({ allow_full_answers: v })} />
+        <Switch label="Assessment mode" hint="Guiding questions only, for everyone." checked={settings.assessment_mode} onChange={v => update({ assessment_mode: v })} />
+        <Switch label="Automatic during tests" hint="Hides answers while a student is mid-test." checked={settings.auto_assessment_mode} onChange={v => update({ auto_assessment_mode: v })} />
+        <Switch label="Cite or decline" hint="Decline when the material doesn't back an answer." checked={settings.cite_or_decline} onChange={v => update({ cite_or_decline: v })} />
+      </div>
+    </section>
   );
 }

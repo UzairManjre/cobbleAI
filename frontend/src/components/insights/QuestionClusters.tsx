@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Loader2, MessagesSquare, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { insightsApi } from '../../api/insights';
 import type { QuestionInsight } from '../../api/insights';
 import { useToastStore } from '../../store/toastStore';
+import { CLAY, panel, pillLine } from '../ui/glass';
 
 function day(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -35,51 +36,63 @@ export default function QuestionClusters({ courseId, days }: { courseId: string;
     }
   };
 
+  const clusters = [...(insight?.clusters ?? [])].sort((a, b) => b.size - a.size);
+  const max = Math.max(1, ...clusters.map(c => c.size));
+
   return (
-    <section className="bg-surface border border-line rounded-2xl p-5 space-y-4">
+    <section className={`${panel} p-5 h-full flex flex-col`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-medium text-ink flex items-center gap-2"><MessagesSquare className="w-4 h-4 text-emerald-700" /> What students asked</h2>
-          <p className="text-[11px] text-ink-3 mt-1">
+          <h2 className="text-[15px] text-accent-strong">What students asked</h2>
+          <p className="text-xs text-ink-3 mt-0.5">
             {insight
-              ? `${insight.n_questions} questions from ${insight.n_students} students, ${day(insight.period_start)} to ${day(insight.period_end)}. Topics and example questions are paraphrased; no student wording is shown.`
-              : 'Similar tutor questions are grouped, and each group is named with its likely misconception.'}
+              ? `${insight.n_questions} questions from ${insight.n_students} ${insight.n_students === 1 ? 'student' : 'students'}, ${day(insight.period_start)} to ${day(insight.period_end)} · paraphrased`
+              : 'Similar questions, grouped by topic.'}
           </p>
         </div>
-        <button onClick={generate} disabled={busy}
-          className="px-3 py-1.5 rounded-lg text-xs border border-line-strong text-ink flex items-center gap-1.5 hover:border-ink-4 disabled:opacity-40">
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          {insight ? `Rebuild for last ${days} days` : `Build for last ${days} days`}
+        <button type="button" onClick={generate} disabled={busy} className={pillLine}>
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          {insight ? 'Refresh' : 'Build digest'}
         </button>
       </div>
 
       {!loaded ? null : !insight ? (
-        <p className="text-xs text-ink-4">No digest yet. One is built every week, or build one now.</p>
-      ) : insight.clusters.length === 0 ? (
-        <p className="text-xs text-ink-4">No student questions in this period.</p>
+        <p className="mt-4 p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">No digest yet. One is built every week, or build one now.</p>
+      ) : clusters.length === 0 ? (
+        <p className="mt-4 p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">No student questions in this period.</p>
       ) : (
-        <ol className="space-y-3">
-          {insight.clusters.map(c => (
-            <li key={c.cluster_id} className="border border-line rounded-xl p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-sm text-ink">{c.topic}</p>
-                <span className="text-[11px] text-ink-3">
-                  {c.size} question{c.size === 1 ? '' : 's'}
-                  {c.declined > 0 && <span className="text-amber-700"> · {c.declined} declined</span>}
-                  {c.weak_support > 0 && <span className="text-amber-700/80"> · {c.weak_support} weak support</span>}
-                </span>
-              </div>
-              {c.representative_question && <p className="text-xs text-ink-2 mt-1.5">“{c.representative_question}”</p>}
-              {c.misconception && <p className="text-xs text-ink-3 mt-1.5"><span className="text-ink-3">Likely misconception:</span> {c.misconception}</p>}
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {c.node_labels.map(label => (
-                  <span key={label} className="text-[10px] px-2 py-0.5 rounded-full border border-line text-ink-3">{label}</span>
-                ))}
-                {c.labelled_by === 'keywords' && <span className="text-[10px] text-ink-4">labelled by keywords (model unavailable)</span>}
-              </div>
-            </li>
-          ))}
+        <ol className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2.5 flex-1">
+          {clusters.map(c => {
+            const ok = Math.max(0, c.size - c.declined - c.weak_support);
+            return (
+              <li key={c.cluster_id} className="rounded-2xl bg-[#f1f5f7] p-4 flex flex-col"
+                title={c.labelled_by === 'keywords' ? 'Named from keywords (the model was unavailable)' : undefined}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-[15px] text-accent-strong truncate">{c.topic}</p>
+                  <span className="shrink-0 text-xs text-ink-3 tabular"><span className="font-display text-xl text-accent-strong">{c.size}</span> asked</span>
+                </div>
+                {/* How the tutor coped: answered well / weak support / declined. Bar length is relative to the biggest topic. */}
+                <div className="mt-2.5 h-2 rounded-full bg-[#dbe7ec] overflow-hidden flex" style={{ width: `${Math.max(30, (c.size / max) * 100)}%` }}
+                  aria-label={`${ok} answered well, ${c.weak_support} weakly supported, ${c.declined} declined`}>
+                  <span className="h-full bg-accent" style={{ width: `${(ok / c.size) * 100}%` }} />
+                  <span className="h-full bg-accent-200" style={{ width: `${(c.weak_support / c.size) * 100}%` }} />
+                  <span className="h-full" style={{ width: `${(c.declined / c.size) * 100}%`, background: CLAY.bar }} />
+                </div>
+                {c.representative_question && <p className="mt-3 text-sm text-ink-2 leading-snug">“{c.representative_question}”</p>}
+                {c.misconception && (
+                  <p className="mt-2 text-xs text-ink-3 leading-snug border-l-2 pl-2.5" style={{ borderColor: CLAY.bar }}>Mix-up: {c.misconception}</p>
+                )}
+              </li>
+            );
+          })}
         </ol>
+      )}
+      {clusters.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-ink-3">
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-accent" />Answered from notes</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-accent-200" />Weak support</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: CLAY.bar }} />Declined</span>
+        </div>
       )}
     </section>
   );

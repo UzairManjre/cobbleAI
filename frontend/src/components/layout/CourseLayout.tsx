@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
+﻿import { useEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { coursesApi } from '../../api';
 import { useAuthStore } from '../../store/authStore';
+import GradientPage from './GradientPage';
+import { embedsTopbar } from './gradientPages';
+import { paletteAt, type ArtPalette } from '../ui/artPalettes';
+import { rise } from '../ui/glass';
 
-interface CourseSummary { id: string; title: string; code: string }
+interface CourseSummary { id: string; title: string; code: string; description?: string; schedule?: string }
 
 const TABS = {
   student: [
@@ -29,71 +33,74 @@ export default function CourseLayout() {
   const { courseId } = useParams();
   const role = useAuthStore(s => s.role) ?? 'student';
   // The lookup result is tagged with the course it was for, so switching courses shows the placeholder again
-  const [loaded, setLoaded] = useState<{ id?: string; course: CourseSummary | null }>({ course: null });
+  const { pathname } = useLocation();
+  const [loaded, setLoaded] = useState<{ id?: string; course: CourseSummary | null; palette?: ArtPalette }>({ course: null });
 
   useEffect(() => {
     coursesApi.list()
-      .then(res => setLoaded({ id: courseId, course: (res.data || []).find((c: CourseSummary) => c.id === courseId) ?? null }))
+      .then(res => {
+        const list: CourseSummary[] = res.data || [];
+        const i = list.findIndex(c => c.id === courseId);
+        // Same colour as the course's card on the home page
+        setLoaded({ id: courseId, course: list[i] ?? null, palette: i >= 0 ? paletteAt(i) : undefined });
+      })
       .catch(() => setLoaded({ id: courseId, course: null }));
   }, [courseId]);
 
-  if (loaded.id !== courseId) {
+  const embedded = embedsTopbar(role, pathname);
+
+  if (embedded && (loaded.id !== courseId || !loaded.course)) {
     return (
-      <div className="w-full max-w-6xl mx-auto px-5 md:px-8 pt-10" aria-busy="true">
-        <div className="h-3 w-24 rounded bg-sunken-2 animate-pulse" />
-        <div className="h-12 w-2/3 max-w-xl rounded-lg bg-sunken-2 animate-pulse mt-5" />
-        <div className="h-px bg-line mt-10" />
-      </div>
+      <GradientPage height={600}>
+        {loaded.id !== courseId ? (
+          <div className="mt-10" aria-busy="true">
+            <div className="h-3 w-24 rounded bg-white/20 animate-pulse" />
+            <div className="h-12 w-2/3 max-w-xl rounded-lg bg-white/20 animate-pulse mt-6" />
+          </div>
+        ) : (
+          <div className="mt-12 text-white">
+            <h1 className="font-display text-4xl font-medium tracking-[-0.035em]">Course not found</h1>
+            <p className="text-white/75 mt-3 max-w-md">It may have been removed, or you are not enrolled in it.</p>
+            <Link to="/courses" className="inline-flex items-center gap-2 mt-6 text-white hover:underline"><ArrowLeft size={16} /> Back to courses</Link>
+          </div>
+        )}
+      </GradientPage>
     );
   }
+
+  // The other course views (Learn, the full-screen map) draw their own chrome
+  if (!embedded || !loaded.course) return <Outlet />;
 
   const course = loaded.course;
-  if (!course) {
-    return (
-      <div className="w-full max-w-6xl mx-auto px-5 md:px-8 py-24">
-        <h1 className="font-display text-5xl font-medium tracking-[-0.035em]">Course not found</h1>
-        <p className="text-ink-3 mt-4 max-w-md">It may have been removed, or you are not enrolled in it.</p>
-        <Link to="/courses" className="inline-flex items-center gap-2 mt-8 font-display text-accent hover:underline">
-          <ArrowLeft size={16} /> Back to courses
-        </Link>
-      </div>
-    );
-  }
-
   const base = `/courses/${course.id}`;
 
   return (
-    <div className="w-full">
-      <div className="px-5 md:px-8 lg:px-12"><div className="w-full max-w-6xl mx-auto pt-8 md:pt-10">
-        <div className="flex items-center justify-between gap-6">
-          <Link to="/courses" className="inline-flex items-center gap-1.5 text-sm text-ink-3 hover:text-ink transition-colors">
-            <ArrowLeft size={14} /> All courses
-          </Link>
-          <span className="annot text-ink-3 tabular">{course.code}</span>
-        </div>
-        <h1 className="font-display font-medium text-ink tracking-[-0.035em] leading-[0.98] text-[clamp(2.25rem,5vw,4rem)] mt-6 max-w-4xl">
-          {course.title}
-        </h1>
-        <nav aria-label="Course sections" className="flex gap-7 mt-8 border-b border-line overflow-x-auto">
-          {TABS[role].map(t => (
-            <NavLink
-              key={t.label}
-              to={t.to ? `${base}/${t.to}` : base}
-              end={!t.to}
-              className={({ isActive }) =>
-                `relative pb-3.5 font-display text-[15px] tracking-[-0.01em] whitespace-nowrap transition-colors ${isActive ? 'text-ink' : 'text-ink-3 hover:text-ink'}`}
-            >
-              {({ isActive }) => (
-                <>
-                  {t.label}
-                  {isActive && <span aria-hidden className="absolute inset-x-0 -bottom-px h-[2px] bg-accent" />}
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-      </div></div>
-      <Outlet />
-    </div>
+      <GradientPage height={600}>
+        <header className="mt-6 sm:mt-8 flex flex-col lg:flex-row lg:items-end justify-between gap-5 text-white" style={rise(0)}>
+          <div className="min-w-0 max-w-3xl">
+            <Link to="/courses" className="inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors">
+              <ArrowLeft size={14} /> All courses
+            </Link>
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center gap-2 h-7 px-3 rounded-full bg-white/10 border border-white/20 tabular">
+                <span className="h-2 w-2 rounded-full" style={{ background: loaded.palette?.light }} aria-hidden />{course.code}
+              </span>
+              {course.schedule && <span className="inline-flex items-center h-7 px-3 rounded-full bg-white/[0.06] border border-white/15 text-white/80">{course.schedule}</span>}
+            </div>
+            <h1 className="mt-3 font-display font-medium text-[clamp(2rem,4vw,3rem)] leading-[1.02] tracking-[-0.035em]">{course.title}</h1>
+            {course.description && <p className="mt-2.5 text-white/75 text-[15px] leading-relaxed">{course.description}</p>}
+          </div>
+          <nav aria-label="Course sections" className="flex flex-wrap gap-2">
+            {TABS[role].map(t => (
+              <NavLink key={t.label} to={t.to ? `${base}/${t.to}` : base} end={!t.to}
+                className={({ isActive }) => `inline-flex items-center h-10 px-4 rounded-full text-sm border transition-colors ${
+                  isActive ? 'bg-white text-accent-strong border-white' : 'bg-white/[0.06] border-white/20 text-white/80 hover:bg-white/10 hover:text-white'}`}>
+                {t.label}
+              </NavLink>
+            ))}
+          </nav>
+        </header>
+        <Outlet />
+      </GradientPage>
   );
 }

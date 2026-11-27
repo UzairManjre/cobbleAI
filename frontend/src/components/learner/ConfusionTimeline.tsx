@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Flame } from 'lucide-react';
 import { learnerApi } from '../../api/learner';
 import type { HeatBin, LectureHeatmap } from '../../api/learner';
 import { formatTimestamp } from '../../utils/format';
+import { CLAY } from '../ui/glass';
 
 interface Props {
   lectureId: string;
@@ -18,68 +18,75 @@ export default function ConfusionTimeline({ lectureId, onSeek }: Props) {
     learnerApi.lectureHeatmap(lectureId).then(res => setData(res.data)).catch(() => setData(null));
   }, [lectureId]);
 
-  if (!data) return <p className="text-xs text-ink-3 p-4">Loading…</p>;
+  if (!data) return <div className="h-40" aria-busy="true" />;
   if (data.n_events === 0) {
-    return <p className="text-xs text-ink-3 p-4">No viewing activity yet. Rewinds, pauses and questions will appear here as students watch.</p>;
+    return <p className="p-4 rounded-2xl bg-[#f1f5f7] text-sm text-ink-3">No viewing activity yet.</p>;
   }
 
   const hotByStart = new Map(data.hotspots.map(h => [h.start, h]));
   const detail = selected ? hotByStart.get(selected.start) || selected : data.hotspots[0];
+  const seek = (b: HeatBin) => { setSelected(b); onSeek?.(b.start); };
 
   return (
-    <div className="p-4 space-y-4">
-      <div>
-        <div className="flex items-end gap-px h-24" role="img" aria-label="Confusion intensity along the lecture timeline">
+    <div className="space-y-4">
+      <div className="rounded-2xl bg-[#f1f5f7] p-4">
+        <div className="flex items-end gap-[2px] h-28" role="img" aria-label="Confusion along the lecture timeline">
           {data.bins.map(bin => {
-            const height = data.peak ? Math.max(2, Math.round((bin.intensity / data.peak) * 96)) : 2;
+            const t = data.peak ? bin.intensity / data.peak : 0;
             const active = detail?.start === bin.start;
             return (
-              <button
-                key={bin.start}
-                type="button"
-                onClick={() => { setSelected(bin); onSeek?.(bin.start); }}
+              <button key={bin.start} type="button" onClick={() => seek(bin)}
                 title={`${formatTimestamp(bin.start)} · ${bin.replays} replays, ${bin.rewinds} rewinds, ${bin.pauses} pauses, ${bin.questions} questions`}
-                className="flex-1 min-w-[2px] rounded-t-sm transition-colors"
+                className="flex-1 min-w-[2px] rounded-full transition-colors cursor-pointer"
                 style={{
-                  height,
-                  background: bin.intensity === 0 ? '#e4e4e7' : active ? '#f97316' : `rgba(249, 115, 22, ${0.35 + 0.65 * (bin.intensity / (data.peak || 1))})`,
-                }}
-              />
+                  height: Math.max(4, Math.round(t * 112)),
+                  background: active ? CLAY.bar : bin.intensity === 0 ? '#dbe7ec' : `rgba(27, 86, 107, ${0.25 + 0.75 * t})`,
+                }} />
             );
           })}
         </div>
-        <div className="flex justify-between text-[10px] text-ink-4 font-mono mt-1">
+        <div className="flex justify-between text-[11px] text-ink-4 tabular mt-2">
           <span>0:00</span>
           <span>{formatTimestamp(data.duration_sec)}</span>
         </div>
       </div>
 
-      {detail && (
-        <div className="bg-sunken border border-line rounded-xl p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-orange-700" />
-            <span className="text-sm text-ink font-mono">{formatTimestamp(detail.start)}–{formatTimestamp(detail.end)}</span>
-            {detail.chapter_title && <span className="text-xs text-ink-3 truncate">· {detail.chapter_title}</span>}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        {detail && (
+          <div className="rounded-2xl border border-[#e2eaeb] p-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm text-accent-strong tabular">{formatTimestamp(detail.start)}–{formatTimestamp(detail.end)}</span>
+              {detail.chapter_title && <span className="text-xs text-ink-3 truncate">{detail.chapter_title}</span>}
+            </div>
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {[['replays', detail.replays], ['pauses', detail.pauses], ['questions', detail.questions], ['students', detail.students]].map(([k, n]) => (
+                <span key={k} className="rounded-xl bg-[#f1f5f7] px-2.5 py-2 min-w-0">
+                  <span className="block font-display text-lg leading-none tabular text-accent-strong">{n}</span>
+                  <span className="block mt-1 text-[11px] text-ink-3 truncate">{k}</span>
+                </span>
+              ))}
+            </div>
+            {detail.transcript && <p className="mt-3 text-xs text-ink-2 leading-relaxed line-clamp-3">“{detail.transcript}”</p>}
+            {detail.frame_url && <img src={detail.frame_url} alt={detail.frame_text || 'Slide on screen'} className="mt-3 rounded-xl max-h-40" />}
           </div>
-          <p className="text-[11px] text-ink-3">
-            {detail.replays} replays · {detail.rewinds} rewinds · {detail.pauses} pauses · {detail.questions} tutor questions · {detail.students} students
-          </p>
-          {detail.transcript && <p className="text-xs text-ink-2 leading-relaxed">“{detail.transcript}”</p>}
-          {detail.frame_url && <img src={detail.frame_url} alt={detail.frame_text || 'Slide on screen'} className="rounded-lg border border-line max-h-40" />}
-        </div>
-      )}
+        )}
 
-      <ol className="space-y-1">
-        {data.hotspots.slice(0, 5).map((h, i) => (
-          <li key={h.start}>
-            <button type="button" onClick={() => { setSelected(h); onSeek?.(h.start); }} className="w-full text-left text-xs text-ink-2 hover:text-ink flex gap-3">
-              <span className="text-ink-4 w-4">{i + 1}.</span>
-              <span className="font-mono text-orange-700 w-12">{formatTimestamp(h.start)}</span>
-              <span className="truncate">{h.chapter_title || h.transcript || ''}</span>
-            </button>
-          </li>
-        ))}
-      </ol>
+        <div>
+          <p className="text-xs text-ink-3 px-1">Top moments</p>
+          <ol className="mt-1">
+            {data.hotspots.slice(0, 5).map((h, i) => (
+              <li key={h.start}>
+                <button type="button" onClick={() => seek(h)}
+                  className={`w-full text-left rounded-xl px-2 py-2 flex items-center gap-3 text-sm transition-colors cursor-pointer ${detail?.start === h.start ? 'bg-[#f1f5f7]' : 'hover:bg-[#f1f5f7]'}`}>
+                  <span className="text-[11px] text-ink-4 tabular w-3">{i + 1}</span>
+                  <span className="tabular text-accent-strong w-11">{formatTimestamp(h.start)}</span>
+                  <span className="truncate text-ink-3 text-xs">{h.chapter_title || h.transcript || ''}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
     </div>
   );
 }

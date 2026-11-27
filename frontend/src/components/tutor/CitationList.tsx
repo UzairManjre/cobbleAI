@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, FileText, Play, Presentation } from 'lucide-react';
+import { FileText, Play, Presentation } from 'lucide-react';
 import { lecturesApi } from '../../api/lectures';
 import { openInNewTab } from '../../utils/download';
 import { useAuthStore } from '../../store/authStore';
@@ -23,9 +23,9 @@ function isLecture(s: TutorSource) {
 }
 
 function SourceIcon({ source }: { source: TutorSource }) {
-  if (isLecture(source)) return <Play className="w-3.5 h-3.5 text-emerald-700 shrink-0" />;
-  if (source.slide_start !== undefined && source.slide_start !== null) return <Presentation className="w-3.5 h-3.5 text-amber-700 shrink-0" />;
-  return <FileText className="w-3.5 h-3.5 text-violet-700 shrink-0" />;
+  if (isLecture(source)) return <Play className="w-3 h-3 text-accent shrink-0" />;
+  if (source.slide_start !== undefined && source.slide_start !== null) return <Presentation className="w-3 h-3 text-accent shrink-0" />;
+  return <FileText className="w-3 h-3 text-accent shrink-0" />;
 }
 
 export default function CitationList({ courseId, citations, sources, onSeekLecture, title }: Props) {
@@ -62,38 +62,31 @@ export default function CitationList({ courseId, citations, sources, onSeekLectu
     setExpanded(expanded === key ? null : key);
   };
 
+  const open_ = items.find((s, idx) => (s.chunk_id || s.sid || `${s.doc_id}-${idx}`) === expanded);
+
+  // A row of quiet source chips: file name and where in it. Click opens the page or lecture moment.
   return (
-    <div className="bg-surface border border-line rounded-xl p-3 max-w-[85%]">
-      <div className="flex items-center gap-1.5 mb-2 border-b border-line pb-1.5">
-        <BookOpen className="w-3.5 h-3.5 text-violet-700" />
-        <span className="text-[10px] font-semibold text-ink-3 uppercase tracking-widest">
-          {title ? `${title} (${items.length})` : cited ? `Cited (${items.length})` : `Sources (${items.length})`}
-        </span>
-      </div>
-      <ul className="space-y-1.5">
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] text-ink-4 mr-0.5">{title ?? (cited ? 'Cited' : 'Sources')}</span>
         {items.map((source, idx) => {
           const key = source.chunk_id || source.sid || `${source.doc_id}-${idx}`;
           const where = sourceLocation(source);
           return (
-            <li key={key}>
-              <button
-                type="button"
-                onClick={() => open(source)}
-                title={source.snippet || source.filename}
-                className="w-full text-left text-xs text-ink-2 hover:text-ink flex items-center gap-2 group"
-              >
-                {source.sid && <span className="text-[10px] font-mono text-violet-700 shrink-0">[{source.sid}]</span>}
-                <SourceIcon source={source} />
-                <span className="truncate flex-1">{source.filename || 'Unknown Document'}</span>
-                {where && <span className="text-[10px] text-ink-3 group-hover:text-ink-2 shrink-0">{where}</span>}
-              </button>
-              {expanded === key && source.snippet && (
-                <p className="mt-1.5 ml-6 text-[11px] text-ink-3 leading-relaxed border-l border-line-strong pl-2">{source.snippet}</p>
-              )}
-            </li>
+            <button key={key} type="button" onClick={() => open(source)} title={source.snippet || source.filename}
+              className={`max-w-full inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-xs transition-colors cursor-pointer ${
+                expanded === key ? 'bg-accent-wash border-accent-100 text-accent-strong' : 'bg-white border-[#dbe7ec] text-ink-2 hover:border-accent-200 hover:text-accent-strong'}`}>
+              {source.sid && <span className="text-[10px] text-ink-4 tabular">{source.sid}</span>}
+              <SourceIcon source={source} />
+              <span className="truncate max-w-[14rem]">{(source.filename || 'Unknown document').replace(/\.[^.]+$/, '')}</span>
+              {where && <span className="text-ink-4 shrink-0">· {where}</span>}
+            </button>
           );
         })}
-      </ul>
+      </div>
+      {open_?.snippet && (
+        <p className="mt-2 text-[11px] text-ink-3 leading-relaxed border-l-2 border-accent-100 pl-2.5">{open_.snippet}</p>
+      )}
     </div>
   );
 }

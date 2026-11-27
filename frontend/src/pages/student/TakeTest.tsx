@@ -1,109 +1,85 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-
-import {
-  Clock, ArrowLeft,
-  AlertTriangle, Sparkles,
-  ChevronLeft, ChevronRight, CheckCircle2
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Clock, Lightbulb, LogOut } from 'lucide-react';
 import { testsApi } from '../../api';
 import { useToastStore } from '../../store/toastStore';
 import { apiErrorDetail } from '../../utils/apiError';
-import { answersFromAttempt, formatAnswers, remainingSeconds } from '../../utils/testAnswers';
+import { answersFromAttempt, formatAnswers, remainingSeconds, type AnswerKind, type AnswerState } from '../../utils/testAnswers';
 import ConfidenceCheckIn from '../../components/tests/ConfidenceCheckIn';
+import { CLAY } from '../../components/ui/glass';
+import { plural } from '../../utils/mastery';
 
 const DEBOUNCE_MS = 2000;    // wait 2 s of inactivity before auto-saving
 const FLUSH_MS   = 30_000;   // force a save at most every 30 s regardless
 
+// Same full-screen chrome as the Learn view
+const RAIL_BG = 'radial-gradient(90% 40% at 0% 0%, rgba(64,124,145,0.55) 0%, rgba(64,124,145,0) 70%), linear-gradient(180deg, #0e3445 0%, #123f52 55%, #1b566b 100%)';
+const PAGE_BG = 'radial-gradient(60% 280px at 50% 0%, rgba(143,188,203,0.35) 0%, rgba(143,188,203,0) 100%), #eef3f5';
+
+interface Question {
+  id: string;
+  type: 'mcq' | 'true_false' | 'short_answer' | 'essay' | 'code';
+  question_text: string;
+  marks: number;
+  options?: { id: string; text: string }[];
+  starter_code?: string | null;
+  hints?: string[];
+}
+interface Test { id: string; title: string; test_type: string; duration_minutes: number; questions: Question[] }
+interface Attempt { id: string; started_at?: string; answers?: Parameters<typeof answersFromAttempt>[0] }
+
+const TYPE_LABEL: Record<Question['type'], string> = {
+  mcq: 'Multiple choice', true_false: 'True or false', short_answer: 'Short answer', essay: 'Essay', code: 'Code',
+};
+const kindOf = (t: string) => (t === 'assignment' ? 'Assignment' : t === 'exam' ? 'Exam' : 'Quiz');
+const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+const isAnswered = (a?: AnswerState) => !!a && String(a.value ?? '').trim().length > 0;
+
+/** Taking a test: full screen, with the clock and every question in a rail and one question at a time. */
 export default function TakeTest() {
   const navigate = useNavigate();
   const { testId } = useParams();
 
-  const [test, setTest] = useState<any>(null);
-  const [attempt, setAttempt] = useState<any>(null);
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [test, setTest] = useState<Test | null>(null);
+  const [attempt, setAttempt] = useState<Attempt | null>(null);
+  const [answers, setAnswers] = useState<Record<string, AnswerState>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+  const [idx, setIdx] = useState(0);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
 
   // ── Stable refs ──────────────────────────────────────────────────────────
   // answersRef mirrors the answers state so the interval / debounce callbacks
-  // can always read the latest snapshot without becoming stale closures or
-  // triggering interval re-creation.
-  const answersRef   = useRef<Record<string, any>>({});
-  const attemptRef   = useRef<any>(null);
+  // always read the latest snapshot without stale closures.
+  const answersRef   = useRef<Record<string, AnswerState>>({});
+  const attemptRef   = useRef<Attempt | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef<number>(0);
   const startedForRef = useRef<string | undefined>(undefined);
-
-  // Keep refs in sync with state on every render (cheap assignment)
-  answersRef.current = answers;
-  attemptRef.current = attempt;
+  const submitRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
-    startTest();
-  }, [testId]);
-
-  // ── Timer ────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (timeLeft <= 0) return;
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          handleSubmitTest();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft]);
-
-  // ── Stable auto-save interval ─────────────────────────────────────────────
-  // Mounted ONCE (empty dep array). Reads from answersRef so it always sees
-  // the latest answers without the interval ever being torn down and recreated.
-  useEffect(() => {
-    const flush = setInterval(() => {
-      const now = Date.now();
-      const hasAnswers = Object.keys(answersRef.current).length > 0;
-      const cooldownElapsed = now - lastSavedRef.current >= FLUSH_MS;
-      if (hasAnswers && cooldownElapsed) {
-        doAutoSave();
-      }
-    }, FLUSH_MS);
-    return () => clearInterval(flush);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    answersRef.current = answers;
+    attemptRef.current = attempt;
+  });
 
   // ── Core save function ───────────────────────────────────────────────────
   const doAutoSave = useCallback(async () => {
     const currentAttempt = attemptRef.current;
     const currentAnswers = answersRef.current;
     if (!currentAttempt || Object.keys(currentAnswers).length === 0) return;
-
     lastSavedRef.current = Date.now();
     try {
       await testsApi.submit(currentAttempt.id, formatAnswers(currentAnswers), true /* is_auto_save */);
+      setSavedAt(new Date());
     } catch (err) {
-      // Auto-save failures are non-fatal — silently log
+      // Auto-save failures are non-fatal
       console.warn('Auto-save failed:', err);
     }
   }, []);
 
-  // ── Debounced save triggered on each answer change ───────────────────────
-  // Cancels any pending save and schedules a fresh one DEBOUNCE_MS later.
-  // The interval above provides the safety-net flush.
-  const scheduleDebouncedSave = useCallback(() => {
-    if (saveTimerRef.current !== null) {
-      clearTimeout(saveTimerRef.current);
-    }
-    saveTimerRef.current = setTimeout(() => {
-      saveTimerRef.current = null;
-      doAutoSave();
-    }, DEBOUNCE_MS);
-  }, [doAutoSave]);
-
-  const startTest = async () => {
+  const startTest = useCallback(async () => {
     // StrictMode runs effects twice in dev; only start the attempt once per test
     if (startedForRef.current === testId) return;
     startedForRef.current = testId;
@@ -117,7 +93,7 @@ export default function TakeTest() {
       setTimeLeft(remainingSeconds(startRes.data.test.duration_minutes, startedAttempt?.started_at));
     } catch (err) {
       startedForRef.current = undefined;
-      const response = (err as { response?: { status?: number; data?: { detail?: string } } }).response;
+      const response = (err as { response?: { status?: number } }).response;
       // No attempts left (or the test closed): open the latest result instead of a dead end
       if (response?.status === 403) {
         try {
@@ -140,14 +116,46 @@ export default function TakeTest() {
       if (window.history.length > 1) navigate(-1);
       else navigate('/assignments', { replace: true });
     }
-  };
+  }, [testId, navigate]);
 
-  const handleAnswer = (questionId: string, value: any, type: string = 'text') => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: { ...prev[questionId], value, type, time_spent: 0 }
-    }));
-    // Schedule a debounced save after the answer changes
+  useEffect(() => { startTest(); }, [startTest]);
+
+  // ── Timer: hands the test in when it reaches zero ────────────────────────
+  const running = timeLeft > 0;
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          submitRef.current();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [running]);
+
+  // ── Safety-net auto-save every 30 s ──────────────────────────────────────
+  useEffect(() => {
+    const flush = setInterval(() => {
+      const hasAnswers = Object.keys(answersRef.current).length > 0;
+      if (hasAnswers && Date.now() - lastSavedRef.current >= FLUSH_MS) doAutoSave();
+    }, FLUSH_MS);
+    return () => clearInterval(flush);
+  }, [doAutoSave]);
+
+  // ── Debounced save after each change ─────────────────────────────────────
+  const scheduleDebouncedSave = useCallback(() => {
+    if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      doAutoSave();
+    }, DEBOUNCE_MS);
+  }, [doAutoSave]);
+
+  const handleAnswer = (questionId: string, value: string, type: AnswerKind = 'text') => {
+    setAnswers(prev => ({ ...prev, [questionId]: { ...prev[questionId], value, type, time_spent: 0 } }));
     scheduleDebouncedSave();
   };
 
@@ -157,314 +165,268 @@ export default function TakeTest() {
   };
 
   const handleSubmitTest = async () => {
-    if (!attempt) return;
+    const current = attemptRef.current;
+    if (!current) return;
     // Cancel any pending debounced save before the final submit
     if (saveTimerRef.current !== null) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
     setIsSubmitting(true);
-
     try {
-      await testsApi.submit(attempt.id, formatAnswers(answersRef.current));
-      navigate(`/tests/${testId}/result/${attempt.id}`);
+      await testsApi.submit(current.id, formatAnswers(answersRef.current));
+      navigate(`/tests/${testId}/result/${current.id}`);
     } catch (err) {
-      console.error('Failed to submit test:', err);
+      useToastStore.getState().addToast(apiErrorDetail(err, 'Could not hand in the test. Try again.'), 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
+  useEffect(() => { submitRef.current = handleSubmitTest; });
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  // The attempt stays open and the clock keeps running; answers are saved first
+  const saveAndLeave = async () => {
+    await doAutoSave();
+    if (window.history.length > 1) navigate(-1);
+    else navigate('/assignments');
   };
-
-  const currentQuestion = test?.questions?.[currentQuestionIdx];
 
   if (!test || !attempt) {
     return (
-      <div className="min-h-screen bg-canvas flex flex-col items-center justify-center text-ink-3">
-        <div className="w-8 h-8 border-2 border-line border-t-white rounded-full animate-spin mb-4" />
-        <div className="text-sm tracking-wide font-medium">Loading Assessment...</div>
+      <div className="fixed inset-0 grid place-items-center text-ink-3" style={{ background: PAGE_BG }}>
+        <span className="flex items-center gap-3 text-sm">
+          <span className="h-5 w-5 rounded-full border-2 border-[#c3d8e0] border-t-[#0e3445] animate-spin" />
+          Opening your test…
+        </span>
       </div>
     );
   }
 
-  const answeredCount = Object.keys(answers).length;
-  const totalQuestions = test.questions?.length || 0;
-  const progress = (answeredCount / totalQuestions) * 100;
+  const questions = test.questions || [];
+  const total = questions.length;
+  const q = questions[idx];
+  const answered = questions.filter(x => isAnswered(answers[x.id])).length;
+  const unanswered = questions.map((x, i) => (isAnswered(answers[x.id]) ? -1 : i)).filter(i => i >= 0);
+  const lowTime = timeLeft < 300;
+  const last = idx === total - 1;
+  const current = q ? answers[q.id] : undefined;
+
+  const optionCard = (selected: boolean) =>
+    `w-full flex items-center gap-4 p-4 rounded-2xl text-left transition-all cursor-pointer ${selected
+      ? 'bg-[#0e3445] text-white shadow-[0_14px_30px_-18px_rgba(14,52,69,0.8)]'
+      : 'bg-white text-[#0e3445] hover:shadow-[0_10px_24px_-18px_rgba(14,52,69,0.6)] hover:-translate-y-px'}`;
 
   return (
-    <div className="min-h-screen bg-canvas text-ink selection:bg-[#222] selection:text-ink pb-32">
-      
-      {/* Top Progress Indicator */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-sunken-2 z-50">
-        <div 
-          className="h-full bg-accent transition-all duration-300 ease-out" 
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+    <div className="fixed inset-0 z-[60] flex text-ink" style={{ background: PAGE_BG }}>
+      {/* Rail: clock, progress, every question, hand in */}
+      <aside aria-label="Test overview" className="w-[288px] shrink-0 flex flex-col text-white p-5" style={{ background: RAIL_BG }}>
+        <button type="button" onClick={saveAndLeave}
+          className="self-start inline-flex items-center gap-2 h-9 px-3.5 rounded-full border border-white/25 text-xs text-white/85 hover:bg-white/10 transition-colors cursor-pointer">
+          <LogOut size={13} /> Save and leave
+        </button>
 
-      {/* Floating Header */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 z-40">
-        <div className="bg-surface/90 backdrop-blur-xl border border-line rounded-2xl px-6 py-4 flex items-center justify-between shadow-2xl">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShowConfirmSubmit(true)}
-              className="text-ink-3 hover:text-ink transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="h-6 w-px bg-sunken-2" />
-            <div>
-              <h1 className="text-sm font-medium tracking-wide text-ink">{test.title}</h1>
-              <p className="text-xs text-ink-3 tracking-wide mt-0.5">{answeredCount} of {totalQuestions} Completed</p>
-            </div>
-          </div>
-          
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-mono tracking-wider transition-colors ${
-            timeLeft < 300 
-              ? 'bg-red-500/10 border-red-500/30 text-red-600' 
-              : 'bg-sunken border-line text-ink-3'
-          }`}>
-            <Clock className="w-4 h-4" />
-            {formatTime(timeLeft)}
-          </div>
+        <p className="mt-7 text-xs text-white/60">{kindOf(test.test_type)}</p>
+        <h1 className="mt-1 font-display text-[1.35rem] leading-tight tracking-[-0.02em]">{test.title}</h1>
+
+        <div className="mt-6 rounded-2xl p-4" style={{ background: lowTime ? 'rgba(201,149,127,0.22)' : 'rgba(255,255,255,0.08)' }}>
+          <p className="flex items-center gap-1.5 text-xs" style={{ color: lowTime ? '#f1d6cb' : 'rgba(255,255,255,0.65)' }}>
+            <Clock size={12} /> {timeLeft === 0 ? 'Time is up' : lowTime ? 'Under 5 minutes left' : 'Time left'}
+          </p>
+          <p className="mt-1 font-display text-[2.4rem] leading-none tracking-[-0.04em] tabular" aria-live={lowTime ? 'polite' : 'off'}>{formatTime(timeLeft)}</p>
+          <p className="mt-2 text-xs text-white/60">{timeLeft === 0 ? 'Hand in to finish this attempt.' : 'Hands in automatically at 00:00'}</p>
         </div>
-      </div>
 
-      {/* Main Content Area */}
-      <div className="max-w-3xl mx-auto px-6 pt-36">
-        {currentQuestion && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Question Header */}
-            <div className="mb-10 flex items-start gap-6">
-              <div className="shrink-0 w-12 h-12 rounded-xl bg-surface border border-line flex items-center justify-center text-sm font-outfit text-ink-3">
-                {currentQuestionIdx + 1}
-              </div>
-              <div className="pt-1">
-                <div className="flex items-center gap-3 mb-3 text-xs tracking-wider">
-                  <span className="text-ink-3 uppercase bg-sunken px-2 py-1 rounded-md">{currentQuestion.type.replace('_', ' ')}</span>
-                  <span className="text-ink-3">{currentQuestion.marks} Pts</span>
-                </div>
-                <h2 className="text-2xl font-light text-ink leading-snug">
-                  {currentQuestion.question_text}
-                </h2>
-              </div>
-            </div>
-
-            {/* Answer Section */}
-            <div className="pl-18 ml-18">
-              
-              {/* Multiple Choice */}
-              {currentQuestion.type === 'mcq' && (
-                <div className="space-y-3" role="radiogroup" aria-label="Multiple choice options">
-                  {currentQuestion.options?.map((option: any) => {
-                    const isSelected = answers[currentQuestion.id]?.value === option.id;
-                    return (
-                      <button
-                        key={option.id}
-                        role="radio"
-                        aria-checked={isSelected}
-                        onClick={() => handleAnswer(currentQuestion.id, option.id, 'option')}
-                        className={`w-full text-left p-5 rounded-xl border transition-all duration-200 flex items-center gap-4 ${
-                          isSelected 
-                            ? 'bg-accent text-white border-accent' 
-                            : 'bg-surface border-line text-ink-3 hover:border-line-strong hover:text-ink'
-                        }`}
-                      >
-                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
-                          isSelected ? 'border-black' : 'border-line-strong'
-                        }`}>
-                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-canvas" />}
-                        </div>
-                        <span className="text-[15px] font-medium leading-relaxed">{option.text}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* True / False */}
-              {currentQuestion.type === 'true_false' && (
-                <div className="grid grid-cols-2 gap-4" role="radiogroup" aria-label="True or False options">
-                  <button
-                    role="radio"
-                    aria-checked={answers[currentQuestion.id]?.value === 'true'}
-                    onClick={() => handleAnswer(currentQuestion.id, 'true', 'option')}
-                    className={`p-6 rounded-xl border transition-all flex items-center justify-center gap-3 ${
-                      answers[currentQuestion.id]?.value === 'true'
-                        ? 'bg-accent text-white border-accent'
-                        : 'bg-surface border-line text-ink-3 hover:border-line-strong hover:text-ink'
-                    }`}
-                  >
-                    <span className="text-lg font-medium">True</span>
-                  </button>
-                  <button
-                    role="radio"
-                    aria-checked={answers[currentQuestion.id]?.value === 'false'}
-                    onClick={() => handleAnswer(currentQuestion.id, 'false', 'option')}
-                    className={`p-6 rounded-xl border transition-all flex items-center justify-center gap-3 ${
-                      answers[currentQuestion.id]?.value === 'false'
-                        ? 'bg-accent text-white border-accent'
-                        : 'bg-surface border-line text-ink-3 hover:border-line-strong hover:text-ink'
-                    }`}
-                  >
-                    <span className="text-lg font-medium">False</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Free Text */}
-              {(currentQuestion.type === 'short_answer' || currentQuestion.type === 'essay') && (
-                <textarea
-                  value={answers[currentQuestion.id]?.value || ''}
-                  onChange={(e) => handleAnswer(currentQuestion.id, e.target.value, 'text')}
-                  placeholder="Type your answer..."
-                  rows={6}
-                  className="w-full bg-surface border border-line rounded-xl px-5 py-4 text-[15px] text-ink placeholder:text-ink-4 focus:outline-none focus:border-accent transition-colors resize-none leading-relaxed"
-                />
-              )}
-
-              {/* Code Input */}
-              {currentQuestion.type === 'code' && (
-                <div>
-                  {currentQuestion.starter_code && (
-                    <div className="bg-sunken border border-line rounded-t-xl p-4 border-b-0">
-                      <pre className="text-[13px] font-mono text-ink-3 overflow-x-auto">
-                        {currentQuestion.starter_code}
-                      </pre>
-                    </div>
-                  )}
-                  <textarea
-                    value={answers[currentQuestion.id]?.value || ''}
-                    onChange={(e) => handleAnswer(currentQuestion.id, e.target.value, 'text')}
-                    placeholder="// Write your code solution here..."
-                    spellCheck={false}
-                    rows={12}
-                    className={`w-full bg-surface border border-line px-5 py-4 text-[13px] font-mono text-ink placeholder:text-ink-4 focus:outline-none focus:border-accent transition-colors resize-none leading-relaxed ${
-                      currentQuestion.starter_code ? 'rounded-b-xl' : 'rounded-xl'
-                    }`}
-                  />
-                </div>
-              )}
-
-              {/* Confidence check-in, before any result is shown */}
-              <ConfidenceCheckIn
-                value={answers[currentQuestion.id]?.confidence}
-                disabled={!answers[currentQuestion.id]?.value}
-                onChange={(level) => handleConfidence(currentQuestion.id, level)}
-              />
-
-              {/* Hints */}
-              {currentQuestion.hints?.length > 0 && (
-                <div className="mt-8 p-5 bg-surface border border-line rounded-xl">
-                  <div className="flex items-center gap-2 text-ink-3 text-xs font-bold mb-3 uppercase tracking-wider">
-                    <Sparkles className="w-4 h-4" />
-                    Hints
-                  </div>
-                  <ul className="space-y-3">
-                    {currentQuestion.hints.map((hint: any, idx: number) => (
-                      <li key={idx} className="text-[14px] text-ink-3 flex gap-3 leading-relaxed">
-                        <span className="text-ink-4 mt-1">—</span> {hint}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Floating Bottom Navigator */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 z-40">
-        <div className="bg-surface/90 backdrop-blur-xl border border-line rounded-full p-2 flex items-center justify-between shadow-2xl">
-          
-          <button
-            onClick={() => setCurrentQuestionIdx(Math.max(0, currentQuestionIdx - 1))}
-            disabled={currentQuestionIdx === 0}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-ink-3 hover:text-ink hover:bg-sunken-2 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-
-          <div className="flex gap-1 overflow-x-auto hide-scrollbar px-2 max-w-[280px]">
-            {test.questions?.map((_: any, idx: number) => {
-              const isAnswered = answers[test.questions[idx].id];
-              const isActive = idx === currentQuestionIdx;
-              
-              return (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentQuestionIdx(idx)}
-                  className={`w-8 h-8 shrink-0 rounded-full text-xs font-medium transition-all flex items-center justify-center ${
-                    isActive 
-                      ? 'bg-accent text-white' 
-                      : isAnswered
-                        ? 'bg-sunken-2 text-ink hover:bg-sunken-2'
-                        : 'text-ink-3 hover:text-ink-3 hover:bg-sunken'
-                  }`}
-                >
-                  {isAnswered && !isActive ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
+        <div className="mt-6 flex items-baseline justify-between text-xs">
+          <span className="text-white/65">Questions</span>
+          <span className="tabular text-white/85">{answered} of {total} answered</span>
+        </div>
+        <ol className="mt-3 grid grid-cols-5 gap-2">
+          {questions.map((x, i) => {
+            const done = isAnswered(answers[x.id]);
+            const active = i === idx;
+            return (
+              <li key={x.id}>
+                <button type="button" onClick={() => setIdx(i)} aria-current={active ? 'step' : undefined}
+                  aria-label={`Question ${i + 1}${done ? ', answered' : ''}`}
+                  className={`relative grid place-items-center h-10 w-10 rounded-full text-sm tabular transition-colors cursor-pointer ${
+                    active ? 'bg-white text-[#0e3445] ring-4 ring-white/20'
+                      : done ? 'bg-[#8fbccb] text-[#0e3445] hover:bg-[#a8cbd7]'
+                        : 'border border-white/30 text-white/80 hover:bg-white/10'}`}>
+                  {i + 1}
+                  {done && !active && <Check size={10} strokeWidth={3} className="absolute -top-0.5 -right-0.5 h-4 w-4 p-0.5 rounded-full bg-[#0e3445] text-white" />}
                 </button>
-              );
-            })}
-          </div>
+              </li>
+            );
+          })}
+        </ol>
 
-          {currentQuestionIdx < totalQuestions - 1 ? (
-            <button
-              onClick={() => setCurrentQuestionIdx(currentQuestionIdx + 1)}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-ink-3 hover:text-ink hover:bg-sunken-2 transition-all"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowConfirmSubmit(true)}
-              className="px-4 h-10 rounded-full bg-accent hover:bg-accent-strong text-white text-sm font-medium transition-all flex items-center gap-2 mr-1"
-            >
-              Submit
-            </button>
-          )}
-
+        <div className="mt-auto pt-6">
+          <p className="mb-3 flex items-center gap-1.5 text-[11px] text-white/55">
+            <Check size={12} /> {savedAt ? `Saved at ${savedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` : 'Answers save as you go'}
+          </p>
+          <button type="button" onClick={() => setShowConfirmSubmit(true)}
+            className="w-full h-11 rounded-full bg-white text-[#0e3445] text-sm font-medium hover:bg-[#ecf3f6] transition-colors cursor-pointer">
+            Hand in
+          </button>
         </div>
-      </div>
+      </aside>
 
-      {/* Confirm Submit Modal */}
-      {showConfirmSubmit && (
-        <div className="fixed inset-0 bg-ink/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-surface border border-line rounded-2xl p-8 max-w-sm w-full shadow-2xl">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-sunken border border-line rounded-full flex items-center justify-center mx-auto mb-6">
-                <AlertTriangle className="w-7 h-7 text-ink-3" />
-              </div>
-              <h3 className="text-xl font-outfit text-ink mb-2">Submit Assessment?</h3>
-              <p className="text-ink-3 text-sm leading-relaxed">
-                You've completed <span className="text-ink font-medium">{answeredCount}</span> of <span className="text-ink font-medium">{totalQuestions}</span> questions.
-                {answeredCount < totalQuestions && ' Some answers are blank.'}
+      {/* The question */}
+      <main className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {q && (
+            <div key={q.id} className="max-w-[46rem] mx-auto px-8 pt-14 pb-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <p className="flex flex-wrap items-center gap-2 text-xs text-ink-3">
+                <span className="text-[#0e3445]">Question {idx + 1} of {total}</span>
+                <span className="h-1 w-1 rounded-full bg-ink-4" />
+                {TYPE_LABEL[q.type] ?? q.type}
+                <span className="h-1 w-1 rounded-full bg-ink-4" />
+                {plural(q.marks, 'mark')}
               </p>
-            </div>
+              <h2 className="mt-3 font-display text-[1.85rem] leading-[1.2] tracking-[-0.025em] text-[#0e3445] whitespace-pre-wrap">{q.question_text}</h2>
 
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={handleSubmitTest}
-                disabled={isSubmitting}
-                className="w-full py-3.5 bg-accent hover:bg-accent-strong text-white rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? (
-                  <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-                ) : (
-                  <>Submit Final Answers</>
+              <div className="mt-8">
+                {q.type === 'mcq' && (
+                  <div className="space-y-2.5" role="radiogroup" aria-label="Options">
+                    {q.options?.map((option, i) => {
+                      const selected = current?.value === option.id;
+                      return (
+                        <button key={option.id} type="button" role="radio" aria-checked={selected}
+                          onClick={() => handleAnswer(q.id, option.id, 'option')} className={optionCard(selected)}>
+                          <span className={`grid place-items-center h-9 w-9 shrink-0 rounded-full text-sm ${selected ? 'bg-white text-[#0e3445]' : 'bg-[#f1f5f7] text-[#1b566b]'}`}>
+                            {String.fromCharCode(65 + i)}
+                          </span>
+                          <span className="text-[15px] leading-relaxed">{option.text}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
+
+                {q.type === 'true_false' && (
+                  <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="True or false">
+                    {(['true', 'false'] as const).map(v => {
+                      const selected = current?.value === v;
+                      return (
+                        <button key={v} type="button" role="radio" aria-checked={selected}
+                          onClick={() => handleAnswer(q.id, v, 'option')} className={`${optionCard(selected)} justify-center h-20 text-lg`}>
+                          {v === 'true' ? 'True' : 'False'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {(q.type === 'short_answer' || q.type === 'essay') && (
+                  <div className="rounded-[20px] bg-white shadow-[0_10px_28px_-20px_rgba(14,52,69,0.5)] focus-within:ring-2 focus-within:ring-[#2a6f87]/40 transition-shadow">
+                    <textarea
+                      value={current?.value || ''}
+                      onChange={e => handleAnswer(q.id, e.target.value, 'text')}
+                      placeholder="Write your answer…"
+                      aria-label="Your answer"
+                      rows={q.type === 'essay' ? 12 : 6}
+                      className="w-full bg-transparent px-5 pt-4 pb-2 text-[15px] text-[#0e3445] placeholder:text-ink-4 focus:outline-none resize-none leading-relaxed"
+                    />
+                    <p className="px-5 pb-3 text-right text-[11px] text-ink-4 tabular">
+                      {plural((current?.value || '').trim().split(/\s+/).filter(Boolean).length, 'word')}
+                    </p>
+                  </div>
+                )}
+
+                {q.type === 'code' && (
+                  <div className="rounded-[20px] overflow-hidden bg-white shadow-[0_10px_28px_-20px_rgba(14,52,69,0.5)] focus-within:ring-2 focus-within:ring-[#2a6f87]/40">
+                    {q.starter_code && (
+                      <pre className="bg-[#0e3445] text-[#dbe7ec] px-5 py-4 text-[13px] font-mono overflow-x-auto">{q.starter_code}</pre>
+                    )}
+                    <textarea
+                      value={current?.value || ''}
+                      onChange={e => handleAnswer(q.id, e.target.value, 'text')}
+                      placeholder="// Write your solution here"
+                      aria-label="Your code"
+                      spellCheck={false}
+                      rows={12}
+                      className="w-full bg-transparent px-5 py-4 text-[13px] font-mono text-[#0e3445] placeholder:text-ink-4 focus:outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+                )}
+
+                <ConfidenceCheckIn value={current?.confidence} disabled={!isAnswered(current)} onChange={level => handleConfidence(q.id, level)} />
+
+                {!!q.hints?.length && (
+                  <details className="group mt-3 rounded-2xl bg-white/70">
+                    <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm text-[#0e3445] cursor-pointer list-none">
+                      <span className="inline-flex items-center gap-2"><Lightbulb size={15} className="text-[#2a6f87]" /> Need a hint?</span>
+                      <ChevronDown size={15} className="text-ink-4 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <ul className="px-4 pb-4 space-y-2">
+                      {q.hints.map((hint, i) => (
+                        <li key={i} className="flex gap-3 text-sm text-ink-2 leading-relaxed">
+                          <span className="grid place-items-center h-5 w-5 shrink-0 rounded-full bg-[#e6eef2] text-[10px] text-[#1b566b] tabular mt-0.5">{i + 1}</span>
+                          {hint}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Previous / next */}
+        <div className="shrink-0 border-t border-[#dbe7ec] bg-white/60 backdrop-blur">
+          <div className="max-w-[46rem] mx-auto px-8 h-[72px] flex items-center justify-between">
+            <button type="button" onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-white text-sm text-[#0e3445] border border-[#dbe7ec] hover:border-[#8fbccb] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer">
+              <ArrowLeft size={14} /> Previous
+            </button>
+            <span className="text-xs text-ink-3 tabular">{idx + 1} / {total}</span>
+            {last ? (
+              <button type="button" onClick={() => setShowConfirmSubmit(true)}
+                className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-[#0e3445] text-sm text-white hover:bg-[#1b566b] transition-colors cursor-pointer">
+                Review and hand in <ArrowRight size={14} />
               </button>
-              <button
-                onClick={() => setShowConfirmSubmit(false)}
-                className="w-full py-3.5 bg-transparent hover:bg-sunken text-ink-3 hover:text-ink rounded-xl text-sm font-medium transition-all"
-              >
-                Return to Assessment
+            ) : (
+              <button type="button" onClick={() => setIdx(idx + 1)}
+                className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-[#0e3445] text-sm text-white hover:bg-[#1b566b] transition-colors cursor-pointer">
+                Next <ArrowRight size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Confirm hand-in */}
+      {showConfirmSubmit && (
+        <div className="fixed inset-0 z-[70] grid place-items-center p-4 bg-[#0e3445]/45 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="handin-title">
+          <div className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-[0_30px_80px_-30px_rgba(14,52,69,0.6)]">
+            <h3 id="handin-title" className="font-display text-[1.5rem] tracking-[-0.02em] text-[#0e3445]">Hand in your test?</h3>
+            <p className="mt-1.5 text-sm text-ink-3">
+              You answered <span className="text-[#0e3445]">{answered} of {total}</span>. You can't change answers after this.
+            </p>
+
+            {unanswered.length > 0 && (
+              <div className="mt-4 rounded-2xl p-3.5" style={{ background: CLAY.wash }}>
+                <p className="text-xs" style={{ color: CLAY.ink }}>{plural(unanswered.length, 'question')} still blank. Tap one to go back:</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {unanswered.map(i => (
+                    <button key={i} type="button" onClick={() => { setIdx(i); setShowConfirmSubmit(false); }}
+                      className="grid place-items-center h-8 w-8 rounded-full bg-white text-xs tabular cursor-pointer hover:ring-2 hover:ring-[#c9957f]/50" style={{ color: CLAY.ink }}>
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex gap-2">
+              <button type="button" onClick={() => setShowConfirmSubmit(false)}
+                className="flex-1 h-11 rounded-full border border-[#dbe7ec] text-sm text-[#0e3445] hover:border-[#8fbccb] transition-colors cursor-pointer">
+                Keep working
+              </button>
+              <button type="button" onClick={handleSubmitTest} disabled={isSubmitting}
+                className="flex-1 h-11 rounded-full bg-[#0e3445] text-sm text-white hover:bg-[#1b566b] disabled:opacity-60 transition-colors cursor-pointer inline-flex items-center justify-center gap-2">
+                {isSubmitting ? <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : 'Hand in'}
               </button>
             </div>
           </div>

@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import { useToastStore } from "../../store/toastStore";
-import { ClipboardCheck, FileText, Loader2, Plus, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardCheck, FileText, Loader2, Plus, Sparkles } from "lucide-react";
 import { testsApi, documentsApi, graphsApi } from "../../api";
-import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
+import { panel, pillDark, pillLine, rise } from "../../components/ui/glass";
 import { TestCard } from "../../components/tests/TestCard";
 import { PreviewTestModal, type PreviewTest } from "../../components/tests/PreviewTestModal";
 import { CreateTestWizard } from "../../components/tests/CreateTestWizard";
@@ -21,20 +20,6 @@ const DEFAULT_GENERATION: GenerationRequest = {
   selected_documents: [],
   selected_topics: [],
 };
-
-function Summary({ label, value, tone = "text-ink", onClick }: { label: string; value: number; tone?: string; onClick?: () => void }) {
-  const body = (
-    <>
-      <span className={`block text-2xl font-light tabular-nums ${tone}`}>{value}</span>
-      <span className="text-[10px] uppercase tracking-widest text-ink-4">{label}</span>
-    </>
-  );
-  return onClick ? (
-    <button onClick={onClick} className="text-left p-5 rounded-2xl bg-surface border border-line hover:border-line-strong transition-colors">{body}</button>
-  ) : (
-    <div className="p-5 rounded-2xl bg-surface border border-line">{body}</div>
-  );
-}
 
 export default function ProfessorTests() {
   const navigate = useNavigate();
@@ -170,7 +155,7 @@ export default function ProfessorTests() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] w-full bg-canvas flex items-center justify-center">
+      <div className="min-h-[60vh] w-full flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-ink-3" />
       </div>
     );
@@ -184,104 +169,114 @@ export default function ProfessorTests() {
   const toReview = tests.reduce((sum, t) => sum + (t.answers_to_review || 0), 0);
   const shown = filter === "all" ? visible : visible.filter(t => t.status === filter);
   const readyDocs = documents.filter(d => d.status === "ready").length;
+  const readyToPublish = tests.filter(t => t.status === "draft" && (t.question_count || 0) > 0).length;
+  const needQuestions = tests.filter(t => t.status === "draft" && !(t.question_count || 0)).length;
+  const unreleased = tests.filter(t => t.status === "published" && !t.show_results_immediately && !t.results_released && (t.submissions || 0) > 0).length;
+  const todos = [
+    toReview && { key: "review", n: toReview, label: `AI ${toReview === 1 ? "grade" : "grades"} to check`, onClick: () => navigate(`/courses/${courseId}/review`) },
+    readyToPublish && { key: "publish", n: readyToPublish, label: `${readyToPublish === 1 ? "draft" : "drafts"} ready to publish`, onClick: () => setFilter("draft") },
+    needQuestions && { key: "questions", n: needQuestions, label: `${needQuestions === 1 ? "draft needs" : "drafts need"} questions`, onClick: () => setFilter("draft") },
+    unreleased && { key: "release", n: unreleased, label: `${unreleased === 1 ? "test has" : "tests have"} results to release`, onClick: () => setFilter("published") },
+  ].filter(Boolean) as { key: string; n: number; label: string; onClick: () => void }[];
 
   return (
-    <div className="w-full bg-canvas text-ink px-8 lg:px-12 py-8">
-      <div className="max-w-6xl mx-auto space-y-10">
-        <div className="flex flex-col gap-6">
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-              <h2 className="text-2xl font-outfit font-light tracking-tight">Tests & assessments</h2>
-              <p className="text-sm text-ink-3 mt-3 max-w-xl">
-                {isProfessor
-                  ? "The AI writes questions from your course materials. You review them, publish, and check the AI's grades."
-                  : "Tests your instructor has published for this course."}
-              </p>
+    <div className="mt-8 sm:mt-10 space-y-4 text-ink">
+      {/* Toolbar: what this tab is, the counts, and the two main actions */}
+      <section style={rise(1)} className={`${panel} p-5`}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.35rem] tracking-[-0.02em] text-accent-strong">Tests & assessments</h2>
+            <p className="text-xs text-ink-3 mt-1 max-w-xl">
+              {isProfessor
+                ? "The AI writes questions from your course materials. You review them, publish, and check the AI's grades."
+                : "Tests your instructor has published for this course."}
+            </p>
+          </div>
+          {isProfessor && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => navigate(`/courses/${courseId}/review`)} className={pillLine}>
+                <ClipboardCheck size={14} /> Review AI grades
+              </button>
+              <button type="button" onClick={() => setShowCreateModal(true)} className={pillDark}><Plus size={14} /> Create test</button>
             </div>
-            {isProfessor && (
-              <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={() => navigate(`/courses/${courseId}/review`)}>
-                  <ClipboardCheck size={16} /> Review AI grades
-                  {toReview > 0 && <span className="ml-1 px-1.5 rounded-md bg-amber-500/20 text-amber-700 text-[11px] tabular-nums">{toReview}</span>}
-                </Button>
-                <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-                  <Plus size={16} /> Create test
-                </Button>
-              </div>
-            )}
-          </header>
+          )}
         </div>
 
         {isProfessor && tests.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Summary label="Tests" value={tests.length} />
-            <Summary label="Published" value={published} tone="text-emerald-700" />
-            <Summary label="Drafts" value={drafts} tone={drafts ? "text-amber-700" : "text-ink"} />
-            <Summary label="AI grades to review" value={toReview} tone={toReview ? "text-amber-700" : "text-ink"}
-              onClick={toReview ? () => navigate(`/courses/${courseId}/review`) : undefined} />
-          </div>
-        )}
-
-        {isProfessor && tests.length > 0 && (
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-surface border border-line w-fit" role="tablist">
-            {([["all", "All", tests.length], ["draft", "Drafts", drafts], ["published", "Published", published]] as const).map(([id, label, count]) => (
-              <button key={id} role="tab" aria-selected={filter === id} onClick={() => setFilter(id)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === id ? "bg-accent text-white" : "text-ink-3 hover:text-ink"}`}>
-                {label} <span className={filter === id ? "text-ink/50" : "text-ink-4"}>{count}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {visible.length === 0 ? (
-          <Card className="p-10 md:p-14">
-            <div className="max-w-xl mx-auto text-center">
-              <div className="w-14 h-14 rounded-2xl bg-sunken border border-line flex items-center justify-center mx-auto mb-5">
-                <FileText className="w-6 h-6 text-ink-3" />
-              </div>
-              <h2 className="text-xl font-outfit font-medium">{isProfessor ? "No tests yet" : "No tests published yet"}</h2>
-              <p className="text-sm text-ink-3 mt-2">
-                {isProfessor
-                  ? "Create a test and the AI drafts the questions from this course's materials."
-                  : "When your instructor publishes a test, it appears here."}
-              </p>
-
-              {isProfessor && (
-                <>
-                  <ol className="grid sm:grid-cols-3 gap-3 mt-8 text-left">
-                    {[
-                      ["Set the details", "Title, type, time limit and pass mark."],
-                      ["Choose the content", "All materials, or just some files and concepts."],
-                      ["Review and publish", "Check each question, then release it to students."],
-                    ].map(([title, text], i) => (
-                      <li key={title} className="p-4 rounded-xl border border-line bg-surface">
-                        <span className="text-[11px] text-ink-4 tabular-nums">Step {i + 1}</span>
-                        <span className="block text-sm text-ink mt-1">{title}</span>
-                        <span className="block text-xs text-ink-3 mt-1">{text}</span>
-                      </li>
-                    ))}
-                  </ol>
-                  {readyDocs === 0 ? (
-                    <p className="mt-8 text-xs text-amber-700">
-                      This course has no processed files yet. Questions are written from them, so{" "}
-                      <button onClick={() => navigate(courseRoute)} className="underline hover:text-amber-700">upload materials first</button>.
-                    </p>
-                  ) : (
-                    <Button variant="primary" className="mt-8" onClick={() => setShowCreateModal(true)}>
-                      <Sparkles size={16} /> Create your first test
-                    </Button>
-                  )}
-                </>
-              )}
+          <div className="mt-4 pt-4 border-t border-[#e2eaeb] flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {/* What needs the professor, instead of bare counts */}
+            <div className="flex flex-wrap gap-2 min-w-0">
+              {todos.length === 0 ? (
+                <span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full bg-accent-wash text-accent text-xs">
+                  <CheckCircle2 size={14} /> Nothing waiting on you
+                </span>
+              ) : todos.map(t => (
+                <button key={t.key} type="button" onClick={t.onClick}
+                  className="inline-flex items-center gap-2 h-9 pl-1.5 pr-3.5 rounded-full bg-clay-wash hover:bg-clay-hover text-xs text-clay transition-colors cursor-pointer max-w-full">
+                  <span className="grid place-items-center h-6 min-w-6 px-1.5 rounded-full bg-clay-bar text-white text-[11px] tabular">{t.n}</span>
+                  <span className="truncate">{t.label}</span>
+                  <ArrowRight size={13} className="shrink-0 opacity-60" />
+                </button>
+              ))}
             </div>
-          </Card>
-        ) : shown.length === 0 ? (
-          <p className="text-sm text-ink-3 py-10 text-center">No {filter === "draft" ? "drafts" : "published tests"}.</p>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {shown.map(test => (
+            <div className="inline-flex p-1 rounded-full bg-[#f1f5f7] self-start md:self-auto" role="tablist">
+              {([["all", "All", tests.length], ["draft", "Drafts", drafts], ["published", "Published", published]] as const).map(([id, label, count]) => (
+                <button key={id} role="tab" aria-selected={filter === id} onClick={() => setFilter(id)}
+                  className={`h-8 px-4 rounded-full text-xs transition-colors cursor-pointer ${filter === id ? "bg-accent-strong text-white" : "text-ink-3 hover:text-accent-strong"}`}>
+                  {label} <span className={filter === id ? "text-white/60" : "text-ink-4"}>{count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {visible.length === 0 ? (
+        <section style={rise(2)} className={`${panel} p-8 md:p-12`}>
+          <div className="max-w-2xl mx-auto text-center">
+            <span className="grid place-items-center h-12 w-12 rounded-2xl bg-accent-wash text-accent mx-auto"><FileText size={20} /></span>
+            <h2 className="mt-4 font-display text-xl tracking-[-0.02em] text-accent-strong">{isProfessor ? "No tests yet" : "No tests published yet"}</h2>
+            <p className="text-sm text-ink-3 mt-1.5">
+              {isProfessor
+                ? "Create a test and the AI drafts the questions from this course's materials."
+                : "When your instructor publishes a test, it appears here."}
+            </p>
+            {isProfessor && (
+              <>
+                <ol className="grid sm:grid-cols-3 gap-2 mt-6 text-left">
+                  {[
+                    ["Set the details", "Title, type, time limit and pass mark."],
+                    ["Choose the content", "All materials, or just some files and concepts."],
+                    ["Review and publish", "Check each question, then release it to students."],
+                  ].map(([title, text], i) => (
+                    <li key={title} className="p-4 rounded-2xl bg-[#f1f5f7]">
+                      <span className="grid place-items-center h-6 w-6 rounded-full bg-accent-strong text-white text-[11px] tabular">{i + 1}</span>
+                      <span className="block text-sm text-accent-strong mt-2">{title}</span>
+                      <span className="block text-xs text-ink-3 mt-1">{text}</span>
+                    </li>
+                  ))}
+                </ol>
+                {readyDocs === 0 ? (
+                  <p className="mt-6 text-xs text-clay">
+                    This course has no processed files yet. Questions are written from them, so{" "}
+                    <button onClick={() => navigate(courseRoute)} className="underline">upload materials first</button>.
+                  </p>
+                ) : (
+                  <button type="button" className={`${pillDark} mt-6`} onClick={() => setShowCreateModal(true)}>
+                    <Sparkles size={14} /> Create your first test
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      ) : shown.length === 0 ? (
+        <p className={`${panel} p-8 text-sm text-ink-3 text-center`}>No {filter === "draft" ? "drafts" : "published tests"}.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 [&>*]:min-w-0">
+          {shown.map((test, i) => (
+            <div key={test.id} style={rise(2 + i)} className="flex">
               <TestCard
-                key={test.id}
                 test={test}
                 role={role}
                 isGenerating={!!generating[test.id]}
@@ -290,11 +285,10 @@ export default function ProfessorTests() {
                 onPublish={publish}
                 onReleaseResults={releaseResults}
               />
-            ))}
-          </div>
-        )}
-      </div>
-
+            </div>
+          ))}
+        </div>
+      )}
       {previewTest && (
         <PreviewTestModal previewTest={previewTest} onClose={() => setPreviewTest(null)} editable={isProfessor} />
       )}
